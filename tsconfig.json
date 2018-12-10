@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "sourceMap": true,
+    "noUnusedLocals": true,
+    "module": "commonjs",
+    "outDir": "./dist",
+  },
+  "files": ["index.ts"]
+}
