@@ -16,9 +16,10 @@ export interface Position {
 
 export type Expression = Literal | Identifier;
 
-export type Statement = ENDElement | ENDText | Expression | ControlStatement;
+export type Statement = ENDElement | PlainStatement | ENDAttribute | ENDClass | ControlStatement;
 export type ProgramStatement = ENDTemplate | ENDElement;
 export type ControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
+export type PlainStatement = ENDText | Expression;
 
 export class Node {
     readonly type: string;
@@ -74,12 +75,28 @@ export class ENDElement extends Node {
 
 export class ENDAttribute extends Node {
     type = 'ENDAttribute';
-    constructor(readonly name: Identifier, readonly value: Expression | null) {
+    constructor(readonly name: Identifier, readonly value: Expression | null, readonly condition: Expression | null = null) {
         super();
         this.loc = {
             start: name.loc.start,
             end: value ? value.loc.end : name.loc.end
         };
+    }
+}
+
+export class ENDClass extends Node {
+    type = 'ENDClass';
+    value: PlainStatement[];
+    constructor(readonly condition: Expression | null) {
+        super();
+        this.value = [];
+    }
+}
+
+export class ENDEvent extends Node {
+    type = 'ENDEvent';
+    constructor(readonly name: Identifier, readonly handler: Expression) {
+        super();
     }
 }
 
@@ -122,6 +139,13 @@ export class ENDForEachStatement extends Node {
 export class ENDPartialStatement extends Node {
     type = 'ENDForEachStatement';
     constructor(readonly id: Identifier, readonly params: AssignmentPattern[]) {
+        super();
+    }
+}
+
+export class ENDVariableStatement extends Node {
+    type = 'ENDVariableStatement';
+    constructor(readonly name: Identifier, readonly value: Expression) {
         super();
     }
 }

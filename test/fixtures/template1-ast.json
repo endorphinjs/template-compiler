@@ -171,6 +171,7 @@
                       }
                     }
                   },
+                  "condition": null,
                   "type": "ENDAttribute",
                   "loc": {
                     "start": {
