@@ -16,7 +16,7 @@ export interface Position {
 
 export type Expression = Literal | Identifier;
 
-export type Statement = ENDElement | PlainStatement | ENDAttribute | ENDClass | ControlStatement;
+export type Statement = ENDElement | PlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ControlStatement;
 export type ProgramStatement = ENDTemplate | ENDElement;
 export type ControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
 export type PlainStatement = ENDText | Expression;
@@ -42,8 +42,14 @@ export class Identifier extends Node {
 
 export class AssignmentPattern extends Node {
     type = 'AssignmentPattern';
-    constructor(readonly left: Identifier, readonly right: Expression) {
+    constructor(readonly left: Expression, readonly right: Expression) {
         super();
+        if (left.loc && right.loc) {
+            this.loc = {
+                start: left.loc.start,
+                end: right.loc.end
+            };
+        }
     }
 }
 
@@ -75,21 +81,14 @@ export class ENDElement extends Node {
 
 export class ENDAttribute extends Node {
     type = 'ENDAttribute';
-    constructor(readonly name: Identifier, readonly value: Expression | null, readonly condition: Expression | null = null) {
+    constructor(readonly name: Expression, readonly value: Expression | null) {
         super();
-        this.loc = {
-            start: name.loc.start,
-            end: value ? value.loc.end : name.loc.end
-        };
-    }
-}
-
-export class ENDClass extends Node {
-    type = 'ENDClass';
-    value: PlainStatement[];
-    constructor(readonly condition: Expression | null) {
-        super();
-        this.value = [];
+        if (name.loc && value.loc) {
+            this.loc = {
+                start: name.loc.start,
+                end: value ? value.loc.end : name.loc.end
+            };
+        }
     }
 }
 
@@ -145,8 +144,29 @@ export class ENDPartialStatement extends Node {
 
 export class ENDVariableStatement extends Node {
     type = 'ENDVariableStatement';
-    constructor(readonly name: Identifier, readonly value: Expression) {
+    variables: AssignmentPattern[]
+    constructor() {
         super();
+        this.variables = [];
+    }
+}
+
+export class ENDAttributeStatement extends Node {
+    type = 'ENDAttributeStatement';
+    attributes: ENDAttribute[];
+    test: Expression | null;
+    constructor() {
+        super();
+        this.attributes = [];
+    }
+}
+
+export class ENDAddClassStatement extends Node {
+    type = 'ENDAddClassStatement';
+    tokens: PlainStatement[];
+    constructor() {
+        super();
+        this.tokens = [];
     }
 }
 

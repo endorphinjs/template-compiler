@@ -8,7 +8,23 @@ import chooseStatement from './elements/choose';
 import forEachStatement from './elements/for-each';
 import partialStatement from './elements/partial';
 import elementStatement from './elements/element';
-import { ignored, getControlName } from './elements/utils';
+import { attributeStatement, addClassStatement } from './elements/attribute';
+import variableStatement from './elements/variable';
+import { ignored, getControlName, InnerStatement } from './elements/utils';
+
+interface StatementMap {
+    [name: string]: InnerStatement
+};
+
+const statements: StatementMap = {
+    'attribute': attributeStatement,
+    'add-class': addClassStatement,
+    'variable': variableStatement,
+    'if': ifStatement,
+    'choose': chooseStatement,
+    'for-each': forEachStatement,
+    'partial': partialStatement
+};
 
 export default function parse(text: string, url: string = null): ENDProgram {
     const scanner = new Scanner(text, url);
@@ -44,24 +60,11 @@ export default function parse(text: string, url: string = null): ENDProgram {
  */
 function statement(scanner: Scanner, openTag: ParsedTag): Statement {
     const controlName = getControlName(openTag.getName());
+    if (controlName) {
+        if (controlName in statements) {
+            return statements[controlName](scanner, openTag, statement);
+        }
 
-    if (controlName === 'if') {
-        return ifStatement(scanner, openTag, statement);
-    }
-
-    if (controlName === 'choose') {
-        return chooseStatement(scanner, openTag, statement);
-    }
-
-    if (controlName === 'for-each') {
-        return forEachStatement(scanner, openTag, statement);
-    }
-
-    if (controlName === 'partial') {
-        return partialStatement(scanner, openTag, statement);
-    }
-
-    if (controlName != null) {
         throw syntaxError(scanner, `Unknown control statement <${openTag.getName()}>`, openTag.loc.start);
     }
 
