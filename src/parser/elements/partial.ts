@@ -1,7 +1,7 @@
 import Scanner from "../scanner";
 import { ParsedTag } from "../tag";
 import { ENDPartialStatement, Identifier, AssignmentPattern } from "../nodes";
-import { tagBody, InnerStatement } from "./utils";
+import { tagBody, InnerStatement, getAttributes } from "./utils";
 
 const prefix = 'partial:';
 
@@ -16,7 +16,7 @@ export default function partialStatement(scanner: Scanner, openTag: ParsedTag, n
     const id = scanner.astNode(new Identifier(name), start + prefix.length, start + prefix.length + name.length);
 
     const params: AssignmentPattern[] = [];
-    openTag.attributes.forEach(attr => {
+    getAttributes(openTag).forEach(attr => {
         params.push(new AssignmentPattern(attr.name, attr.value));
     });
 

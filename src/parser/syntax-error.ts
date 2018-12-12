@@ -1,7 +1,7 @@
 import Scanner from './scanner';
 import { Position } from './nodes';
 
-export default function syntaxError(scanner: Scanner, message: string, pos: Position | number) {
+export default function syntaxError(scanner: Scanner, message: string, pos: Position | number = scanner.pos) {
     if (typeof pos === 'number') {
         pos = scanner.sourceLocation(pos);
     }

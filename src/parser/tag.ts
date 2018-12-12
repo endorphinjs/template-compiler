@@ -35,23 +35,9 @@ export default function tag(scanner: Scanner): ParsedTag {
 }
 
 /**
- * Check if given character can be used as a name start of tag name or attribute
- */
-export function nameStartChar(ch: number): boolean {
-    return isAlpha(ch) || ch === UNDERSCORE || ch === NAMESPACE_DELIMITER;
-}
-
-/**
- * Check if given character can be used as a tag name
- */
-function nameChar(ch: number): boolean {
-    return nameStartChar(ch) || isNumber(ch) || ch === DASH || ch === DOT;
-}
-
-/**
  * Consumes open tag from given stream
  */
-function openTag(scanner: Scanner): ParsedTag {
+export function openTag(scanner: Scanner): ParsedTag {
     const pos = scanner.pos;
     if (scanner.eat(TAG_START)) {
         const name = ident(scanner);
@@ -73,7 +59,7 @@ function openTag(scanner: Scanner): ParsedTag {
 /**
  * Consumes close tag from given stream
  */
-function closeTag(scanner: Scanner): ParsedTag {
+export function closeTag(scanner: Scanner): ParsedTag {
     const pos = scanner.pos;
     if (scanner.eat(TAG_START) && scanner.eat(TAG_CLOSE)) {
         const name = ident(scanner);
@@ -89,6 +75,20 @@ function closeTag(scanner: Scanner): ParsedTag {
     }
 
     scanner.pos = pos;
+}
+
+/**
+ * Check if given character can be used as a name start of tag name or attribute
+ */
+export function nameStartChar(ch: number): boolean {
+    return isAlpha(ch) || ch === UNDERSCORE || ch === NAMESPACE_DELIMITER;
+}
+
+/**
+ * Check if given character can be used as a tag name
+ */
+function nameChar(ch: number): boolean {
+    return nameStartChar(ch) || isNumber(ch) || ch === DASH || ch === DOT;
 }
 
 /**

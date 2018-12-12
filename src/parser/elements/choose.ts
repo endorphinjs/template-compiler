@@ -1,33 +1,33 @@
 import Scanner from "../scanner";
 import syntaxError from "../syntax-error";
-import tag, { ParsedTag } from "../tag";
+import { ParsedTag, openTag } from "../tag";
 import { ENDChooseStatement, ENDChooseCase } from "../nodes";
-import { ignored, getControlName, getAttr, tagBody, InnerStatement } from "./utils";
+import { ignored, getControlName, getAttr, tagBody, InnerStatement, closesTag, prefix } from "./utils";
 
 /**
  * Consumes <choose> statement
  * @param scanner
- * @param openTag
+ * @param open
  */
-export default function chooseStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDChooseStatement {
+export default function chooseStatement(scanner: Scanner, open: ParsedTag, next: InnerStatement): ENDChooseStatement {
+    if (open.selfClosing) {
+        return;
+    }
+
     const chooseStatement = new ENDChooseStatement();
     let finished = false;
     let tagEntry: ParsedTag;
 
-    while (!scanner.eof()) {
+    while (!scanner.eof() && !closesTag(scanner, open)) {
         // Accept <when> and <otherwise> statements only
-        if (ignored(scanner, true)) {
-            continue;
-        }
-
-        if (tagEntry = tag(scanner)) {
+        if (tagEntry = openTag(scanner)) {
             const name = getControlName(tagEntry.getName());
             if (name !== 'when' && name !== 'otherwise') {
-                throw syntaxError(scanner, `Unexpected "${tagEntry.getName()}" tag, expecting "when" or "otherwise"`, tagEntry.loc.start);
+                throw syntaxError(scanner, `Unexpected <${tagEntry.getName()}> tag, expecting <${prefix}when> or <${prefix}otherwise>`, tagEntry.loc.start);
             }
 
             if (finished) {
-                throw syntaxError(scanner, `Unexpected "${tagEntry.getName()}" after "otherwise"`, tagEntry.loc.start);
+                throw syntaxError(scanner, `Unexpected <${tagEntry.getName()}> after <${prefix}otherwise>`, tagEntry.loc.start);
             }
 
             const test = getAttr(tagEntry, 'test');
@@ -39,6 +39,8 @@ export default function chooseStatement(scanner: Scanner, openTag: ParsedTag, ne
             const chooseCase = new ENDChooseCase(test && test.value);
             tagBody(scanner, tagEntry, chooseCase.consequent, next);
             chooseStatement.cases.push(chooseCase);
+        } else if (!ignored(scanner, true)) {
+            throw syntaxError(scanner, 'Unexpected token');
         }
     }
 

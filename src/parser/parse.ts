@@ -1,6 +1,6 @@
 import Scanner from './scanner';
 import { ENDProgram, Statement } from './nodes';
-import tag, { ParsedTag } from './tag';
+import { ParsedTag, openTag } from './tag';
 import syntaxError from './syntax-error';
 import templateStatement from './elements/template';
 import ifStatement from './elements/if';
@@ -8,7 +8,8 @@ import chooseStatement from './elements/choose';
 import forEachStatement from './elements/for-each';
 import partialStatement from './elements/partial';
 import elementStatement from './elements/element';
-import { attributeStatement, addClassStatement } from './elements/attribute';
+import attributeStatement from './elements/attribute';
+import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
 import { ignored, getControlName, InnerStatement } from './elements/utils';
 
@@ -26,19 +27,18 @@ const statements: StatementMap = {
     'partial': partialStatement
 };
 
+/**
+ * Parses given Endorphin template text into AST
+ * @param text Template source
+ * @param url Location of source, used for source mapping
+ */
 export default function parse(text: string, url: string = null): ENDProgram {
     const scanner = new Scanner(text, url);
     const program = new ENDProgram();
     let entry : ParsedTag;
 
     while (!scanner.eof()) {
-        // Skip unused XML entities like comments, processing instructions and
-        // space characters
-        if (ignored(scanner, true)) {
-            continue;
-        }
-
-        if (entry = tag(scanner)) {
+        if (entry = openTag(scanner)) {
             if (entry.getName() === 'template') {
                 program.body.push(templateStatement(scanner, entry, statement));
             } else if (getControlName(entry.getName()) == null) {
@@ -46,7 +46,7 @@ export default function parse(text: string, url: string = null): ENDProgram {
             } else {
                 throw syntaxError(scanner, `Unexpected control statement <${entry.getName()}>`, entry.loc.start);
             }
-        } else {
+        } else if (!ignored(scanner, true)) {
             throw scanner.error('Unexpected token');
         }
     }
@@ -56,19 +56,18 @@ export default function parse(text: string, url: string = null): ENDProgram {
 
 /**
  * Consumes tag statement for given open tag from current scanner state
- * @param scanner
  */
-function statement(scanner: Scanner, openTag: ParsedTag): Statement {
-    const controlName = getControlName(openTag.getName());
+function statement(scanner: Scanner, open: ParsedTag): Statement {
+    const controlName = getControlName(open.getName());
     if (controlName) {
         if (controlName in statements) {
-            return statements[controlName](scanner, openTag, statement);
+            return statements[controlName](scanner, open, statement);
         }
 
-        throw syntaxError(scanner, `Unknown control statement <${openTag.getName()}>`, openTag.loc.start);
+        throw syntaxError(scanner, `Unknown control statement <${open.getName()}>`, open.loc.start);
     }
 
     // Consume as regular tag
-    return elementStatement(scanner, openTag, statement);
+    return elementStatement(scanner, open, statement);
 }
 

@@ -1,7 +1,7 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
-import { ENDText, Statement, Expression, ENDAttribute, Node, Identifier } from '../nodes';
-import tag, { ParsedTag } from '../tag';
+import { Statement, ENDAttribute, Identifier } from '../nodes';
+import { ParsedTag, closeTag, openTag } from '../tag';
 import text from '../text';
 import syntaxError from '../syntax-error';
 import expression from '../expression';
@@ -28,41 +28,41 @@ export interface InnerStatement {
  * @param open
  * @param body
  */
-export function tagBody(scanner: Scanner, open: ParsedTag, body: Statement[], consumeTag?: InnerStatement) {
+export function tagBody(scanner: Scanner, open: ParsedTag, body: Statement[], consumeTag?: InnerStatement): void {
     if (open.selfClosing) {
         // Nothing to consume in self-closing tag
         return;
     }
 
-    let textEntry: ENDText;
+    const tagStack: ParsedTag[] = [open];
     let tagEntry: ParsedTag;
-    let exprEntry: Expression;
+    let token: Statement;
 
     while (!scanner.eof()) {
-        if (ignored(scanner)) {
-            continue;
-        }
-
-        if (exprEntry = expression(scanner)) {
-            body.push(exprEntry);
-        } else if (textEntry = text(scanner)) {
-            body.push(textEntry);
-        } else if (tagEntry = tag(scanner)) {
-            if (tagEntry.type === 'close') {
-                if (tagEntry.getName() === open.getName()) {
-                    return;
-                }
-
-                throw syntaxError(scanner, `Unexpected close tag </${tagEntry.name.name}>`, tagEntry.loc.start);
+        if (closesTag(scanner, tagStack[tagStack.length - 1])) {
+            tagStack.pop();
+            if (!tagStack.length) {
+                return;
             }
-
+        } else if (tagEntry = openTag(scanner)) {
             if (consumeTag) {
                 const inner = consumeTag(scanner, tagEntry);
                 if (inner) {
                     body.push(inner);
                 }
+            } else {
+                tagStack.push(tagEntry);
             }
+        } else if (token = expression(scanner) || text(scanner)) {
+            body.push(token);
+        } else if (!ignored(scanner)) {
+            throw syntaxError(scanner, `Unexpected token`);
         }
+    }
+
+    // If we reached here then most likely we have unclosed tags
+    if (tagStack.length) {
+        throw syntaxError(scanner, `Expecting </${tagStack.pop().getName()}>`);
     }
 }
 
@@ -78,20 +78,28 @@ export function emptyBody(scanner: Scanner, open: ParsedTag): void {
         return;
     }
 
-    while (!scanner.eof()) {
-        if (ignored(scanner)) {
-            continue;
+    while (!scanner.eof() && !closesTag(scanner, open)) {
+        if (!ignored(scanner)) {
+            throw syntaxError(scanner, `Unexpected token, tag <${open.getName()}> must be empty`);
         }
-
-        let node: Node = expression(scanner) || text(scanner) || tag(scanner);
-        if (node instanceof ParsedTag && node.type === 'close' && node.getName() === open.getName()) {
-            // Consumed closing tag
-            return;
-        }
-
-        const pos = node ? node.loc.start : scanner.sourceLocation(scanner.pos);
-        throw syntaxError(scanner, `Unexpected token, tag <${open.getName()}> must be empty`, pos);
     }
+}
+
+/**
+ * Check if next token in current scanner state is a closing tag for given `open` one
+ */
+export function closesTag(scanner: Scanner, open: ParsedTag): boolean {
+    const pos = scanner.pos;
+    const close = closeTag(scanner);
+    if (close) {
+        if (close.getName() === open.getName()) {
+            return true;
+        }
+
+        throw syntaxError(scanner, `Unexpected closing tag <${close.getName()}>, expecting </${open.getName()}>`, pos);
+    }
+
+    return false;
 }
 
 /**
