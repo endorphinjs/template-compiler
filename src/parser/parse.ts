@@ -1,5 +1,5 @@
 import Scanner from './scanner';
-import { ENDProgram, Statement } from './nodes';
+import { ENDProgram, Statement, ENDIfStatement } from './nodes';
 import { ParsedTag, openTag } from './tag';
 import syntaxError from './syntax-error';
 import templateStatement from './elements/template';
@@ -11,7 +11,7 @@ import elementStatement from './elements/element';
 import attributeStatement from './elements/attribute';
 import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
-import { ignored, getControlName, InnerStatement } from './elements/utils';
+import { ignored, getControlName, InnerStatement, prefix, getAttr } from './elements/utils';
 
 interface StatementMap {
     [name: string]: InnerStatement
@@ -26,6 +26,8 @@ const statements: StatementMap = {
     'for-each': forEachStatement,
     'partial': partialStatement
 };
+
+const ifAttr = `${prefix}if`;
 
 /**
  * Parses given Endorphin template text into AST
@@ -59,15 +61,28 @@ export default function parse(text: string, url: string = null): ENDProgram {
  */
 function statement(scanner: Scanner, open: ParsedTag): Statement {
     const controlName = getControlName(open.getName());
+    let result: Statement;
+
     if (controlName) {
         if (controlName in statements) {
-            return statements[controlName](scanner, open, statement);
+            result = statements[controlName](scanner, open, statement);
+        } else {
+            throw syntaxError(scanner, `Unknown control statement <${open.getName()}>`, open.loc.start);
         }
-
-        throw syntaxError(scanner, `Unknown control statement <${open.getName()}>`, open.loc.start);
+    } else {
+        // Consume as regular tag
+        result = elementStatement(scanner, open, statement);
     }
 
-    // Consume as regular tag
-    return elementStatement(scanner, open, statement);
-}
+    // Check if open tag contains `if` attribute.
+    // If so, wrap output into `<if>` statement
+    const test = getAttr(open, ifAttr);
+    if (test && result) {
+        const ifStatement = new ENDIfStatement(test.value);
+        ifStatement.loc = test.loc;
+        ifStatement.consequent.push(result);
+        result = ifStatement;
+    }
 
+    return result;
+}
