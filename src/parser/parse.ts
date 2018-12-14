@@ -1,5 +1,5 @@
 import Scanner from './scanner';
-import { ENDProgram, Statement, ENDIfStatement } from './nodes';
+import { ENDProgram, ENDStatement, ENDIfStatement } from './nodes';
 import { ParsedTag, openTag } from './tag';
 import syntaxError from './syntax-error';
 import templateStatement from './elements/template';
@@ -59,9 +59,9 @@ export default function parse(text: string, url: string = null): ENDProgram {
 /**
  * Consumes tag statement for given open tag from current scanner state
  */
-function statement(scanner: Scanner, open: ParsedTag): Statement {
+function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     const controlName = getControlName(open.getName());
-    let result: Statement;
+    let result: ENDStatement;
 
     if (controlName) {
         if (controlName in statements) {

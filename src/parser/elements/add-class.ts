@@ -1,6 +1,6 @@
 import Scanner from '../scanner';
 import { ParsedTag } from '../tag';
-import { ENDAddClassStatement, PlainStatement } from '../nodes';
+import { ENDAddClassStatement, ENDPlainStatement } from '../nodes';
 import { InnerStatement, ignored, closesTag } from './utils';
 import expression from '../expression';
 import text from '../text';
@@ -15,7 +15,7 @@ export default function addClassStatement(scanner: Scanner, openTag: ParsedTag, 
     node.loc = openTag.loc;
 
     // Consume plain statements only
-    let token: PlainStatement;
+    let token: ENDPlainStatement;
     while (!scanner.eof() && !closesTag(scanner, openTag)) {
         if (token = expression(scanner) || text(scanner)) {
             node.tokens.push(token);

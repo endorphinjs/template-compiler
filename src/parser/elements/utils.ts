@@ -1,6 +1,6 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
-import { Statement, ENDAttribute, Identifier } from '../nodes';
+import { ENDStatement, ENDAttribute, Identifier } from '../nodes';
 import { ParsedTag, closeTag, openTag } from '../tag';
 import text from '../text';
 import syntaxError from '../syntax-error';
@@ -19,7 +19,7 @@ const piClose = toCharCodes('?>');
 export const prefix = 'end:';
 
 export interface InnerStatement {
-    (scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): Statement
+    (scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): ENDStatement
 }
 
 /**
@@ -28,7 +28,7 @@ export interface InnerStatement {
  * @param open
  * @param body
  */
-export function tagBody(scanner: Scanner, open: ParsedTag, body: Statement[], consumeTag?: InnerStatement): void {
+export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[], consumeTag?: InnerStatement): void {
     if (open.selfClosing) {
         // Nothing to consume in self-closing tag
         return;
@@ -36,7 +36,7 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: Statement[], co
 
     const tagStack: ParsedTag[] = [open];
     let tagEntry: ParsedTag;
-    let token: Statement;
+    let token: ENDStatement;
 
     while (!scanner.eof()) {
         if (closesTag(scanner, tagStack[tagStack.length - 1])) {
