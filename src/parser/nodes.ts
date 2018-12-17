@@ -36,19 +36,25 @@ export const unsupportedNodes = new Set([
  */
 export type ArgumentListElement = Expression | SpreadElement;
 export type ArrayExpressionElement = Expression | SpreadElement | null;
-export type ArrayPatternElement = AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
-export type BindingPattern = ArrayExpression | ObjectExpression;
-export type BindingIdentifier = Identifier;
+export type ArrayPatternElement = AssignmentPattern | BindingPattern | RestElement | null;
+export type BindingPattern = ArrayExpression | ObjectExpression | Identifier;
 export type Expression = ArrayExpression | ArrowFunctionExpression | AssignmentExpression
     | BinaryExpression | LogicalExpression | CallExpression | MemberExpression | ConditionalExpression
     | Identifier | Literal | ObjectExpression | RegExpLiteral | SequenceExpression
     | UnaryExpression | UpdateExpression;
-export type FunctionParameter = AssignmentPattern | BindingIdentifier | BindingPattern;
+export type FunctionParameter = AssignmentPattern | BindingPattern;
 export type ObjectExpressionProperty = Property | SpreadElement;
 export type ObjectPatternProperty = Property | RestElement;
 export type Statement = EmptyStatement | ExpressionStatement;
 export type PropertyKey = Identifier | Literal;
-export type PropertyValue = AssignmentPattern | BindingIdentifier | BindingPattern;
+export type PropertyValue = AssignmentPattern | BindingPattern;
+
+export class Program extends Node {
+    type = 'Program';
+    constructor(readonly body: Statement[]) {
+        super();
+    }
+}
 
 export class Literal extends Node {
     type = 'Literal';
@@ -86,7 +92,7 @@ export class SpreadElement extends Node {
 
 export class RestElement extends Node {
     type = 'RestElement';
-    constructor(readonly argument: BindingIdentifier | BindingPattern) {
+    constructor(readonly argument: BindingPattern) {
         super();
     }
 }
@@ -106,8 +112,8 @@ export class ObjectExpression extends Node {
 }
 
 export class Property extends Node {
-    type = 'string';
-    constructor(readonly kind: "init" | "get" | "set", readonly key: PropertyKey,
+    type = 'Property';
+    constructor(readonly kind: 'init' | 'get' | 'set', readonly key: PropertyKey,
         readonly computed: boolean, readonly value: Expression | null,
         readonly method: boolean, readonly shorthand: boolean) {
         super();
@@ -116,10 +122,9 @@ export class Property extends Node {
 
 export class ArrowFunctionExpression extends Node {
     type = 'ArrowFunctionExpression';
-    readonly id: Identifier | null = null;
     readonly generator: boolean = false;
     readonly async: boolean = false;
-    constructor(readonly params: FunctionParameter[], readonly body: BlockStatement | Expression, readonly expression: boolean) {
+    constructor(readonly id: Identifier | null = null, readonly params: FunctionParameter[], readonly body: BlockStatement | Expression, readonly expression: boolean) {
         super();
     }
 }
@@ -222,7 +227,7 @@ export class BlockStatement extends Node {
 export type ENDStatement = ENDElement | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement;
 export type ENDProgramStatement = ENDTemplate | ENDElement;
 export type ENDControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
-export type ENDPlainStatement = ENDText | Expression;
+export type ENDPlainStatement = ENDText | Program;
 
 export class ENDProgram {
     type = 'ENDProgram';

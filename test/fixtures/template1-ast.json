@@ -80,11 +80,74 @@
         },
         {
           "test": {
-            "value": "foo == 1",
-            "raw": "foo == 1",
-            "type": "Literal",
+            "body": [
+              {
+                "expression": {
+                  "operator": "==",
+                  "left": {
+                    "name": "foo",
+                    "type": "Identifier",
+                    "loc": {
+                      "start": {
+                        "pos": 54,
+                        "line": 3,
+                        "column": 18
+                      },
+                      "end": {
+                        "pos": 57,
+                        "line": 3,
+                        "column": 21
+                      }
+                    }
+                  },
+                  "right": {
+                    "value": 1,
+                    "raw": "1",
+                    "type": "Literal",
+                    "loc": {
+                      "start": {
+                        "pos": 61,
+                        "line": 3,
+                        "column": 25
+                      },
+                      "end": {
+                        "pos": 62,
+                        "line": 3,
+                        "column": 26
+                      }
+                    }
+                  },
+                  "type": "BinaryExpression",
+                  "loc": {
+                    "start": {
+                      "pos": 54,
+                      "line": 3,
+                      "column": 18
+                    },
+                    "end": {
+                      "pos": 62,
+                      "line": 3,
+                      "column": 26
+                    }
+                  }
+                },
+                "type": "ExpressionStatement",
+                "loc": {
+                  "start": {
+                    "pos": 54,
+                    "line": 3,
+                    "column": 18
+                  },
+                  "end": {
+                    "pos": 62,
+                    "line": 3,
+                    "column": 26
+                  }
+                }
+              }
+            ],
+            "type": "Program",
             "loc": {
-              "source": "samples/template1.html",
               "start": {
                 "pos": 54,
                 "line": 3,
@@ -206,11 +269,41 @@
                   }
                 },
                 {
-                  "value": "foo",
-                  "raw": " foo ",
-                  "type": "Literal",
+                  "body": [
+                    {
+                      "expression": {
+                        "name": "foo",
+                        "type": "Identifier",
+                        "loc": {
+                          "start": {
+                            "pos": 102,
+                            "line": 4,
+                            "column": 37
+                          },
+                          "end": {
+                            "pos": 105,
+                            "line": 4,
+                            "column": 40
+                          }
+                        }
+                      },
+                      "type": "ExpressionStatement",
+                      "loc": {
+                        "start": {
+                          "pos": 102,
+                          "line": 4,
+                          "column": 37
+                        },
+                        "end": {
+                          "pos": 105,
+                          "line": 4,
+                          "column": 40
+                        }
+                      }
+                    }
+                  ],
+                  "type": "Program",
                   "loc": {
-                    "source": "samples/template1.html",
                     "start": {
                       "pos": 101,
                       "line": 4,
