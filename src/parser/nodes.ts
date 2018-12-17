@@ -228,6 +228,8 @@ export type ENDStatement = ENDElement | ENDPlainStatement | ENDAttributeStatemen
 export type ENDProgramStatement = ENDTemplate | ENDElement;
 export type ENDControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
 export type ENDPlainStatement = ENDText | Program;
+export type ENDAttributeName = Identifier | Program | null;
+export type ENDAttributeValue = Literal | Program | null;
 
 export class ENDProgram {
     type = 'ENDProgram';
@@ -257,7 +259,20 @@ export class ENDElement extends Node {
 
 export class ENDAttribute extends Node {
     type = 'ENDAttribute';
-    constructor(readonly name: Expression, readonly value: Expression | null) {
+    constructor(readonly name: ENDAttributeName, readonly value: ENDAttributeValue) {
+        super();
+        if (name.loc && value.loc) {
+            this.loc = {
+                start: name.loc.start,
+                end: value ? value.loc.end : name.loc.end
+            };
+        }
+    }
+}
+
+export class ENDVariable extends Node {
+    type = 'ENDVariable';
+    constructor(readonly name: ENDAttributeName, readonly value: ENDAttributeValue) {
         super();
         if (name.loc && value.loc) {
             this.loc = {
@@ -270,7 +285,7 @@ export class ENDAttribute extends Node {
 
 export class ENDEvent extends Node {
     type = 'ENDEvent';
-    constructor(readonly name: Identifier, readonly handler: Expression) {
+    constructor(readonly name: Identifier, readonly handler: Program) {
         super();
     }
 }
@@ -278,7 +293,7 @@ export class ENDEvent extends Node {
 export class ENDIfStatement extends Node {
     type = 'ENDIfStatement';
     consequent: ENDStatement[];
-    constructor(readonly test: Expression) {
+    constructor(readonly test: ENDAttributeValue) {
         super();
         this.consequent = [];
     }
@@ -296,7 +311,7 @@ export class ENDChooseStatement extends Node {
 export class ENDChooseCase extends Node {
     type = 'ENDSwitchCase';
     consequent: ENDStatement[];
-    constructor(readonly test: Expression | null = null) {
+    constructor(readonly test: ENDAttributeValue = null) {
         super();
         this.consequent = [];
     }
@@ -305,7 +320,7 @@ export class ENDChooseCase extends Node {
 export class ENDForEachStatement extends Node {
     type = 'ENDForEachStatement';
     readonly body: ENDStatement[];
-    constructor(readonly select: Expression) {
+    constructor(readonly select: ENDAttributeValue) {
         super();
         this.body = [];
     }
@@ -313,14 +328,14 @@ export class ENDForEachStatement extends Node {
 
 export class ENDPartialStatement extends Node {
     type = 'ENDForEachStatement';
-    constructor(readonly id: Identifier, readonly params: AssignmentPattern[]) {
+    constructor(readonly id: Identifier, readonly params: ENDAttribute[]) {
         super();
     }
 }
 
 export class ENDVariableStatement extends Node {
     type = 'ENDVariableStatement';
-    variables: AssignmentPattern[]
+    variables: ENDVariable[]
     constructor() {
         super();
         this.variables = [];

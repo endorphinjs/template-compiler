@@ -1,6 +1,6 @@
 import Scanner from '../scanner';
 import { ParsedTag } from '../tag';
-import { ENDVariableStatement, AssignmentPattern } from '../nodes';
+import { ENDVariableStatement, ENDVariable } from '../nodes';
 import { emptyBody, InnerStatement, getAttributes } from './utils';
 
 /**
@@ -13,7 +13,7 @@ export default function variableStatement(scanner: Scanner, openTag: ParsedTag, 
     node.loc = openTag.loc;
 
     getAttributes(openTag).forEach(attr => {
-        node.variables.push(new AssignmentPattern(attr.name, attr.value));
+        node.variables.push(new ENDVariable(attr.name, attr.value));
     });
 
     emptyBody(scanner, openTag);

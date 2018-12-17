@@ -1,5 +1,5 @@
 import expression from './expression';
-import { Identifier, ENDAttribute, Expression, Literal, Node } from './nodes';
+import { Identifier, ENDAttribute, Literal, Node, ENDAttributeValue } from './nodes';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import Scanner from './scanner';
 
@@ -132,7 +132,7 @@ function consumeAttributes(scanner: Scanner): ENDAttribute[] {
 function attribute(scanner: Scanner): ENDAttribute {
     const name = ident(scanner);
     if (name) {
-        let value: Expression = null;
+        let value: ENDAttributeValue = null;
 
         if (scanner.eat(ATTR_DELIMITER)) {
             if (!(value = attributeValue(scanner))) {
@@ -149,7 +149,7 @@ function attribute(scanner: Scanner): ENDAttribute {
  * @param {StreamReader} scanner
  * @return {Token}
  */
-function attributeValue(scanner: Scanner): Expression {
+function attributeValue(scanner: Scanner): ENDAttributeValue {
     const expr = expression(scanner);
     if (expr) {
         return expr;
