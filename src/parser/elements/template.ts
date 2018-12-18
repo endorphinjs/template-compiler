@@ -1,7 +1,7 @@
 import Scanner from "../scanner";
-import { ParsedTag } from "../tag";
+import { Literal } from "../../ast/expression";
+import { ENDTemplate, ParsedTag } from "../../ast/template";
 import { InnerStatement, getAttr, tagBody } from "./utils";
-import { Literal, ENDTemplate } from "../nodes";
 
 /**
  * Consumes top-level <template> statement

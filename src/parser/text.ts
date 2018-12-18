@@ -1,5 +1,5 @@
 import Scanner from './scanner';
-import { ENDText } from './nodes';
+import { ENDText } from '../ast/template';
 import { EXPRESSION_START } from './expression';
 import { TAG_START, TAG_CLOSE, nameStartChar } from './tag';
 

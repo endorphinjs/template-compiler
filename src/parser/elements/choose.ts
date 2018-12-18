@@ -1,7 +1,7 @@
 import Scanner from "../scanner";
 import syntaxError from "../syntax-error";
-import { ParsedTag, openTag } from "../tag";
-import { ENDChooseStatement, ENDChooseCase } from "../nodes";
+import { openTag } from "../tag";
+import { ENDChooseStatement, ENDChooseCase, ParsedTag } from "../../ast/template";
 import { ignored, getControlName, getAttr, tagBody, InnerStatement, closesTag, prefix } from "./utils";
 
 /**

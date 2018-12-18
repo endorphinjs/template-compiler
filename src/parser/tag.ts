@@ -1,5 +1,6 @@
 import expression from './expression';
-import { Identifier, ENDAttribute, Literal, Node, ENDAttributeValue } from './nodes';
+import { Identifier, Literal } from '../ast/expression';
+import { ENDAttribute, ENDAttributeValue, ParsedTag } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import Scanner from './scanner';
 
@@ -11,21 +12,6 @@ export const NAMESPACE_DELIMITER = 58; // :
 export const DASH = 45; // -
 export const DOT = 46; // .
 export const UNDERSCORE = 95; // _
-
-export class ParsedTag extends Node {
-    name: Identifier;
-    constructor(name: Identifier, readonly type: 'open' | 'close', readonly attributes: ENDAttribute[] | null = null, readonly selfClosing: boolean = false) {
-        super();
-        this.name = name;
-    }
-
-    /**
-     * Returns name of current tag
-     */
-    getName(): string {
-        return this.name.name;
-    }
-}
 
 /**
  * Consumes tag from current stream location, if possible

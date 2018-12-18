@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "acorn": "^6.0.4",
-    "acorn-walk": "^6.1.1"
+    "acorn-walk": "^6.1.1",
+    "source-map": "^0.7.3"
   },
   "directories": {
     "test": "test"

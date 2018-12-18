@@ -1,6 +1,6 @@
 import Scanner from "../scanner";
-import { ParsedTag } from "../tag";
-import { ENDPartialStatement, Identifier } from "../nodes";
+import { Identifier } from "../../ast/expression";
+import { ENDPartialStatement, ParsedTag } from "../../ast/template";
 import { tagBody, InnerStatement, getAttributes } from "./utils";
 
 const prefix = 'partial:';

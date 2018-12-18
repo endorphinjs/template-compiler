@@ -1,6 +1,5 @@
 import Scanner from '../scanner';
-import { ParsedTag } from '../tag';
-import { ENDVariableStatement, ENDVariable } from '../nodes';
+import { ENDVariableStatement, ENDVariable, ParsedTag } from '../../ast/template';
 import { emptyBody, InnerStatement, getAttributes } from './utils';
 
 /**

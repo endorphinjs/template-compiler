@@ -1,7 +1,7 @@
 const LF = 10;
 const CR = 13;
 
-import { Position, Node } from './nodes';
+import { Position, Node } from '../ast/base';
 
 export interface MatchFunction { (ch: number): boolean; }
 

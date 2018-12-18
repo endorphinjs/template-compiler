@@ -1,6 +1,5 @@
 import Scanner from '../scanner';
-import { ParsedTag } from '../tag';
-import { ENDAddClassStatement, ENDPlainStatement } from '../nodes';
+import { ENDAddClassStatement, ENDPlainStatement, ParsedTag } from '../../ast/template';
 import { InnerStatement, ignored, closesTag } from './utils';
 import expression from '../expression';
 import text from '../text';

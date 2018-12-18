@@ -1,6 +1,6 @@
 import Scanner from './scanner';
-import { ENDProgram, ENDStatement, ENDIfStatement } from './nodes';
-import { ParsedTag, openTag } from './tag';
+import { ENDProgram, ENDStatement, ENDIfStatement, ParsedTag } from '../ast/template';
+import { openTag } from './tag';
 import syntaxError from './syntax-error';
 import templateStatement from './elements/template';
 import ifStatement from './elements/if';

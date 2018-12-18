@@ -1,7 +1,8 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
-import { ENDStatement, ENDAttribute, Identifier } from '../nodes';
-import { ParsedTag, closeTag, openTag } from '../tag';
+import { Identifier } from '../../ast/expression';
+import { ENDStatement, ENDAttribute, ParsedTag } from '../../ast/template';
+import { closeTag, openTag } from '../tag';
 import text from '../text';
 import syntaxError from '../syntax-error';
 import expression from '../expression';

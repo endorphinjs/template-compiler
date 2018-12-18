@@ -1,6 +1,5 @@
 import Scanner from "../scanner";
-import { ParsedTag } from "../tag";
-import { ENDElement } from "../nodes";
+import { ENDElement, ParsedTag } from "../../ast/template";
 import { tagBody, InnerStatement, getAttributes } from "./utils";
 
 /**

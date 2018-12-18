@@ -1,4 +1,4 @@
-import { Program } from './nodes';
+import { Program } from '../ast/expression';
 import { eatPair } from './utils';
 import Scanner from './scanner';
 import parseJS from './expression/js-parser';

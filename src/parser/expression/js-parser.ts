@@ -1,6 +1,7 @@
 import { Parser, Node as AcornNode } from 'acorn';
 import endorphinParser from './acorn-plugin';
-import * as Ast from '../nodes';
+import { Node } from '../../ast/base';
+import * as Ast from '../../ast/expression';
 import Scanner from '../scanner';
 import syntaxError from '../syntax-error';
 
@@ -24,7 +25,7 @@ export default function parse(code: string, scanner: Scanner): Ast.Program {
 }
 
 interface AstConverter {
-    (aNode: any, scanner: Scanner): Ast.Node;
+    (aNode: any, scanner: Scanner): Node;
 }
 
 interface AstConverterMap {
@@ -167,7 +168,7 @@ const converters: AstConverterMap = {
 /**
  * Converts Acorn node to Endorphin node
  */
-function convert(aNode: any, scanner: Scanner): Ast.Node {
+function convert(aNode: any, scanner: Scanner): Node {
     if (aNode == null) {
         return aNode;
     }
@@ -176,7 +177,7 @@ function convert(aNode: any, scanner: Scanner): Ast.Node {
         throw new UnsupportedError(aNode.type, aNode.start + scanner.start, aNode.end + scanner.start);
     }
 
-    const node: Ast.Node = converters[aNode.type](aNode, scanner);
+    const node: Node = converters[aNode.type](aNode, scanner);
     return loc(node, aNode, scanner);
 }
 
@@ -189,7 +190,7 @@ export class UnsupportedError extends Error {
 /**
  * Adds correct source location in original text stream for given JS AST node
  */
-function loc(node: Ast.Node, aNode: AcornNode, scanner: Scanner): Ast.Node {
+function loc(node: Node, aNode: AcornNode, scanner: Scanner): Node {
     node.loc = {
         start: scanner.sourceLocation(aNode.start + scanner.start),
         end: scanner.sourceLocation(aNode.end + scanner.start)

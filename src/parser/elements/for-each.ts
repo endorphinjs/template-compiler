@@ -1,7 +1,6 @@
 import Scanner from "../scanner";
 import syntaxError from "../syntax-error";
-import { ENDForEachStatement } from "../nodes";
-import { ParsedTag } from "../tag";
+import { ENDForEachStatement, ParsedTag } from "../../ast/template";
 import { getAttr, tagBody, InnerStatement } from "./utils";
 
 /**
