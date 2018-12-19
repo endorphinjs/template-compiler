@@ -12,6 +12,7 @@ describe('Template parser', () => {
         const file = 'samples/template1.html';
         const ast = parse(read(file), file);
         const astJSON = JSON.parse(JSON.stringify(ast));
+        // fs.writeFileSync(path.resolve(__dirname, 'fixtures/template1-ast.json'), JSON.stringify(ast, null, 2));
         assert.deepEqual(astJSON, JSON.parse(read('fixtures/template1-ast.json')));
     });
 });

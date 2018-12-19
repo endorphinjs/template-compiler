@@ -157,8 +157,10 @@
                 "pos": 62,
                 "line": 3,
                 "column": 26
-              }
-            }
+              },
+              "source": "samples/template1.html"
+            },
+            "raw": "foo == 1"
           },
           "type": "ENDIfStatement",
           "consequent": [
@@ -313,8 +315,10 @@
                       "pos": 106,
                       "line": 4,
                       "column": 41
-                    }
-                  }
+                    },
+                    "source": "samples/template1.html"
+                  },
+                  "raw": " foo "
                 }
               ]
             },
