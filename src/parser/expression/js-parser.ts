@@ -21,7 +21,15 @@ export default function parse(code: string, scanner: Scanner): Ast.Program {
         sourceFile: scanner.url
     });
 
-    return convert(ast, scanner) as Ast.Program;
+    const prog = convert(ast, scanner) as Ast.Program;
+    prog.raw = code;
+    prog.loc = {
+        start: scanner.sourceLocation(scanner.start),
+        end: scanner.sourceLocation(scanner.start + code.length),
+        source: scanner.url
+    };
+
+    return prog;
 }
 
 interface AstConverter {

@@ -23,6 +23,7 @@ export class JSNode extends Node {}
 
 export class Program extends JSNode {
     type = 'Program';
+    raw: string;
     constructor(readonly body: Statement[]) {
         super();
     }
