@@ -1,5 +1,4 @@
 import { SourceNode } from 'source-map';
-import { Node } from '../ast/base';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ENDSyntaxError } from '../parser/syntax-error';
@@ -9,188 +8,159 @@ interface Result {
     symbols: Symbols[]
 }
 
-type ChunkList = Array <string | SourceNode>;
+type Chunk = string | SourceNode;
+type ChunkList = Array<Chunk>;
 
-const safeProp = /^[a-zA-Z]\w*$/;
+/**
+ * SourceNode factory which attaches location info to source map node from given
+ * AST node
+ */
+interface SourceNodeFactory {
+    (node: Ast.JSNode, chunks?: ChunkList | Chunk, name?: string): SourceNode
+}
+
+/**
+ * Code generator continuation function
+ */
+interface Generator {
+    (node: Ast.JSNode, scope: CompileScope): SourceNode
+}
+
+/**
+ * Code generator for AST node of specific type
+ */
+interface NodeGenerator<T extends Ast.JSNode> {
+    (node: T, scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode;
+}
+
+interface NodeGeneratorMap {
+    [type: string]: NodeGenerator<Ast.JSNode>
+}
+
+const generators: NodeGeneratorMap = {
+    // Basic JS nodes
+    Literal(node: Ast.Literal, scope, sn) {
+        return sn(node, typeof node.value === 'string'
+            ? qStr(node.value) : String(node.value));
+    },
+    ConditionalExpression(node: Ast.ConditionalExpression, scope, sn, next) {
+        // TODO check if parentheses are required here
+        return sn(node, ['(', next(node.test, scope), ' ? ', next(node.consequent, scope), ' : ', next(node.alternate, scope), ')']);
+    },
+    ArrayExpression(node: Ast.ArrayExpression, scope, sn, next) {
+        return sn(node, commaChunks(node.elements, '[', ']',
+            (item, chunks) => chunks.push(next(item, scope))));
+    },
+    BinaryExpression(node: Ast.BinaryExpression, scope, sn, next) {
+        // TODO check if parentheses are required here
+        return sn(node, ['(', next(node.left, scope), ` ${node.operator} `, next(node.right, scope), ')']);
+    },
+    LogicalExpression(node: Ast.LogicalExpression, scope, sn, next) {
+        // TODO check if parentheses are required here
+        return sn(node, ['(', next(node.left, scope), ` ${node.operator} `, next(node.right, scope), ')']);
+    },
+    ExpressionStatement(node: Ast.ExpressionStatement, scope, sn, next) {
+        return next(node.expression, scope);
+    },
+    ObjectExpression(node: Ast.ObjectExpression, scope, sn, next) {
+        return sn(node, commaChunks(node.properties, '{', '}',
+            (prop, chunks) => chunks.push(
+                sn(prop.key, prop.key instanceof Ast.Literal ? prop.key.raw : prop.key.name),
+                ': ',
+                next(prop, scope)
+            )));
+    },
+    RegExpLiteral(node: Ast.RegExpLiteral, scope, sn) {
+        return sn(node, `${node.regex.pattern}/${node.regex.flags}`);
+    },
+    SequenceExpression(node: Ast.SequenceExpression, scope, sn, next) {
+        return sn(node, commaChunks(node.expressions, '', '',
+            (item, chunks) => chunks.push(next(item, scope))));
+    },
+    UnaryExpression(node: Ast.UnaryExpression, scope, sn, next) {
+        return sn(node, [node.operator, node.operator.length > 2 ? ' ' : '', next(node.argument, scope)]);
+    },
+    ArrowFunctionExpression(node: Ast.ArrowFunctionExpression) {
+        throw new Error(`Not implemented ${node.type}`);
+    },
+    CallExpression(node: Ast.CallExpression) {
+        throw new Error(`Not implemented ${node.type}`);
+    },
+
+    // Endorphin addons
+    ENDGetter(node: Ast.ENDGetter, scope, sn, next) {
+        const chunks: ChunkList = [scope.use(Symbols.get), '(', next(node.root, scope)];
+        node.path.forEach(node => chunks.push(', ', next(node, scope)));
+        chunks.push(')');
+
+        return sn(node, chunks);
+    },
+    ENDPropertyIdentifier(node: Ast.ENDPropertyIdentifier, scope, sn) {
+        return sn(node, `${scope.host}.props${propAccessor(node.name)}`, node.raw);
+    },
+    ENDStateIdentifier(node: Ast.ENDStateIdentifier, scope, sn) {
+        return sn(node, `${scope.host}.state${propAccessor(node.name)}`, node.raw);
+    },
+    ENDVariableIdentifier(node: Ast.ENDVariableIdentifier, scope, sn) {
+        return sn(node, `${scope.use(Symbols.getVar)}(${scope.host}, ${qStr(node.name)})`, node.raw);
+    },
+};
 
 export function expression(program: Ast.Program): Result {
-    const expressions: Ast.Statement[] = program.body.filter(expr => expr instanceof Ast.ExpressionStatement);
+    const expressions: Ast.Statement[] = program.body.filter(expr => expr.type !== 'EmptyStatement');
 
     if (expressions.length > 1) {
         throw new ENDSyntaxError(`The "${program.raw}" expression must contain single statement, ${program.raw.length} given`,
             program.loc.source, program.loc.start);
     }
 
-    let code: SourceNode;
     const scope = new CompileScope();
-    if (!expressions.length) {
-        code = sn(program, 'null');
-    } else {
-        code = getExpression(expressions[0], scope);
-    }
-
-    return { code, symbols: Array.from(scope.symbols) };
+    return {
+        code: expressions.length ? getExpression(expressions[0], scope) : sn(program, 'null'),
+        symbols: Array.from(scope.symbols)
+    };
 }
 
 /**
  * Returns expression getter
  */
-function getExpression(expr: Ast.JSNode, scope: CompileScope): SourceNode {
-    if (expr instanceof Ast.ArrayExpression) {
-        return sn(expr, commaChunks(expr.elements, '[', ']',
-            (item, chunks) => chunks.push(getExpression(item, scope))));
+const getExpression: Generator = (node, scope) => {
+    if (node.type in generators) {
+        return generators[node.type](node, scope, sn, getExpression);
     }
 
-    if (expr instanceof Ast.BinaryExpression || expr instanceof Ast.LogicalExpression) {
-        // TODO check if parentheses are required here
-        return sn(expr, ['(', getExpression(expr.left, scope), ` ${expr.operator} `, getExpression(expr.right, scope), ')']);
-    }
+    throw new ENDSyntaxError(`${node.type} is not supported in getter expressions`,
+        node.loc.source, node.loc.start);
+};
 
-    if (expr instanceof Ast.MemberExpression) {
-        return memberGetter(expr, scope);
-    }
-
-    if (expr instanceof Ast.ConditionalExpression) {
-        // TODO check if parentheses are required here
-        return sn(expr, ['(', getExpression(expr.test, scope), ' ? ', getExpression(expr.consequent, scope), ' : ', getExpression(expr.alternate, scope), ')']);
-    }
-
-    if (expr instanceof Ast.Identifier) {
-        return getIdentifier(expr, scope);
-    }
-
-    if (expr instanceof Ast.Literal) {
-        return sn(expr, expr.raw);
-    }
-
-    if (expr instanceof Ast.ObjectExpression) {
-        return sn(expr, commaChunks(expr.properties, '{', '}',
-            (prop, chunks) => chunks.push(
-                sn(prop.key, prop.key instanceof Ast.Literal ? prop.key.raw : prop.key.name),
-                ': ',
-                getExpression(prop, scope)
-            )));
-    }
-
-    if (expr instanceof Ast.RegExpLiteral) {
-        return sn(expr, `${expr.regex.pattern}/${expr.regex.flags}`);
-    }
-
-    if (expr instanceof Ast.SequenceExpression) {
-        return sn(expr, commaChunks(expr.expressions, '', '',
-            (item, chunks) => chunks.push(getExpression(item, scope))));
-    }
-
-    if (expr instanceof Ast.UnaryExpression) {
-        return sn(expr, [expr.operator, expr.operator.length > 2 ? ' ' : '', getExpression(expr.argument, scope)]);
-    }
-
-    if (expr instanceof Ast.ArrowFunctionExpression) {
-        throw new Error(`Not implemented ${expr.type}`);
-    }
-
-    if (expr instanceof Ast.CallExpression) {
-        throw new Error(`Not implemented ${expr.type}`);
-    }
-
-    throw new ENDSyntaxError(`${expr.type} is not supported in getter expressions`,
-        expr.loc.source, expr.loc.start);
-}
-
-/**
- * Returns deep getter for given expression
- */
-function memberGetter(expr: Ast.MemberExpression, scope: CompileScope): SourceNode {
-    // Collect getter path
-    const path: SourceNode[] = [];
-    let root: SourceNode;
-    let ctx = expr;
-
-    while (ctx) {
-        if (ctx.property instanceof Ast.Identifier) {
-            path.unshift(ctx.computed
-                ? getIdentifier(ctx.property, scope)
-                : sn(ctx.property, qStr(ctx.property), ctx.property.name));
-        } else if (ctx.property instanceof Ast.ArrowFunctionExpression) {
-            throw new Error(`Filters not implemented`);
-        } else {
-            path.unshift(getExpression(ctx.property, scope));
-        }
-
-        if (ctx.object instanceof Ast.MemberExpression) {
-            ctx = ctx.object;
-        } else {
-            if (ctx.object instanceof Ast.Identifier) {
-                root = getIdentifier(ctx.object, scope);
-            }
-            break;
-        }
-    }
-
-    if (!root) {
-        throw new ENDSyntaxError(`Unexpected "${expr.object.type}" in object expression`,
-            expr.object.loc.source, expr.object.loc.start);
-    }
-
-    const chunks: ChunkList = [scope.use(Symbols.get), '(', root];
-    path.forEach((node, i) => {
-        if (i === 0) {
-            chunks.push(', ');
-        }
-        chunks.push(node);
-    });
-    chunks.push(')');
-
-    return sn(expr, chunks);
-}
-
-/**
- * Generates getter for given identifier
- */
-function getIdentifier(node: Ast.Identifier, scope: CompileScope): SourceNode {
-    if (node.name.startsWith('#')) {
-        // Local state access
-        return sn(node, `${scope.host}.state${propAccessor(node.name.slice(1))}`, node.name);
-    }
-
-    if (node.name.startsWith('$')) {
-        // Runtime template variable
-        return sn(node, `${scope.use(Symbols.getVar)}(${qStr(node.name.slice(1))})`, node.name);
-    }
-
-    if (node.name.startsWith('@')) {
-        // Model property access
-        throw new Error('Not implemented');
-    }
-
-    // By default, assume we’re accessing component prop
-    return sn(node, `${scope.host}.props${propAccessor(node.name)}`, node.name);
-}
-
-function sn(node: Node, chunks?: Array<(string | SourceNode)> | SourceNode | string, name?: string): SourceNode {
-    return new SourceNode(node.loc.start.line, node.loc.start.column, node.loc.source, chunks, name);
-}
+const sn: SourceNodeFactory = (node, chunks, name) =>
+    new SourceNode(node.loc.start.line, node.loc.start.column, node.loc.source, chunks, name);
 
 /**
  * Generates property accessor code
  */
 function propAccessor(name: string): string {
-    return safeProp.test(name) ? `.${name}` : `[${qStr(name)}]`;
+    return /^[a-zA-Z_$][\w_$]*$/.test(name)
+        ? `.${name}` : `[${qStr(name)}]`;
 }
 
 /**
  * Returns quoted string
  */
-function qStr(text): string {
+function qStr(text: string): string {
     return `'${text.replace(/'/g, '\\\'')}'`;
 }
 
+/**
+ * Generates comma-separated list of given chunks with optional `before` and `after`
+ * wrapper code
+ */
 function commaChunks<T extends Ast.JSNode>(items: T[], before: string, after: string, fn: (node: T, chunks: ChunkList) => void): ChunkList {
     const chunks: ChunkList = [];
 
     before && chunks.push(before);
     items.forEach((node, i) => {
-        if (i === 0) {
+        if (i !== 0) {
             chunks.push(', ');
         }
         fn(node, chunks);

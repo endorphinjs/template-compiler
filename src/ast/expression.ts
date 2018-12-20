@@ -7,17 +7,17 @@ import { Node } from './base';
 export type ArgumentListElement = Expression | SpreadElement;
 export type ArrayExpressionElement = Expression | SpreadElement | null;
 export type ArrayPatternElement = AssignmentPattern | BindingPattern | RestElement | null;
-export type BindingPattern = ArrayExpression | ObjectExpression | Identifier;
+export type BindingPattern = ArrayExpression | ObjectExpression | Identifier | ENDGetter;
 export type Expression = ArrayExpression | ArrowFunctionExpression | AssignmentExpression
     | BinaryExpression | LogicalExpression | CallExpression | MemberExpression | ConditionalExpression
     | Identifier | Literal | ObjectExpression | RegExpLiteral | SequenceExpression
-    | UnaryExpression | UpdateExpression;
+    | UnaryExpression | UpdateExpression | ENDGetter;
 export type FunctionParameter = AssignmentPattern | BindingPattern;
 export type ObjectExpressionProperty = Property | SpreadElement;
 export type ObjectPatternProperty = Property | RestElement;
 export type Statement = EmptyStatement | ExpressionStatement;
 export type PropertyKey = Identifier | Literal;
-export type PropertyValue = AssignmentPattern | BindingPattern;
+export type PropertyValue = BindingPattern | Literal;
 
 export class JSNode extends Node {}
 
@@ -191,6 +191,44 @@ export class EmptyStatement extends JSNode {
 export class BlockStatement extends JSNode {
     type = 'BlockStatement';
     constructor(readonly body: Statement[]) {
+        super();
+    }
+}
+
+// Endorphin extensions to JavaScript expressions
+export type ENDIdentifier = ENDPropertyIdentifier | ENDStateIdentifier | ENDStoreIdentifier | ENDVariableIdentifier;
+
+export class ENDPropertyIdentifier extends Identifier {
+    type = 'ENDPropertyIdentifier';
+    constructor(readonly name: string, readonly raw: string) {
+        super(name);
+    }
+}
+
+export class ENDStateIdentifier extends Identifier {
+    type = 'ENDStateIdentifier';
+    constructor(readonly name: string, readonly raw: string) {
+        super(name);
+    }
+}
+
+export class ENDStoreIdentifier extends Identifier {
+    type = 'ENDStoreIdentifier';
+    constructor(readonly name: string, readonly raw: string) {
+        super(name);
+    }
+}
+
+export class ENDVariableIdentifier extends Identifier {
+    type = 'ENDVariableIdentifier';
+    constructor(readonly name: string, readonly raw: string) {
+        super(name);
+    }
+}
+
+export class ENDGetter extends JSNode {
+    type = 'ENDGetter';
+    constructor(readonly root: ENDIdentifier, readonly path: Expression[] = []) {
         super();
     }
 }
