@@ -15,7 +15,7 @@ export type Expression = ArrayExpression | ArrowFunctionExpression | AssignmentE
 export type FunctionParameter = AssignmentPattern | BindingPattern;
 export type ObjectExpressionProperty = Property | SpreadElement;
 export type ObjectPatternProperty = Property | RestElement;
-export type Statement = EmptyStatement | ExpressionStatement;
+export type Statement = ReturnStatement | EmptyStatement | ExpressionStatement;
 export type PropertyKey = Identifier | Literal;
 export type PropertyValue = BindingPattern | Literal;
 
@@ -39,6 +39,13 @@ export class Literal extends JSNode {
 export class Identifier extends JSNode {
     type = 'Identifier';
     constructor(readonly name: string) {
+        super();
+    }
+}
+
+export class FunctionDeclaration extends JSNode {
+    type = 'FunctionDeclaration';
+    constructor(readonly id: Identifier, readonly params: FunctionParameter[], readonly body: BlockStatement | Expression) {
         super();
     }
 }
@@ -188,6 +195,13 @@ export class EmptyStatement extends JSNode {
     type = 'EmptyStatement';
 }
 
+export class ReturnStatement extends JSNode {
+    type = 'ReturnStatement';
+    constructor(readonly argument: Expression | null) {
+        super();
+    }
+}
+
 export class BlockStatement extends JSNode {
     type = 'BlockStatement';
     constructor(readonly body: Statement[]) {
@@ -226,9 +240,16 @@ export class ENDVariableIdentifier extends Identifier {
     }
 }
 
+export class ENDFilter extends JSNode {
+    type = 'ENDFilter';
+    constructor(readonly object: Expression, readonly filter: ArrowFunctionExpression) {
+        super();
+    }
+}
+
 export class ENDGetter extends JSNode {
     type = 'ENDGetter';
-    constructor(readonly root: ENDIdentifier, readonly path: Expression[] = []) {
+    constructor(readonly root: ENDIdentifier | ENDFilter, readonly path: Expression[] = []) {
         super();
     }
 }

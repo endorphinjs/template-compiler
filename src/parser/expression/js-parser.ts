@@ -135,7 +135,7 @@ const converters: AstConverterMap = {
     MemberExpression(aNode, scanner) {
         // Collect getter path
         const path: Ast.Expression[] = [];
-        let root: Ast.ENDIdentifier;
+        let root: Ast.ENDIdentifier | Ast.ENDFilter;
         let ctx = aNode;
 
         while (ctx) {
@@ -145,7 +145,11 @@ const converters: AstConverterMap = {
                     : loc(new Ast.Literal(ctx.property.name, ctx.property.name), aNode, scanner)
                 );
             } else if (ctx.property.type === 'ArrowFunctionExpression') {
-                throw new Error(`Filters not implemented`);
+                root = loc(new Ast.ENDFilter(
+                    convert(ctx.object, scanner) as Ast.Expression,
+                    convert(ctx.property, scanner) as Ast.ArrowFunctionExpression
+                ), ctx.property, scanner);
+                break;
             } else {
                 path.unshift(convert(ctx.property, scanner) as Ast.Expression);
             }

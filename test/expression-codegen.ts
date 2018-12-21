@@ -38,4 +38,9 @@ describe.only('Expression codegen', () => {
         assert.equal(transform('$foo'), 'getVar(host, \'foo\')');
         assert.equal(transform('$foo-bar'), 'getVar(host, \'foo-bar\')');
     });
+
+    it('should generate filters', () => {
+        assert.equal(transform('a[b => b === 1]'), 'filter(host, host.props.a, filter0$$$end)');
+        assert.equal(transform('a.b[c => c === 1].d.e'), 'get(filter(host, get(host.props.a, \'b\'), filter0$$$end), \'d\', \'e\')');
+    });
 });

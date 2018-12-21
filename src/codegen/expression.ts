@@ -89,6 +89,10 @@ const generators: NodeGeneratorMap = {
 
     // Endorphin addons
     ENDGetter(node: Ast.ENDGetter, scope, sn, next) {
+        if (!node.path.length) {
+            return next(node.root, scope);
+        }
+
         const chunks: ChunkList = [scope.use(Symbols.get), '(', next(node.root, scope)];
         node.path.forEach(node => chunks.push(', ', next(node, scope)));
         chunks.push(')');
@@ -104,6 +108,16 @@ const generators: NodeGeneratorMap = {
     ENDVariableIdentifier(node: Ast.ENDVariableIdentifier, scope, sn) {
         return sn(node, `${scope.use(Symbols.getVar)}(${scope.host}, ${qStr(node.name)})`, node.raw);
     },
+    ENDFilter(node: Ast.ENDFilter, scope, sn, next) {
+        const params = node.filter.params.slice();
+        params.unshift(new Ast.Identifier(scope.host));
+
+        return sn(node, [scope.use(Symbols.filter), '(',
+            scope.host, ', ',
+            next(node.object, scope), ', ',
+            sn(node.filter, scope.registerFunction('filter', params, node.filter.body)),
+        ')']);
+    }
 };
 
 export function expression(program: Ast.Program): Result {
