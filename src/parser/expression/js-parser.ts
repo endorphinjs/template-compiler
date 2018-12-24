@@ -10,6 +10,28 @@ const JSParser = Parser.extend(endorphinParser);
 
 const allowedKeywords = /^(\s*)(true|false|null|undefined)\s*;?\s*$/;
 
+class Scope {
+    private reserved: Set<string> = new Set();
+    private stack: Set<string>[] = [];
+
+    enter(): void {
+        this.stack.push(this.reserved);
+        this.reserved = new Set(this.reserved);
+    }
+
+    exit(): void {
+        this.reserved = this.stack.pop();
+    }
+
+    reserve(name: string): void {
+        this.reserved.add(name);
+    }
+
+    isReserved(name: string): boolean {
+        return this.reserved.has(name);
+    }
+}
+
 /**
  * Parses given JS code into AST and prepares it for Endorphin expression evaluation
  * @param code Code to parse
@@ -24,7 +46,7 @@ export default function parse(code: string, scanner: Scanner): Ast.Program {
 }
 
 interface AstConverter {
-    (aNode: any, scanner: Scanner): Node;
+    (aNode: any, scope: Scope, scanner: Scanner, next: (aNode: any) => Node): Node;
 }
 
 interface AstConverterMap {
@@ -32,16 +54,20 @@ interface AstConverterMap {
 }
 
 const converters: AstConverterMap = {
-    Program(aNode, scanner) {
-        return new Ast.Program(
-            aNode.body.map(expr => convert(expr, scanner)) as Ast.Statement[]
-        );
+    Program(aNode, scope, scanner, next) {
+        return new Ast.Program(aNode.body.map(next) as Ast.Statement[]);
     },
     Literal(aNode) {
         return new Ast.Literal(aNode.value, aNode.raw);
     },
-    Identifier(aNode) {
+    Identifier(aNode, scope) {
         const name: string = aNode.name;
+
+        // Identifier is reserved, most likely by outer function argument
+        if (scope.isReserved(name)) {
+            return new Ast.Identifier(name);
+        }
+
         if (name[0] === '#') {
             // Local state accessor
             return new Ast.ENDStateIdentifier(name.slice(1), name);
@@ -60,79 +86,90 @@ const converters: AstConverterMap = {
         // By default, assume we’re accessing component prop
         return new Ast.ENDPropertyIdentifier(name, name);
     },
-    AssignmentPattern(aNode, scanner) {
+    AssignmentPattern(aNode, scope, scanner, next) {
         return new Ast.AssignmentPattern(
-            convert(aNode.left, scanner) as Ast.Expression,
-            convert(aNode.right, scanner) as Ast.Expression
+            next(aNode.left) as Ast.Expression,
+            next(aNode.right) as Ast.Expression
         );
     },
-    SpreadElement(aNode, scanner) {
-        return new Ast.SpreadElement(convert(aNode.argument, scanner) as Ast.Expression);
+    SpreadElement(aNode, scope, scanner, next) {
+        return new Ast.SpreadElement(next(aNode.argument) as Ast.Expression);
     },
-    RestElement(aNode, scanner) {
-        return new Ast.RestElement(convert(aNode.argument, scanner) as Ast.BindingPattern);
+    RestElement(aNode, scope, scanner, next) {
+        return new Ast.RestElement(next(aNode.argument) as Ast.BindingPattern);
     },
-    ArrayExpression(aNode, scanner) {
-        return new Ast.RestElement(convert(aNode.argument, scanner) as Ast.BindingPattern);
+    ArrayExpression(aNode, scope, scanner, next) {
+        return new Ast.ArrayExpression(aNode.elements.map(next) as Ast.ArrayPatternElement[]);
     },
-    ObjectExpression(aNode, scanner) {
-        const props: Ast.Property[] = aNode.properties.map((prop: AcornNode) => convert(prop, scanner));
+    ArrayPattern(aNode, scope, scanner, next) {
+        return new Ast.ArrayExpression(aNode.elements.map(next) as Ast.ArrayPatternElement[]);
+    },
+    ObjectExpression(aNode, scope, scanner, next) {
+        const props: Ast.Property[] = aNode.properties.map(next);
         return new Ast.ObjectExpression(props);
     },
-    Property(aNode, scanner) {
+    ObjectPattern(aNode, scope, scanner, next) {
+        const props: Ast.Property[] = aNode.properties.map(next);
+        return new Ast.ObjectExpression(props);
+    },
+    Property(aNode, scope, scanner, next) {
         return new Ast.Property(
             aNode.kind as 'init' | 'get' | 'set',
-            convert(aNode.key, scanner) as Ast.PropertyKey,
+            next(aNode.key) as Ast.PropertyKey,
             aNode.computed as boolean,
-            convert(aNode.value, scanner) as Ast.Expression,
+            next(aNode.value) as Ast.Expression,
             aNode.method as boolean,
             aNode.shorthand as boolean
         );
     },
-    ArrowFunctionExpression(aNode, scanner) {
-        if (aNode.generator) {
-            throw syntaxError(scanner, 'Generators are not supported', aNode.start + scanner.start);
+    ArrowFunctionExpression(aNode, scope, scanner, next) {
+        if (aNode.generator || aNode.async) {
+            throw syntaxError(scanner, 'Generators and async functions are not supported', aNode.start + scanner.start);
         }
 
-        if (aNode.async) {
-            throw syntaxError(scanner, 'Async functions are not supported', aNode.start + scanner.start);
-        }
+        // Rewrite arrow function body: function arguments must be kept as-is (identifiers)
+        // while others should be changed to variables, props and state
+        scope.enter();
+        aNode.params.forEach(param => walkParam(param, scope));
 
-        return new Ast.ArrowFunctionExpression(
-            convert(aNode.id, scanner) as Ast.Identifier,
-            aNode.params.map(param => convert(param, scanner)) as Ast.FunctionParameter[],
-            convert(aNode.body, scanner) as Ast.BlockStatement | Ast.Expression,
+        const result = new Ast.ArrowFunctionExpression(
+            next(aNode.id) as Ast.Identifier,
+            aNode.params.map(next) as Ast.FunctionParameter[],
+            next(aNode.body) as Ast.BlockStatement | Ast.Expression,
             !!aNode.expression
         );
+
+        scope.exit();
+        return result;
     },
-    AssignmentExpression(aNode, scanner) {
+    AssignmentExpression(aNode, scope, scanner, next) {
         return new Ast.AssignmentExpression(
             aNode.operator as string,
-            convert(aNode.left, scanner) as Ast.Expression,
-            convert(aNode.right, scanner) as Ast.Expression
+            next(aNode.left) as Ast.Expression,
+            next(aNode.right) as Ast.Expression
         );
     },
-    BinaryExpression(aNode, scanner) {
+    BinaryExpression(aNode, scope, scanner, next) {
         return new Ast.BinaryExpression(
             aNode.operator as string,
-            convert(aNode.left, scanner) as Ast.Expression,
-            convert(aNode.right, scanner) as Ast.Expression
+            next(aNode.left) as Ast.Expression,
+            next(aNode.right) as Ast.Expression
         );
     },
-    LogicalExpression(aNode, scanner) {
+    LogicalExpression(aNode, scope, scanner, next) {
         return new Ast.LogicalExpression(
             aNode.operator as string,
-            convert(aNode.left, scanner) as Ast.Expression,
-            convert(aNode.right, scanner) as Ast.Expression
+            next(aNode.left) as Ast.Expression,
+            next(aNode.right) as Ast.Expression
         );
     },
-    CallExpression(aNode, scanner) {
+    CallExpression(aNode, scope, scanner, next) {
         return new Ast.CallExpression(
-            convert(aNode.callee, scanner) as Ast.Expression,
-            aNode.arguments.map(arg => convert(arg, scanner)) as Ast.ArgumentListElement[]
+            next(aNode.callee) as Ast.Expression,
+            aNode.arguments.map(next) as Ast.ArgumentListElement[]
         );
     },
-    MemberExpression(aNode, scanner) {
+    MemberExpression(aNode, scope, scanner, next) {
         // Collect getter path
         const path: Ast.Expression[] = [];
         let root: Ast.ENDIdentifier | Ast.ENDFilter;
@@ -141,24 +178,24 @@ const converters: AstConverterMap = {
         while (ctx) {
             if (ctx.property.type === 'Identifier') {
                 path.unshift(ctx.computed
-                    ? convert(ctx.property, scanner) as Ast.ENDIdentifier
+                    ? next(ctx.property) as Ast.ENDIdentifier
                     : loc(new Ast.Literal(ctx.property.name, ctx.property.name), aNode, scanner)
                 );
             } else if (ctx.property.type === 'ArrowFunctionExpression') {
                 root = loc(new Ast.ENDFilter(
-                    convert(ctx.object, scanner) as Ast.Expression,
-                    convert(ctx.property, scanner) as Ast.ArrowFunctionExpression
+                    next(ctx.object) as Ast.Expression,
+                    next(ctx.property) as Ast.ArrowFunctionExpression
                 ), ctx.property, scanner);
                 break;
             } else {
-                path.unshift(convert(ctx.property, scanner) as Ast.Expression);
+                path.unshift(next(ctx.property) as Ast.Expression);
             }
 
             if (ctx.object.type === 'MemberExpression') {
                 ctx = ctx.object;
             } else {
                 if (ctx.object.type === 'Identifier') {
-                    root = convert(ctx.object, scanner) as Ast.ENDIdentifier;
+                    root = next(ctx.object) as Ast.ENDIdentifier;
                 }
                 break;
             }
@@ -170,61 +207,45 @@ const converters: AstConverterMap = {
 
         return new Ast.ENDGetter(root, path);
     },
-    ConditionalExpression(aNode, scanner) {
+    ConditionalExpression(aNode, scope, scanner, next) {
         return new Ast.ConditionalExpression(
-            convert(aNode.test, scanner) as Ast.Expression,
-            convert(aNode.consequent, scanner) as Ast.Expression,
-            convert(aNode.alternate, scanner) as Ast.Expression
+            next(aNode.test) as Ast.Expression,
+            next(aNode.consequent) as Ast.Expression,
+            next(aNode.alternate) as Ast.Expression
         );
     },
-    RegExpLiteral(aNode, scanner) {
+    RegExpLiteral(aNode) {
         return new Ast.RegExpLiteral(aNode.regex.pattern as string, aNode.regex.flags as string);
     },
-    SequenceExpression(aNode, scanner) {
+    SequenceExpression(aNode, scope, scanner, next) {
         return new Ast.SequenceExpression(
-            aNode.expressions.map(expr => convert(expr, scanner)) as Ast.Expression[]
+            aNode.expressions.map(next) as Ast.Expression[]
         );
     },
-    UnaryExpression(aNode, scanner) {
+    UnaryExpression(aNode, scope, scanner, next) {
         return new Ast.UnaryExpression(
             aNode.operator as string,
-            convert(aNode.argument, scanner) as Ast.Expression
+            next(aNode.argument) as Ast.Expression
         );
     },
-    UpdateExpression(aNode, scanner) {
+    UpdateExpression(aNode, scope, scanner, next) {
         return new Ast.UpdateExpression(
             aNode.operator as string,
-            convert(aNode.argument, scanner) as Ast.Expression,
+            next(aNode.argument) as Ast.Expression,
             aNode.prefix as boolean
         );
     },
-    ExpressionStatement(aNode, scanner) {
-        return new Ast.ExpressionStatement(convert(aNode.expression, scanner) as Ast.Expression);
+    ExpressionStatement(aNode, scope, scanner, next) {
+        return new Ast.ExpressionStatement(next(aNode.expression) as Ast.Expression);
     },
     EmptyStatement() {
         return new Ast.EmptyStatement();
     },
-    BlockStatement(aNode, scanner) {
+    BlockStatement(aNode, scope, scanner, next) {
         return new Ast.BlockStatement(
-            aNode.body.map(item => convert(item, scanner)) as Ast.Statement[]
+            aNode.body.map(next) as Ast.Statement[]
         );
     }
-}
-
-/**
- * Converts Acorn node to Endorphin node
- */
-function convert(aNode: any, scanner: Scanner): Node {
-    if (aNode == null) {
-        return aNode;
-    }
-
-    if (!(aNode.type in converters)) {
-        throw new UnsupportedError(aNode.type, aNode.start + scanner.start, aNode.end + scanner.start);
-    }
-
-    const node: Node = converters[aNode.type](aNode, scanner);
-    return loc(node, aNode, scanner);
 }
 
 export class UnsupportedError extends Error {
@@ -265,7 +286,22 @@ function parseScript(code: string, scanner: Scanner): Ast.Program {
         sourceType: 'module',
         sourceFile: scanner.url
     });
-    return convert(ast, scanner) as Ast.Program;
+    const scope = new Scope();
+
+    const convert = (aNode: any): Node => {
+        if (aNode == null) {
+            return aNode;
+        }
+
+        if (aNode.type in converters) {
+            const node = converters[aNode.type](aNode, scope, scanner, convert);
+            return loc(node, aNode, scanner);
+        }
+
+        throw new UnsupportedError(aNode.type, aNode.start + scanner.start, aNode.end + scanner.start);
+    }
+
+    return convert(ast) as Ast.Program;
 }
 
 /**
@@ -277,4 +313,19 @@ function loc<T extends Node>(node: T, aNode: AcornNode, scanner: Scanner): T {
         end: scanner.sourceLocation(aNode.end + scanner.start)
     };
     return node;
+}
+
+/**
+ * Reserves identifier from given function argument
+ */
+function walkParam(param: any, scope: Scope): void {
+    if (param.type === 'Identifier') {
+        scope.reserve(param.name)
+    } else if (param.type === 'ObjectExpression' || param.type === 'ObjectPattern') {
+        // Object destructuring: `{a, b}` or `{a: b}`
+        param.properties.forEach(prop => walkParam(prop.value, scope));
+    } else if (param.type === 'ArrayExpression' || param.type === 'ArrayPattern') {
+        // Array destructuring: `[a, b]`
+        param.elements.forEach(elem => walkParam(elem, scope));
+    }
 }

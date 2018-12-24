@@ -22,10 +22,10 @@ export class ENDSyntaxError extends SyntaxError {
     fileName: string | null;
     lineNumber: number;
     columnNumber: number;
-    constructor(message: string, fileName: string | null, pos: Position) {
+    constructor(message: string, fileName?: string | null, pos?: Position) {
         super(message);
         this.fileName = fileName;
-        this.lineNumber = pos.line;
-        this.columnNumber = pos.column;
+        this.lineNumber = pos && pos.line;
+        this.columnNumber = pos && pos.column;
     }
 }

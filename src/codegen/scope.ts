@@ -1,10 +1,10 @@
-import { FunctionParameter, BlockStatement, Expression, FunctionDeclaration, Identifier } from "../ast/expression";
+import { SourceNode } from 'source-map';
 
 /**
- * A scope data used in compiled template
+ * Template compiler scope
  */
 
- export enum RuntimeSymbols {
+export enum RuntimeSymbols {
     get, mountBlock, updateBlock, mountIterator, updateIterator, mountKeyIterator,
     updateKeyIterator, createInjector, block, enterScope, exitScope, getScope,
     getProp, getState, getVar, setVar, setAttribute, updateAttribute, updateProps,
@@ -18,13 +18,18 @@ export default class CompileScope {
     /** Runtime symbols required by compiled template */
     symbols: Set<RuntimeSymbols> = new Set();
 
+    /** Path to JS module that holds Endorphin runtime functions */
+    module: string = '@endorphinjs/endorphin';
+
     /** Symbol for referencing host component of the rendered template */
     host = 'host';
 
     private prefixes: {[prefix: string]: number} = {};
 
-    /** List of functions registered by compiler  */
-    functions: FunctionDeclaration[] = [];
+    /**
+     * Contents of compiled template
+     */
+    readonly body: SourceNode[] = [];
 
     /**
      * Marks given runtime symbol as used by template and returns its string
@@ -50,14 +55,29 @@ export default class CompileScope {
     }
 
     /**
-     * Registers a new module function with `prefix` in its name and returns
-     * final function name
+     * Push given source node as content of compiled file
      */
-    registerFunction(prefix: string, params: FunctionParameter[], body: BlockStatement | Expression): string {
-        const name = this.createSymbol(prefix);
-        const fn = new FunctionDeclaration(new Identifier(name), params, body);
-        this.functions.push(fn);
+    push(node: SourceNode): void {
+        this.body.push(node);
+    }
 
-        return name;
+    /**
+     * Outputs compiled template
+     */
+    toString(): string {
+        const output = new SourceNode();
+
+        if (this.symbols.size) {
+            output.add(`import { ${Array.from(this.symbols).map(s => RuntimeSymbols[s]).join(', ')} } from '${this.module}';\n\n`);
+        }
+
+        this.body.forEach((node, i) => {
+            if (i !== 0) {
+                output.add('\n\n');
+            }
+            output.add(node);
+        });
+
+        return output.toString();
     }
 }

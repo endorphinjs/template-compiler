@@ -2,14 +2,12 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ENDSyntaxError } from '../parser/syntax-error';
+import { commaChunks, Chunk, ChunkList } from './utils';
 
 interface Result {
     code: SourceNode;
-    symbols: Symbols[]
+    scope: CompileScope
 }
-
-type Chunk = string | SourceNode;
-type ChunkList = Array<Chunk>;
 
 /**
  * SourceNode factory which attaches location info to source map node from given
@@ -39,6 +37,9 @@ interface NodeGeneratorMap {
 
 const generators: NodeGeneratorMap = {
     // Basic JS nodes
+    Identifier(node: Ast.Identifier, scope, sn) {
+        return sn(node, node.name);
+    },
     Literal(node: Ast.Literal, scope, sn) {
         return sn(node, typeof node.value === 'string'
             ? qStr(node.value) : String(node.value));
@@ -64,11 +65,15 @@ const generators: NodeGeneratorMap = {
     },
     ObjectExpression(node: Ast.ObjectExpression, scope, sn, next) {
         return sn(node, commaChunks(node.properties, '{', '}',
-            (prop, chunks) => chunks.push(
-                sn(prop.key, prop.key instanceof Ast.Literal ? prop.key.raw : prop.key.name),
-                ': ',
-                next(prop, scope)
-            )));
+            (prop, chunks) => chunks.push(next(prop, scope))));
+    },
+    Property(node: Ast.Property, scope, sn, next) {
+        if (node.key instanceof Ast.Identifier && node.value instanceof Ast.Identifier && node.key.name === node.value.name) {
+            // Shorthand property
+            return sn(node.key, next(node.key, scope));
+        }
+
+        return sn(node, [next(node.key, scope), ': ', next(node.value, scope)]);
     },
     RegExpLiteral(node: Ast.RegExpLiteral, scope, sn) {
         return sn(node, `${node.regex.pattern}/${node.regex.flags}`);
@@ -110,12 +115,26 @@ const generators: NodeGeneratorMap = {
     },
     ENDFilter(node: Ast.ENDFilter, scope, sn, next) {
         const params = node.filter.params.slice();
+
+        // Add host component as first argument of function
+        // TODO handle cases where `host` is already defined as function argument
         params.unshift(new Ast.Identifier(scope.host));
 
+        // Generate function declaration for given filter
+        const fnName = scope.createSymbol('filter');
+        const fn = commaChunks(params, `function ${fnName}(`, ') ',
+            (arg, chunks) => chunks.push(next(arg, scope)));
+
+        fn.push('{\n\treturn ', next(node.filter.body, scope), `;\n}`);
+
+        // Add generated function to output
+        scope.push(sn(node.filter, fn));
+
+        // Return expression that uses generated filter
         return sn(node, [scope.use(Symbols.filter), '(',
             scope.host, ', ',
             next(node.object, scope), ', ',
-            sn(node.filter, scope.registerFunction('filter', params, node.filter.body)),
+            fnName,
         ')']);
     }
 };
@@ -131,7 +150,7 @@ export function expression(program: Ast.Program): Result {
     const scope = new CompileScope();
     return {
         code: expressions.length ? getExpression(expressions[0], scope) : sn(program, 'null'),
-        symbols: Array.from(scope.symbols)
+        scope
     };
 }
 
@@ -144,11 +163,18 @@ const getExpression: Generator = (node, scope) => {
     }
 
     throw new ENDSyntaxError(`${node.type} is not supported in getter expressions`,
-        node.loc.source, node.loc.start);
+        node.loc && node.loc.source, node.loc && node.loc.start);
 };
 
-const sn: SourceNodeFactory = (node, chunks, name) =>
-    new SourceNode(node.loc.start.line, node.loc.start.column, node.loc.source, chunks, name);
+const sn: SourceNodeFactory = (node, chunks, name) => {
+    if (node.loc) {
+        return new SourceNode(node.loc.start.line, node.loc.start.column, node.loc.source, chunks, name);
+    }
+
+    const output = new SourceNode();
+    output.add(chunks);
+    return output;
+}
 
 /**
  * Generates property accessor code
@@ -163,23 +189,4 @@ function propAccessor(name: string): string {
  */
 function qStr(text: string): string {
     return `'${text.replace(/'/g, '\\\'')}'`;
-}
-
-/**
- * Generates comma-separated list of given chunks with optional `before` and `after`
- * wrapper code
- */
-function commaChunks<T extends Ast.JSNode>(items: T[], before: string, after: string, fn: (node: T, chunks: ChunkList) => void): ChunkList {
-    const chunks: ChunkList = [];
-
-    before && chunks.push(before);
-    items.forEach((node, i) => {
-        if (i !== 0) {
-            chunks.push(', ');
-        }
-        fn(node, chunks);
-    });
-    after && chunks.push(after);
-
-    return chunks;
 }

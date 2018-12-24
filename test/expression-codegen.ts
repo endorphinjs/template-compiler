@@ -1,13 +1,22 @@
 import * as assert from 'assert';
+import { resolve } from 'path';
+import { readFileSync } from 'fs';
 import parseJS from '../src/parser/expression/js-parser';
 import Scanner from '../src/parser/scanner'
 import { expression } from '../src/codegen/expression';
 
 function transform(code: string): string {
+    return compile(code).code.toString();
+}
+
+function compile(code: string) {
     const scanner = new Scanner(code, null);
     const ast = parseJS(code, scanner);
-    const result = expression(ast);
-    return result.code.toString();
+    return expression(ast);
+}
+
+function read(fileName: string): string {
+    return readFileSync(resolve(__dirname, fileName), 'utf8');
 }
 
 describe.only('Expression codegen', () => {
@@ -41,6 +50,17 @@ describe.only('Expression codegen', () => {
 
     it('should generate filters', () => {
         assert.equal(transform('a[b => b === 1]'), 'filter(host, host.props.a, filter0$$$end)');
-        assert.equal(transform('a.b[c => c === 1].d.e'), 'get(filter(host, get(host.props.a, \'b\'), filter0$$$end), \'d\', \'e\')');
+
+        let result = compile('a.b[c => c === 1].d.e');
+        assert.equal(result.code, 'get(filter(host, get(host.props.a, \'b\'), filter0$$$end), \'d\', \'e\')');
+        assert.equal(result.scope.toString(), read('fixtures/filters/filter1.txt'));
+
+        result = compile('a.b[({ c }) => c === foo]');
+        assert.equal(result.code, 'filter(host, get(host.props.a, \'b\'), filter0$$$end)');
+        assert.equal(result.scope.toString(), read('fixtures/filters/filter2.txt'));
+
+        result = compile('a.b[([c]) => c === foo]');
+        assert.equal(result.code, 'filter(host, get(host.props.a, \'b\'), filter0$$$end)');
+        assert.equal(result.scope.toString(), read('fixtures/filters/filter3.txt'));
     });
 });
