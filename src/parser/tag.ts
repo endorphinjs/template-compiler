@@ -1,6 +1,6 @@
-import expression from './expression';
-import { Identifier, Literal } from '../ast/expression';
-import { ENDAttribute, ENDAttributeValue, ParsedTag } from '../ast/template';
+import expression, { EXPRESSION_START } from './expression';
+import { Identifier, Literal, Program } from '../ast/expression';
+import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import Scanner from './scanner';
 
@@ -12,6 +12,8 @@ export const NAMESPACE_DELIMITER = 58; // :
 export const DASH = 45; // -
 export const DOT = 46; // .
 export const UNDERSCORE = 95; // _
+
+const exprStart = String.fromCharCode(EXPRESSION_START);
 
 /**
  * Consumes tag from current stream location, if possible
@@ -116,7 +118,7 @@ function consumeAttributes(scanner: Scanner): ENDAttribute[] {
  * Consumes attribute from current stream location
  */
 function attribute(scanner: Scanner): ENDAttribute {
-    const name = ident(scanner);
+    const name: ENDAttributeName = ident(scanner) || expression(scanner);
     if (name) {
         let value: ENDAttributeValue = null;
 
@@ -144,15 +146,51 @@ function attributeValue(scanner: Scanner): ENDAttributeValue {
     const start = scanner.pos;
 
     if (eatQuoted(scanner)) {
-        const begin = scanner.start + 1;
-        const end = scanner.pos - 1;
-        return scanner.astNode(new Literal(scanner.substring(begin, end), scanner.current()), start);
+        // Check if it’s interpolated value, e.g. "foo {bar}"
+        const raw = scanner.current();
+        const node: ENDAttributeValue = raw.includes(exprStart)
+            ? attributeValueExpression(scanner)
+            : new Literal(raw.slice(1, -1), raw)
+
+        return scanner.astNode(node, start);
     }
 
     if (scanner.eatWhile(isUnquoted)) {
         const value = scanner.current();
         return scanner.astNode(new Literal(value, value), start);
     }
+}
+
+/**
+ * Parses interpolated attribute value from current scanner context
+ */
+function attributeValueExpression(scanner: Scanner): ENDAttributeValueExpression {
+    const subScanner = scanner.limit();
+    let start = subScanner.start;
+    let pos = subScanner.start;
+    let expr: Program;
+    const items: ENDBaseAttributeValue[] = [];
+
+    while (!subScanner.eof()) {
+        pos = subScanner.pos;
+        if (expr = expression(subScanner)) {
+            if (pos !== start) {
+                const text = subScanner.substring(start, pos);
+                items.push(subScanner.astNode(new Literal(text, text), start));
+            }
+            items.push(subScanner.astNode(expr, start));
+            start = subScanner.pos;
+        } else {
+            subScanner.pos++;
+        }
+    }
+
+    if (start !== subScanner.pos) {
+        const text = subScanner.substring(start, subScanner.pos);
+        items.push(subScanner.astNode(new Literal(text, text), start));
+    }
+
+    return new ENDAttributeValueExpression(items);
 }
 
 /**
@@ -167,5 +205,5 @@ function isTerminator(code: number): boolean {
  */
 function isUnquoted(code: number): boolean {
     return !isNaN(code) && !isQuote(code) && !isWhiteSpace(code)
-        && !isTerminator(code) && code !== ATTR_DELIMITER;
+        && !isTerminator(code) && code !== ATTR_DELIMITER && code !== EXPRESSION_START;
 }

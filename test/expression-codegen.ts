@@ -19,7 +19,7 @@ function read(fileName: string): string {
     return readFileSync(resolve(__dirname, fileName), 'utf8');
 }
 
-describe.only('Expression codegen', () => {
+describe('Expression codegen', () => {
     it('should generate primitives', () => {
         // Primitives
         assert.equal(transform('1'), '1');

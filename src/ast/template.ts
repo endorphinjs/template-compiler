@@ -9,8 +9,9 @@ export type ENDStatement = ENDElement | ENDPlainStatement | ENDAttributeStatemen
 export type ENDProgramStatement = ENDTemplate | ENDElement;
 export type ENDControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
 export type ENDPlainStatement = ENDText | Program;
-export type ENDAttributeName = Identifier | Program | null;
-export type ENDAttributeValue = Literal | Program | null;
+export type ENDAttributeName = Identifier | Program;
+export type ENDBaseAttributeValue = Literal | Program;
+export type ENDAttributeValue = ENDBaseAttributeValue | ENDAttributeValueExpression | null;
 
 export class ENDNode extends Node {
 
@@ -52,6 +53,13 @@ export class ENDAttribute extends ENDNode {
                 end: value ? value.loc.end : name.loc.end
             };
         }
+    }
+}
+
+export class ENDAttributeValueExpression extends ENDNode {
+    type = 'ENDAttributeValueExpression';
+    constructor(readonly elements: ENDBaseAttributeValue[] = []) {
+        super();
     }
 }
 

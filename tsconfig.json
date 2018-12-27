@@ -3,6 +3,8 @@
     "target": "es6",
     "sourceMap": true,
     "noUnusedLocals": true,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
     "module": "commonjs",
     "outDir": "./dist",
   },

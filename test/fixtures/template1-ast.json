@@ -86,7 +86,8 @@
                   "operator": "==",
                   "left": {
                     "name": "foo",
-                    "type": "Identifier",
+                    "type": "ENDPropertyIdentifier",
+                    "raw": "foo",
                     "loc": {
                       "start": {
                         "pos": 54,
@@ -148,6 +149,7 @@
             ],
             "type": "Program",
             "loc": {
+              "source": "samples/template1.html",
               "start": {
                 "pos": 54,
                 "line": 3,
@@ -157,8 +159,7 @@
                 "pos": 62,
                 "line": 3,
                 "column": 26
-              },
-              "source": "samples/template1.html"
+              }
             },
             "raw": "foo == 1"
           },
@@ -275,7 +276,8 @@
                     {
                       "expression": {
                         "name": "foo",
-                        "type": "Identifier",
+                        "type": "ENDPropertyIdentifier",
+                        "raw": "foo",
                         "loc": {
                           "start": {
                             "pos": 102,
@@ -306,6 +308,7 @@
                   ],
                   "type": "Program",
                   "loc": {
+                    "source": "samples/template1.html",
                     "start": {
                       "pos": 101,
                       "line": 4,
@@ -315,8 +318,7 @@
                       "pos": 106,
                       "line": 4,
                       "column": 41
-                    },
-                    "source": "samples/template1.html"
+                    }
                   },
                   "raw": " foo "
                 }
