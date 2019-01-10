@@ -17,29 +17,24 @@ export class ENDNode extends Node {
 
 }
 
-export class ENDProgram {
+export class ENDProgram extends ENDNode {
     type = 'ENDProgram';
-    readonly body: ENDProgramStatement[];
-    constructor() {
-        this.body = [];
+    constructor(readonly body: ENDProgramStatement[] = []) {
+        super();
     }
 }
 
 export class ENDTemplate extends ENDNode {
     type = 'ENDTemplate';
-    readonly body: ENDStatement[];
-    constructor(readonly name?: Literal) {
+    constructor(readonly name?: Literal, readonly body: ENDStatement[] = []) {
         super();
-        this.body = [];
     }
 }
 
 export class ENDElement extends ENDNode {
     type = 'ENDElement';
-    readonly body: ENDStatement[];
-    constructor(readonly name: Identifier, readonly attributes: ENDAttribute[]) {
+    constructor(readonly name: Identifier, readonly attributes: ENDAttribute[], readonly body: ENDStatement[] = []) {
         super();
-        this.body = [];
     }
 }
 

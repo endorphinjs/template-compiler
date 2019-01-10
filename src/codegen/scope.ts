@@ -1,4 +1,6 @@
 import { SourceNode } from 'source-map';
+import { ChunkList, Chunk } from './utils';
+import { ElementStats } from './node-stats';
 
 /**
  * Template compiler scope
@@ -11,25 +13,102 @@ export enum RuntimeSymbols {
     addClass, finalizeAttributes, finalizeProps, addEvent, addStaticEvent, finalizeEvents,
     getEventHandler, renderSlot, setRef, setStaticRef, finalizeRefs, createComponent,
     mountComponent, updateComponent, unmountComponent, mountInnerHTML, updateInnerHTML,
-    elem, elemWithText, text, updateText, filter
- }
+    elem, elemWithText, text, updateText, filter, insert
+}
+
+interface CompileScopeOptions {
+    /** Path to JS module that holds Endorphin runtime functions */
+    module?: string;
+
+    /** Symbol for referencing host component of the rendered template */
+    host?: string;
+
+    /** Name of component being compiled, must be in CamelCase */
+    component?: string;
+
+    /** Characters for one level of indentation */
+    indent?: string;
+
+    /** Suffix for generated top-level module symbols */
+    suffix?: string;
+}
+
+interface ElementContext {
+    /** Name of parent element symbol (element or injector) */
+    symbol: string;
+
+    /** Element stats */
+    stats: ElementStats;
+
+    /** Name of injector instance bound to element. */
+    injector?: string;
+
+    /** Output source node for runtime code, required to properly setup element context */
+    output: SourceNode;
+
+    parent?: ElementContext;
+}
+
+interface TemplateContext {
+    update: ChunkList;
+    prefixes: { [prefix: string]: number };
+}
+
+export const defaultOptions: CompileScopeOptions = {
+    host: 'host',
+    indent: '\t',
+    suffix: '$$end',
+    module: '@endorphinjs/endorphin',
+    component: ''
+}
 
 export default class CompileScope {
     /** Runtime symbols required by compiled template */
     symbols: Set<RuntimeSymbols> = new Set();
 
-    /** Path to JS module that holds Endorphin runtime functions */
-    module: string = '@endorphinjs/endorphin';
+    /** Context of currently rendered element */
+    element?: ElementContext;
 
-    /** Symbol for referencing host component of the rendered template */
-    host = 'host';
+    /** Context of currently rendered template */
+    template?: TemplateContext;
+
+    readonly options: CompileScopeOptions;
+
+    /** Contents of compiled template */
+    readonly body: SourceNode[] = [];
 
     private prefixes: {[prefix: string]: number} = {};
+    private _level: number = 0;
+    private _indent: string = '';
 
-    /**
-     * Contents of compiled template
-     */
-    readonly body: SourceNode[] = [];
+    constructor(options?: CompileScopeOptions) {
+        this.options = Object.assign({}, defaultOptions, options);
+    }
+
+    /** Symbol for referencing host component of the rendered template */
+    get host(): string {
+        return this.options.host;
+    }
+
+    /** Path to JS module that holds Endorphin runtime functions */
+    get module(): string {
+        return this.options.module;
+    }
+
+    /** Current indentation level */
+    get level(): number {
+        return this._level;
+    }
+
+    set level(value: number) {
+        this._level = value;
+        this._indent = this.options.indent.repeat(value);
+    }
+
+    /** Current indentation token */
+    get indent(): string {
+        return this._indent;
+    }
 
     /**
      * Marks given runtime symbol as used by template and returns its string
@@ -44,14 +123,33 @@ export default class CompileScope {
     /**
      * Creates unique template symbol (function or variable name) with `prefix` in it
      */
-    createSymbol(prefix: string): string {
-        if (prefix in this.prefixes) {
-            this.prefixes[prefix]++;
+    createSymbol(prefix: string, includeComponentName?: boolean): string {
+        const { prefixes } = this;
+
+        if (prefix in prefixes) {
+            prefixes[prefix]++;
         } else {
-            this.prefixes[prefix] = 0;
+            prefixes[prefix] = 0;
         }
 
-        return `${prefix}${this.prefixes[prefix]}$$$end`;
+        const name = includeComponentName && this.options.component || '';
+
+        return `${prefix}${name}${prefixes[prefix]}${this.options.suffix}`;
+    }
+
+    /**
+     * Generates symbol, local to rendered template
+     */
+    localSymbol(name: string): string {
+        const { prefixes } = this.template;
+
+        if (name in prefixes) {
+            prefixes[name]++;
+        } else {
+            prefixes[name] = 0;
+        }
+
+        return `${name}${prefixes[name]}`;
     }
 
     /**
@@ -59,6 +157,48 @@ export default class CompileScope {
      */
     push(node: SourceNode): void {
         this.body.push(node);
+    }
+
+    enterTemplate(): void {
+        this.template = {
+            update: [],
+            prefixes: {}
+        };
+        this.level++;
+    }
+
+    exitTemplate(): void {
+        this.level--;
+        this.template = null;
+    }
+
+    enterElement(symbol: string, stats: ElementStats): Chunk {
+        const ctx: ElementContext = {
+            stats,
+            symbol,
+            output: new SourceNode(),
+            // symbol: stats.staticContent ? symbol : this.createSymbol('injector'),
+            parent: this.element
+        };
+
+        this.element = ctx;
+        return ctx.output;
+    }
+
+    exitElement() {
+        this.element = this.element.parent;
+    }
+
+    /**
+     * Returns injector instance symbol for context element
+     */
+    injector(): string {
+        if (!this.element.injector) {
+            const symbol = this.element.injector = this.createSymbol('injector');
+            this.element.output.add(`const ${symbol} = ${this.use(RuntimeSymbols.createInjector)}(${this.element.symbol});`);
+        }
+
+        return this.element.injector;
     }
 
     /**

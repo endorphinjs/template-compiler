@@ -2,12 +2,7 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ENDSyntaxError } from '../parser/syntax-error';
-import { commaChunks, Chunk, ChunkList } from './utils';
-
-interface Result {
-    code: SourceNode;
-    scope: CompileScope
-}
+import { commaChunks, Chunk, ChunkList, qStr } from './utils';
 
 /**
  * SourceNode factory which attaches location info to source map node from given
@@ -139,7 +134,7 @@ const generators: NodeGeneratorMap = {
     }
 };
 
-export function expression(program: Ast.Program): Result {
+export default function compileExpression(program: Ast.Program, scope: CompileScope): SourceNode {
     const expressions: Ast.Statement[] = program.body.filter(expr => expr.type !== 'EmptyStatement');
 
     if (expressions.length > 1) {
@@ -147,11 +142,7 @@ export function expression(program: Ast.Program): Result {
             program.loc.source, program.loc.start);
     }
 
-    const scope = new CompileScope();
-    return {
-        code: expressions.length ? getExpression(expressions[0], scope) : sn(program, 'null'),
-        scope
-    };
+    return expressions.length ? getExpression(expressions[0], scope) : sn(program, 'null');
 }
 
 /**
@@ -182,11 +173,4 @@ const sn: SourceNodeFactory = (node, chunks, name) => {
 function propAccessor(name: string): string {
     return /^[a-zA-Z_$][\w_$]*$/.test(name)
         ? `.${name}` : `[${qStr(name)}]`;
-}
-
-/**
- * Returns quoted string
- */
-function qStr(text: string): string {
-    return `'${text.replace(/'/g, '\\\'')}'`;
 }

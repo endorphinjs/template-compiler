@@ -1,6 +1,6 @@
 import {
     ENDElement, ENDText, ENDStatement, ENDIfStatement, ENDChooseStatement,
-    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression
+    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate
 } from '../ast/template';
 import { Identifier, Program } from '../ast/expression';
 
@@ -37,12 +37,7 @@ export interface ElementStats {
  */
 export default function collectStats(elem: ENDElement): ElementStats {
     // TODO check for inner html
-    const stats: ElementStats = {
-        component: elem.name.name.includes('-'),
-        staticContent: true,
-        dynamicAttributes: new Set(),
-        attributeExpressions: false
-    };
+    const stats = createStats(elem.name.name);
 
     // Check immediate attributes
     elem.attributes.forEach(attr => {
@@ -57,33 +52,55 @@ export default function collectStats(elem: ENDElement): ElementStats {
     if (elem.body.length === 1 && elem.body[0] instanceof ENDText) {
         stats.text = elem.body[0] as ENDText;
     } else {
-        walk(elem, node => {
-            if (dynamicContent.has(node.type)) {
-                stats.staticContent = false;
-                return true;
-            }
-
-            if (node instanceof ENDAddClassStatement) {
-                stats.dynamicAttributes.add('class');
-            } else if (node instanceof ENDAttributeStatement) {
-                // XXX technically, attribute statement promotes attributes
-                // to dynamic only if it’s inside control statement (if, choose,
-                // for-each) but requires more code analysis.
-                // For now, simply assume that all attributes in statement are dynamic
-                node.attributes.forEach(attr => {
-                    if (attr.name instanceof Identifier) {
-                        stats.dynamicAttributes.add(attr.name.name);
-                    } else if (attr.name instanceof Program) {
-                        stats.attributeExpressions = true;
-                    }
-                });
-            }
-
-            return false;
-        });
+        collectDynamicStats(elem, stats);
     }
 
     return stats;
+}
+
+/**
+ * Collects stats about dynamic content in given element
+ */
+export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: ElementStats = createStats()): ElementStats {
+    walk(elem, node => {
+        if (dynamicContent.has(node.type)) {
+            stats.staticContent = false;
+            return true;
+        }
+        if (node instanceof ENDAddClassStatement) {
+            stats.dynamicAttributes.add('class');
+        }
+        else if (node instanceof ENDAttributeStatement) {
+            // XXX technically, attribute statement promotes attributes
+            // to dynamic only if it’s inside control statement (if, choose,
+            // for-each) but requires more code analysis.
+            // For now, simply assume that all attributes in statement are dynamic
+            node.attributes.forEach(attr => {
+                if (attr.name instanceof Identifier) {
+                    stats.dynamicAttributes.add(attr.name.name);
+                }
+                else if (attr.name instanceof Program) {
+                    stats.attributeExpressions = true;
+                }
+            });
+        }
+        return false;
+    });
+
+    return stats;
+}
+
+/**
+ * Creates stats object
+ * @param name Name of context tag
+ */
+function createStats(name: string = ''): ElementStats {
+    return {
+        component: name.includes('-'),
+        staticContent: true,
+        dynamicAttributes: new Set(),
+        attributeExpressions: false
+    }
 }
 
 /**
@@ -91,14 +108,14 @@ export default function collectStats(elem: ENDElement): ElementStats {
  * A `callback` must return `true` if walker should visit contents of context node,
  * otherwise it will continue to next node
  */
-function walk(elem: ENDStatement, callback: (node: ENDStatement) => boolean): void {
+function walk(elem: ENDStatement | ENDTemplate, callback: (node: ENDStatement) => boolean): void {
     const visit = (node: ENDStatement): void => {
         if (callback(node) === true) {
             walk(node, callback);
         }
     };
 
-    if (elem instanceof ENDElement) {
+    if (elem instanceof ENDElement || elem instanceof ENDTemplate) {
         elem.body.forEach(visit);
     } else if (elem instanceof ENDIfStatement) {
         elem.consequent.forEach(visit);

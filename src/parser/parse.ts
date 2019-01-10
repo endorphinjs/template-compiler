@@ -36,7 +36,7 @@ const ifAttr = `${prefix}if`;
  */
 export default function parse(text: string, url: string = null): ENDProgram {
     const scanner = new Scanner(text, url);
-    const program = new ENDProgram();
+    const program = scanner.astNode(new ENDProgram());
     let entry : ParsedTag;
 
     while (!scanner.eof()) {
