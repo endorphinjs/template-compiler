@@ -10,7 +10,7 @@ export type ArrayPatternElement = AssignmentPattern | BindingPattern | RestEleme
 export type BindingPattern = ArrayExpression | ObjectExpression | Identifier | ENDGetter;
 export type Expression = ArrayExpression | ArrowFunctionExpression | AssignmentExpression
     | BinaryExpression | LogicalExpression | CallExpression | MemberExpression | ConditionalExpression
-    | Identifier | Literal | ObjectExpression | RegExpLiteral | SequenceExpression
+    | Identifier | Literal | ThisExpression | ObjectExpression | RegExpLiteral | SequenceExpression
     | UnaryExpression | UpdateExpression | ENDGetter;
 export type FunctionParameter = AssignmentPattern | BindingPattern;
 export type ObjectExpressionProperty = Property | SpreadElement;
@@ -41,6 +41,10 @@ export class Identifier extends JSNode {
     constructor(readonly name: string) {
         super();
     }
+}
+
+export class ThisExpression extends JSNode {
+    type = 'ThisExpression';
 }
 
 export class FunctionDeclaration extends JSNode {

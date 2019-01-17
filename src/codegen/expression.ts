@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ENDSyntaxError } from '../parser/syntax-error';
-import { commaChunks, Chunk, ChunkList, qStr } from './utils';
+import { Chunk, ChunkList, qStr } from './utils';
 
 /**
  * SourceNode factory which attaches location info to source map node from given
@@ -16,7 +16,7 @@ interface SourceNodeFactory {
  * Code generator continuation function
  */
 interface Generator {
-    (node: Ast.JSNode, scope: CompileScope): SourceNode
+    (node: Ast.JSNode): SourceNode
 }
 
 /**
@@ -26,12 +26,15 @@ interface NodeGenerator<T extends Ast.JSNode> {
     (node: T, scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode;
 }
 
-interface NodeGeneratorMap {
+export interface NodeGeneratorMap {
     [type: string]: NodeGenerator<Ast.JSNode>
 }
 
 const generators: NodeGeneratorMap = {
     // Basic JS nodes
+    Program(node: Ast.Program, scope, sn, next) {
+        return sn(node, node.body.map(next));
+    },
     Identifier(node: Ast.Identifier, scope, sn) {
         return sn(node, node.name);
     },
@@ -41,44 +44,41 @@ const generators: NodeGeneratorMap = {
     },
     ConditionalExpression(node: Ast.ConditionalExpression, scope, sn, next) {
         // TODO check if parentheses are required here
-        return sn(node, ['(', next(node.test, scope), ' ? ', next(node.consequent, scope), ' : ', next(node.alternate, scope), ')']);
+        return sn(node, ['(', next(node.test), ' ? ', next(node.consequent), ' : ', next(node.alternate), ')']);
     },
     ArrayExpression(node: Ast.ArrayExpression, scope, sn, next) {
-        return sn(node, commaChunks(node.elements, '[', ']',
-            (item, chunks) => chunks.push(next(item, scope))));
+        return sn(node, commaChunks(node.elements.map(next), '[', ']'));
     },
     BinaryExpression(node: Ast.BinaryExpression, scope, sn, next) {
         // TODO check if parentheses are required here
-        return sn(node, ['(', next(node.left, scope), ` ${node.operator} `, next(node.right, scope), ')']);
+        return sn(node, ['(', next(node.left), ` ${node.operator} `, next(node.right), ')']);
     },
     LogicalExpression(node: Ast.LogicalExpression, scope, sn, next) {
         // TODO check if parentheses are required here
-        return sn(node, ['(', next(node.left, scope), ` ${node.operator} `, next(node.right, scope), ')']);
+        return sn(node, ['(', next(node.left), ` ${node.operator} `, next(node.right), ')']);
     },
     ExpressionStatement(node: Ast.ExpressionStatement, scope, sn, next) {
-        return next(node.expression, scope);
+        return next(node.expression);
     },
     ObjectExpression(node: Ast.ObjectExpression, scope, sn, next) {
-        return sn(node, commaChunks(node.properties, '{', '}',
-            (prop, chunks) => chunks.push(next(prop, scope))));
+        return sn(node, commaChunks(node.properties.map(next), '{', '}'));
     },
     Property(node: Ast.Property, scope, sn, next) {
         if (node.key instanceof Ast.Identifier && node.value instanceof Ast.Identifier && node.key.name === node.value.name) {
             // Shorthand property
-            return sn(node.key, next(node.key, scope));
+            return sn(node.key, next(node.key));
         }
 
-        return sn(node, [next(node.key, scope), ': ', next(node.value, scope)]);
+        return sn(node, [next(node.key), ': ', next(node.value)]);
     },
     RegExpLiteral(node: Ast.RegExpLiteral, scope, sn) {
         return sn(node, `${node.regex.pattern}/${node.regex.flags}`);
     },
     SequenceExpression(node: Ast.SequenceExpression, scope, sn, next) {
-        return sn(node, commaChunks(node.expressions, '', '',
-            (item, chunks) => chunks.push(next(item, scope))));
+        return sn(node, commaChunks(node.expressions.map(next)));
     },
     UnaryExpression(node: Ast.UnaryExpression, scope, sn, next) {
-        return sn(node, [node.operator, node.operator.length > 2 ? ' ' : '', next(node.argument, scope)]);
+        return sn(node, [node.operator, node.operator.length > 2 ? ' ' : '', next(node.argument)]);
     },
     ArrowFunctionExpression(node: Ast.ArrowFunctionExpression) {
         throw new Error(`Not implemented ${node.type}`);
@@ -86,15 +86,18 @@ const generators: NodeGeneratorMap = {
     CallExpression(node: Ast.CallExpression) {
         throw new Error(`Not implemented ${node.type}`);
     },
+    EmptyStatement(node: Ast.EmptyStatement) {
+        return sn(node, '');
+    },
 
     // Endorphin addons
     ENDGetter(node: Ast.ENDGetter, scope, sn, next) {
         if (!node.path.length) {
-            return next(node.root, scope);
+            return next(node.root);
         }
 
-        const chunks: ChunkList = [scope.use(Symbols.get), '(', next(node.root, scope)];
-        node.path.forEach(node => chunks.push(', ', next(node, scope)));
+        const chunks: ChunkList = [scope.use(Symbols.get), '(', next(node.root)];
+        node.path.forEach(node => chunks.push(', ', next(node)));
         chunks.push(')');
 
         return sn(node, chunks);
@@ -117,10 +120,9 @@ const generators: NodeGeneratorMap = {
 
         // Generate function declaration for given filter
         const fnName = scope.createSymbol('filter');
-        const fn = commaChunks(params, `function ${fnName}(`, ') ',
-            (arg, chunks) => chunks.push(next(arg, scope)));
+        const fn = commaChunks(params.map(next), `function ${fnName}(`, ') ');
 
-        fn.push('{\n\treturn ', next(node.filter.body, scope), `;\n}`);
+        fn.push('{\n\treturn ', next(node.filter.body), `;\n}`);
 
         // Add generated function to output
         scope.push(sn(node.filter, fn));
@@ -128,34 +130,30 @@ const generators: NodeGeneratorMap = {
         // Return expression that uses generated filter
         return sn(node, [scope.use(Symbols.filter), '(',
             scope.host, ', ',
-            next(node.object, scope), ', ',
+            next(node.object), ', ',
             fnName,
         ')']);
     }
 };
 
-export default function compileExpression(program: Ast.Program, scope: CompileScope): SourceNode {
-    const expressions: Ast.Statement[] = program.body.filter(expr => expr.type !== 'EmptyStatement');
-
-    if (expressions.length > 1) {
-        throw new ENDSyntaxError(`The "${program.raw}" expression must contain single statement, ${program.raw.length} given`,
-            program.loc.source, program.loc.start);
-    }
-
-    return expressions.length ? getExpression(expressions[0], scope) : sn(program, 'null');
+export default function compileExpression(program: Ast.Program, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
+    return generate(program, scope);
 }
 
-/**
- * Returns expression getter
- */
-const getExpression: Generator = (node, scope) => {
-    if (node.type in generators) {
-        return generators[node.type](node, scope, sn, getExpression);
+export function generate(node: Ast.JSNode, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
+    const localGenerators = { ...generators, ...override };
+
+    const next: Generator = node => {
+        if (node.type in localGenerators) {
+            return localGenerators[node.type](node, scope, sn, next);
+        }
+
+        throw new ENDSyntaxError(`${node.type} is not supported in getter expressions`,
+            node.loc && node.loc.source, node.loc && node.loc.start);
     }
 
-    throw new ENDSyntaxError(`${node.type} is not supported in getter expressions`,
-        node.loc && node.loc.source, node.loc && node.loc.start);
-};
+    return next(node);
+}
 
 const sn: SourceNodeFactory = (node, chunks, name) => {
     if (node.loc) {
@@ -173,4 +171,23 @@ const sn: SourceNodeFactory = (node, chunks, name) => {
 function propAccessor(name: string): string {
     return /^[a-zA-Z_$][\w_$]*$/.test(name)
         ? `.${name}` : `[${qStr(name)}]`;
+}
+
+/**
+ * Generates comma-separated list of given chunks with optional `before` and `after`
+ * wrapper code
+ */
+function commaChunks<T extends Chunk>(items: T[], before?: string, after?: string): ChunkList {
+    const chunks: ChunkList = [];
+
+    before != null && chunks.push(before);
+    items.forEach((node, i) => {
+        if (i !== 0) {
+            chunks.push(', ');
+        }
+        chunks.push(node);
+    });
+    after != null && chunks.push(after);
+
+    return chunks;
 }

@@ -1,7 +1,7 @@
 import Scanner from '../scanner';
-import syntaxError from '../syntax-error';
 import { ENDIfStatement, ParsedTag } from '../../ast/template';
-import { getAttr, tagBody, InnerStatement } from './utils';
+import { tagBody, InnerStatement, expectAttributeExpression } from './utils';
+import { Program } from '../../ast/expression';
 
 /**
  * Consumes <if> statement
@@ -9,13 +9,8 @@ import { getAttr, tagBody, InnerStatement } from './utils';
  * @param openTag
  */
 export default function ifStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDIfStatement {
-    const test = getAttr(openTag, 'test');
-    if (!test) {
-        throw syntaxError(scanner, `Expecting "test" attribute in <${openTag.getName()}> statement`, openTag.name.loc.start);
-    }
-
-    // TODO parse `test` as expression
-    const node = new ENDIfStatement(test.value);
+    const test = expectAttributeExpression(openTag, 'test');
+    const node = new ENDIfStatement(test.value as Program);
     node.loc = openTag.loc;
     tagBody(scanner, openTag, node.consequent, next);
     return node;

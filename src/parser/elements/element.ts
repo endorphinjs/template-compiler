@@ -9,7 +9,7 @@ import { tagBody, InnerStatement, getAttributes } from "./utils";
  */
 export default function elementStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDElement {
     // Consume as regular tag
-    const elem = new ENDElement(openTag.name, getAttributes(openTag));
+    const elem = new ENDElement(openTag.name, getAttributes(openTag), openTag.events);
     tagBody(scanner, openTag, elem.body, next);
     return elem;
 }

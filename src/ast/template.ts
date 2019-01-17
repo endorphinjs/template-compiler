@@ -33,7 +33,7 @@ export class ENDTemplate extends ENDNode {
 
 export class ENDElement extends ENDNode {
     type = 'ENDElement';
-    constructor(readonly name: Identifier, readonly attributes: ENDAttribute[], readonly body: ENDStatement[] = []) {
+    constructor(readonly name: Identifier, readonly attributes: ENDAttribute[], readonly events: ENDEvent[], readonly body: ENDStatement[] = []) {
         super();
     }
 }
@@ -81,7 +81,7 @@ export class ENDEvent extends ENDNode {
 export class ENDIfStatement extends ENDNode {
     type = 'ENDIfStatement';
     consequent: ENDStatement[];
-    constructor(readonly test: ENDAttributeValue) {
+    constructor(readonly test: Program) {
         super();
         this.consequent = [];
     }
@@ -99,7 +99,7 @@ export class ENDChooseStatement extends ENDNode {
 export class ENDChooseCase extends ENDNode {
     type = 'ENDSwitchCase';
     consequent: ENDStatement[];
-    constructor(readonly test: ENDAttributeValue = null) {
+    constructor(readonly test: Program = null) {
         super();
         this.consequent = [];
     }
@@ -108,7 +108,7 @@ export class ENDChooseCase extends ENDNode {
 export class ENDForEachStatement extends ENDNode {
     type = 'ENDForEachStatement';
     readonly body: ENDStatement[];
-    constructor(readonly select: ENDAttributeValue) {
+    constructor(readonly select: Program, readonly key?: Program) {
         super();
         this.body = [];
     }
@@ -133,10 +133,12 @@ export class ENDVariableStatement extends ENDNode {
 export class ENDAttributeStatement extends ENDNode {
     type = 'ENDAttributeStatement';
     attributes: ENDAttribute[];
+    events: ENDEvent[];
     test: Expression | null;
     constructor() {
         super();
         this.attributes = [];
+        this.events = [];
     }
 }
 
@@ -158,9 +160,13 @@ export class ENDText extends ENDNode {
 
 export class ParsedTag extends Node {
     name: Identifier;
-    constructor(name: Identifier, readonly type: 'open' | 'close', readonly attributes: ENDAttribute[] | null = null, readonly selfClosing: boolean = false) {
+    attributes: ENDAttribute[];
+    events: ENDEvent[];
+    constructor(name: Identifier, readonly type: 'open' | 'close', readonly selfClosing: boolean = false) {
         super();
         this.name = name;
+        this.attributes = [];
+        this.events = [];
     }
 
     /**

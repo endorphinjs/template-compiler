@@ -1,10 +1,10 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
-import { Identifier } from '../../ast/expression';
+import { Identifier, Program } from '../../ast/expression';
 import { ENDStatement, ENDAttribute, ParsedTag } from '../../ast/template';
 import { closeTag, openTag } from '../tag';
 import text from '../text';
-import syntaxError from '../syntax-error';
+import syntaxError, { ENDSyntaxError } from '../syntax-error';
 import expression from '../expression';
 
 const cdataOpen = toCharCodes('<![CDATA[');
@@ -144,4 +144,34 @@ export function getAttr(openTag: ParsedTag, name: string): ENDAttribute {
  */
 export function getAttributes(tag: ParsedTag): ENDAttribute[] {
     return tag.attributes.filter(attr => attr.name instanceof Identifier ? !attr.name.name.startsWith(prefix) : true);
+}
+
+/**
+ * Check if `tag` element contains attribute with given name and returns it. If not,
+ * throws exception
+ */
+export function expectAttribute(tag: ParsedTag, name: string): ENDAttribute {
+    const attr = getAttr(tag, name);
+    if (!attr) {
+        throw new ENDSyntaxError(`Expecting "${name}" attribute in <${tag.getName()}> element`, tag.loc.source, tag.loc.start);
+    }
+
+    return attr;
+}
+
+export function expectAttributeExpression(tag: ParsedTag, name: string): ENDAttribute {
+    const attr = expectAttribute(tag, name);
+    assertExpression(attr);
+    return attr;
+}
+
+/**
+ * Check if value of given attribute is an expression. If not, throws exception
+ */
+export function assertExpression(attr: ENDAttribute): void {
+    if (!(attr.value instanceof Program)) {
+        const attrName: string = attr.name instanceof Identifier ? attr.name.name : null;
+
+        throw new ENDSyntaxError(`Expecting expression as${attrName ? ` "${attrName}"` : ''} attribute value`, attr.loc.source, attr.loc.start);
+    }
 }

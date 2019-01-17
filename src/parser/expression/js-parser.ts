@@ -8,7 +8,7 @@ import syntaxError from '../syntax-error';
 // @ts-ignore
 const JSParser = Parser.extend(endorphinParser);
 
-const allowedKeywords = /^(\s*)(true|false|null|undefined)\s*;?\s*$/;
+const allowedKeywords = /^(\s*)(true|false|null|undefined|this)\s*;?\s*$/;
 
 class Scope {
     private reserved: Set<string> = new Set();
@@ -245,6 +245,9 @@ const converters: AstConverterMap = {
         return new Ast.BlockStatement(
             aNode.body.map(next) as Ast.Statement[]
         );
+    },
+    ThisExpression() {
+        return new Ast.ThisExpression();
     }
 }
 

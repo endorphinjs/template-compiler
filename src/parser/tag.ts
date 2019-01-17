@@ -1,7 +1,7 @@
 import expression, { EXPRESSION_START } from './expression';
-import { Identifier, Literal, Program } from '../ast/expression';
-import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue } from '../ast/template';
-import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
+import { Identifier, Literal, Program, CallExpression, ArrowFunctionExpression } from '../ast/expression';
+import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue, ENDEvent } from '../ast/template';
+import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace, toCharCodes, eatArray } from './utils';
 import Scanner from './scanner';
 
 export const TAG_START = 60; // <
@@ -14,6 +14,7 @@ export const DOT = 46; // .
 export const UNDERSCORE = 95; // _
 
 const exprStart = String.fromCharCode(EXPRESSION_START);
+const eventPrefix = toCharCodes('on:');
 
 /**
  * Consumes tag from current stream location, if possible
@@ -37,7 +38,16 @@ export function openTag(scanner: Scanner): ParsedTag {
                 throw scanner.error('Expected tag closing brace');
             }
 
-            return scanner.astNode(new ParsedTag(name, 'open', attributes, selfClosing), pos);
+            const tag = new ParsedTag(name, 'open', selfClosing);
+            attributes.forEach(attr => {
+                if (attr instanceof ENDAttribute) {
+                    tag.attributes.push(attr);
+                } else if (attr instanceof ENDEvent) {
+                    tag.events.push(attr);
+                }
+            });
+
+            return scanner.astNode(tag, pos);
         }
     }
 
@@ -96,13 +106,14 @@ function ident(scanner: Scanner): Identifier {
 /**
  * Consumes attributes from current stream start
  */
-function consumeAttributes(scanner: Scanner): ENDAttribute[] {
-    const attributes: ENDAttribute[] = [];
-    let attr: ENDAttribute;
+function consumeAttributes(scanner: Scanner): Array<ENDAttribute | ENDEvent> {
+    const attributes: Array<ENDAttribute | ENDEvent> = [];
+    let attr: ENDAttribute | ENDEvent;
     while (!scanner.eof()) {
         scanner.eatWhile(isSpace);
+        attr = event(scanner) || attribute(scanner);
 
-        if (attr = attribute(scanner)) {
+        if (attr) {
             attributes.push(attr);
         } else if (!scanner.eof() && !isTerminator(scanner.peek())) {
             throw scanner.error('Unexpected attribute name');
@@ -117,18 +128,43 @@ function consumeAttributes(scanner: Scanner): ENDAttribute[] {
 /**
  * Consumes attribute from current stream location
  */
-function attribute(scanner: Scanner): ENDAttribute {
+function attribute(scanner: Scanner): ENDAttribute | ENDEvent {
     const name: ENDAttributeName = ident(scanner) || expression(scanner);
     if (name) {
         let value: ENDAttributeValue = null;
 
         if (scanner.eat(ATTR_DELIMITER)) {
-            if (!(value = attributeValue(scanner))) {
-                throw scanner.error('Expecting attribute value');
-            }
+            value = scanner.expect(attributeValue, 'Expecting attribute value');
         }
 
         return new ENDAttribute(name, value);
+    }
+}
+
+/**
+ * Consumes event from current state
+ */
+function event(scanner: Scanner): ENDEvent {
+    if (eatArray(scanner, eventPrefix)) {
+        const name = scanner.expect(ident, 'Expected event name') ;
+        scanner.expect(ATTR_DELIMITER, 'Expecting attribute value delimiter');
+        const value = scanner.expect(expression, 'Expecting expression as event handler');
+
+        // Validate event expression, must be in one of the given forms:
+        // – on:click={handler}
+        // – on:click={handler(foo, bar)}
+        // – on:click={(e) => handler(foo, bar)}
+        if (value.body.length !== 1) {
+            throw scanner.error('Event handler must contain a single expression', value.loc.start);
+        }
+
+        const handler = value.body[0];
+        if (handler instanceof Identifier || handler instanceof CallExpression || handler instanceof ArrowFunctionExpression) {
+            return new ENDEvent(name, value);
+        }
+
+        const eventName = eventPrefix.map(code => String.fromCharCode(code)).join('') + name.name;
+        throw scanner.error(`Event handler must be either identifier (${eventName}={handler}), function call (${eventName}={handler(foo, bar)}) or arrow function (${eventName}={(e) => handler(e, foo, bar)})`);
     }
 }
 

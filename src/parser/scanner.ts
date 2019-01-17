@@ -174,6 +174,27 @@ export default class Scanner {
         }
         return new ParseError(message, pos, this);
     }
+
+    expect<T extends Node>(consumer: (scanner: Scanner) => T, error: string): T;
+    expect(charCode: number, error: string): boolean;
+
+    /**
+     * Consumes node with given `consumer` and if it fails, throws error with `error` message
+     */
+    expect(arg: any, error: string): any {
+        if (typeof arg === 'number') {
+            if (this.eat(arg)) {
+                return true;
+            }
+        } else if (typeof arg === 'function') {
+            const node = arg(this);
+            if (node) {
+                return node;
+            }
+        }
+
+        throw this.error(error);
+    }
 }
 
 /**

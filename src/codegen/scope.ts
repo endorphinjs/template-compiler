@@ -1,5 +1,5 @@
 import { SourceNode } from 'source-map';
-import { ChunkList, Chunk } from './utils';
+import { ChunkList } from './utils';
 import { ElementStats } from './node-stats';
 
 /**
@@ -11,7 +11,7 @@ export enum RuntimeSymbols {
     updateKeyIterator, createInjector, block, enterScope, exitScope, getScope,
     getProp, getState, getVar, setVar, setAttribute, updateAttribute, updateProps,
     addClass, finalizeAttributes, finalizeProps, addEvent, addStaticEvent, finalizeEvents,
-    getEventHandler, renderSlot, setRef, setStaticRef, finalizeRefs, createComponent,
+    getEventHandler, callEventHandler, renderSlot, setRef, setStaticRef, finalizeRefs, createComponent,
     mountComponent, updateComponent, unmountComponent, mountInnerHTML, updateInnerHTML,
     elem, elemWithText, text, updateText, filter, insert
 }
@@ -28,6 +28,9 @@ interface CompileScopeOptions {
 
     /** Characters for one level of indentation */
     indent?: string;
+
+    /** Prefix for generated top-level module symbols */
+    prefix?: string;
 
     /** Suffix for generated top-level module symbols */
     suffix?: string;
@@ -52,12 +55,26 @@ interface ElementContext {
 interface TemplateContext {
     update: ChunkList;
     prefixes: { [prefix: string]: number };
+    parent?: TemplateContext;
+
+    /** Output source node for runtime code, required to properly setup element context */
+    output: SourceNode;
+
+    /** Injector symbol for parent context */
+    injector?: string;
+
+    /** Context of element output */
+    element?: ElementContext;
+
+    /** Name of variable that points to local variables scope  */
+    scope?: string;
 }
 
 export const defaultOptions: CompileScopeOptions = {
     host: 'host',
     indent: '\t',
-    suffix: '$$end',
+    prefix: '$$',
+    suffix: '',
     module: '@endorphinjs/endorphin',
     component: ''
 }
@@ -65,9 +82,6 @@ export const defaultOptions: CompileScopeOptions = {
 export default class CompileScope {
     /** Runtime symbols required by compiled template */
     symbols: Set<RuntimeSymbols> = new Set();
-
-    /** Context of currently rendered element */
-    element?: ElementContext;
 
     /** Context of currently rendered template */
     template?: TemplateContext;
@@ -78,8 +92,6 @@ export default class CompileScope {
     readonly body: SourceNode[] = [];
 
     private prefixes: {[prefix: string]: number} = {};
-    private _level: number = 0;
-    private _indent: string = '';
 
     constructor(options?: CompileScopeOptions) {
         this.options = Object.assign({}, defaultOptions, options);
@@ -95,19 +107,13 @@ export default class CompileScope {
         return this.options.module;
     }
 
-    /** Current indentation level */
-    get level(): number {
-        return this._level;
-    }
-
-    set level(value: number) {
-        this._level = value;
-        this._indent = this.options.indent.repeat(value);
-    }
-
     /** Current indentation token */
     get indent(): string {
-        return this._indent;
+        return this.options.indent;
+    }
+
+    get element(): ElementContext {
+        return this.template.element;
     }
 
     /**
@@ -123,18 +129,21 @@ export default class CompileScope {
     /**
      * Creates unique template symbol (function or variable name) with `prefix` in it
      */
-    createSymbol(prefix: string, includeComponentName?: boolean): string {
+    createSymbol(name: string): string {
         const { prefixes } = this;
+        const { prefix, suffix } = this.options;
 
-        if (prefix in prefixes) {
-            prefixes[prefix]++;
+        if (name in prefixes) {
+            prefixes[name]++;
         } else {
-            prefixes[prefix] = 0;
+            prefixes[name] = 0;
         }
 
-        const name = includeComponentName && this.options.component || '';
+        if (this.options.component != null) {
+            name += this.options.component;
+        }
 
-        return `${prefix}${name}${prefixes[prefix]}${this.options.suffix}`;
+        return prefix + name + prefixes[name] + suffix;
     }
 
     /**
@@ -149,7 +158,7 @@ export default class CompileScope {
             prefixes[name] = 0;
         }
 
-        return `${name}${prefixes[name]}`;
+        return name + prefixes[name];
     }
 
     /**
@@ -159,65 +168,103 @@ export default class CompileScope {
         this.body.push(node);
     }
 
-    enterTemplate(): void {
-        this.template = {
+    /**
+     * Enters into context of new template fragment
+     * @param injectorSymbol Symbol for injector that should receive top-level
+     * template content
+     */
+    enterTemplate(injectorSymbol?: string): SourceNode {
+        const ctx: TemplateContext = {
             update: [],
-            prefixes: {}
+            prefixes: {},
+            injector: injectorSymbol,
+            parent: this.template,
+            output: new SourceNode()
         };
-        this.level++;
+        this.template = ctx;
+        return ctx.output;
     }
 
-    exitTemplate(): void {
-        this.level--;
-        this.template = null;
+    exitTemplate(name: string = ''): ChunkList {
+        // Generate update function for current content
+        const output = new SourceNode();
+        const { template, indent } = this;
+
+        if (template.update.length) {
+            // Generate update function for rendered template
+            const innerIndent = indent + indent;
+            output.add([`return function ${name}() {\n`]);
+            template.update.forEach(node => output.add([innerIndent, node, '\n']));
+            output.add(`${indent}}`);
+        }
+
+        this.template = this.template.parent;
+        return [output];
     }
 
-    enterElement(symbol: string, stats: ElementStats): Chunk {
+    enterElement(symbol: string, stats: ElementStats): SourceNode {
         const ctx: ElementContext = {
             stats,
             symbol,
             output: new SourceNode(),
-            // symbol: stats.staticContent ? symbol : this.createSymbol('injector'),
-            parent: this.element
+            parent: this.template.element
         };
 
-        this.element = ctx;
+        this.template.element = ctx;
         return ctx.output;
     }
 
-    exitElement() {
-        this.element = this.element.parent;
+    exitElement(): ChunkList {
+        // Finalize element
+        const chunks: ChunkList = [];
+        const { element } = this.template;
+
+        // TODO finalize all data types
+        if (element.stats.attributeExpressions || element.stats.dynamicAttributes.size) {
+            chunks.push(`${this.use(RuntimeSymbols.finalizeAttributes)}(${element.symbol});`);
+        }
+
+        this.template.element = element.parent;
+        return chunks;
+    }
+
+    /**
+     * Returns variable name that refers to local variable scope
+     */
+    localVars(): string {
+        const { template } = this;
+        if (!template.scope) {
+            // Should introduce local variable scope
+            template.scope = this.localSymbol('scope');
+            template.output.add(`let ${template.scope} = ${this.use(RuntimeSymbols.getScope)}(${this.host});`);
+            template.update.push(`${template.scope} = ${this.use(RuntimeSymbols.getScope)}(${this.host});`);
+        }
+
+        return template.scope;
+    }
+
+    /**
+     * Check if content must be inserted via injector at current context
+     */
+    requiresInjector(): boolean {
+        const { element } = this;
+        return element ? !element.stats.staticContent : !!this.template.injector;
     }
 
     /**
      * Returns injector instance symbol for context element
      */
     injector(): string {
-        if (!this.element.injector) {
-            const symbol = this.element.injector = this.createSymbol('injector');
-            this.element.output.add(`const ${symbol} = ${this.use(RuntimeSymbols.createInjector)}(${this.element.symbol});`);
-        }
-
-        return this.element.injector;
-    }
-
-    /**
-     * Outputs compiled template
-     */
-    toString(): string {
-        const output = new SourceNode();
-
-        if (this.symbols.size) {
-            output.add(`import { ${Array.from(this.symbols).map(s => RuntimeSymbols[s]).join(', ')} } from '${this.module}';\n\n`);
-        }
-
-        this.body.forEach((node, i) => {
-            if (i !== 0) {
-                output.add('\n\n');
+        const { element } = this;
+        if (element) {
+            if (!element.injector) {
+                const symbol = element.injector = this.localSymbol('injector');
+                element.output.add(`const ${symbol} = ${this.use(RuntimeSymbols.createInjector)}(${element.symbol});`);
             }
-            output.add(node);
-        });
 
-        return output.toString();
+            return element.injector;
+        }
+
+        return this.template.injector;
     }
 }

@@ -1,7 +1,7 @@
 import Scanner from "../scanner";
-import syntaxError from "../syntax-error";
 import { ENDForEachStatement, ParsedTag } from "../../ast/template";
-import { getAttr, tagBody, InnerStatement } from "./utils";
+import { getAttr, tagBody, InnerStatement, expectAttributeExpression, assertExpression } from "./utils";
+import { Program } from "../../ast/expression";
 
 /**
  * Consumes <for-each> statement
@@ -9,14 +9,14 @@ import { getAttr, tagBody, InnerStatement } from "./utils";
  * @param openTag
  */
 export default function forEachStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDForEachStatement {
-    const select = getAttr(openTag, 'select');
-    if (!select) {
-        throw syntaxError(scanner, `Expecting "select" attribute in <for-each> statement`, openTag.name.loc.start);
+    const select = expectAttributeExpression(openTag, 'select');
+    const key = getAttr(openTag, 'key');
+    if (key) {
+        assertExpression(key);
     }
 
-    // TODO parse `select` as expression
     // TODO parse attributes for internal variables
-    const node = new ENDForEachStatement(select.value);
+    const node = new ENDForEachStatement(select.value as Program, key ? key.value as Program : null);
     node.loc = openTag.loc;
     tagBody(scanner, openTag, node.body, next);
     return node;

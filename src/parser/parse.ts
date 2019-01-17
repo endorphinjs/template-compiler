@@ -11,7 +11,8 @@ import elementStatement from './elements/element';
 import attributeStatement from './elements/attribute';
 import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
-import { ignored, getControlName, InnerStatement, prefix, getAttr } from './elements/utils';
+import { ignored, getControlName, InnerStatement, prefix, getAttr, assertExpression } from './elements/utils';
+import { Program } from '../ast/expression';
 
 interface StatementMap {
     [name: string]: InnerStatement
@@ -36,7 +37,7 @@ const ifAttr = `${prefix}if`;
  */
 export default function parse(text: string, url: string = null): ENDProgram {
     const scanner = new Scanner(text, url);
-    const program = scanner.astNode(new ENDProgram());
+    const program = new ENDProgram();
     let entry : ParsedTag;
 
     while (!scanner.eof()) {
@@ -78,7 +79,8 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     // If so, wrap output into `<if>` statement
     const test = getAttr(open, ifAttr);
     if (test && result) {
-        const ifStatement = new ENDIfStatement(test.value);
+        assertExpression(test);
+        const ifStatement = new ENDIfStatement(test.value as Program);
         ifStatement.loc = test.loc;
         ifStatement.consequent.push(result);
         result = ifStatement;

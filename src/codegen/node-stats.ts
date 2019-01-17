@@ -28,6 +28,11 @@ export interface ElementStats {
      */
     dynamicAttributes: Set<string>;
 
+    /**
+     * List of element’s events which can be updated in runtime
+     */
+    dynamicEvents: Set<string>;
+
     /** Whether element contains attribute expressions, e.g. `{foo}="bar"` */
     attributeExpressions: boolean;
 }
@@ -62,6 +67,7 @@ export default function collectStats(elem: ENDElement): ElementStats {
  * Collects stats about dynamic content in given element
  */
 export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: ElementStats = createStats()): ElementStats {
+    // TODO respect partials, which will cause all attributes and events to be dynamic
     walk(elem, node => {
         if (dynamicContent.has(node.type)) {
             stats.staticContent = false;
@@ -78,11 +84,11 @@ export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: Eleme
             node.attributes.forEach(attr => {
                 if (attr.name instanceof Identifier) {
                     stats.dynamicAttributes.add(attr.name.name);
-                }
-                else if (attr.name instanceof Program) {
+                } else if (attr.name instanceof Program) {
                     stats.attributeExpressions = true;
                 }
             });
+            node.events.forEach(evt => stats.dynamicEvents.add(evt.name.name));
         }
         return false;
     });
@@ -99,6 +105,7 @@ function createStats(name: string = ''): ElementStats {
         component: name.includes('-'),
         staticContent: true,
         dynamicAttributes: new Set(),
+        dynamicEvents: new Set(),
         attributeExpressions: false
     }
 }
