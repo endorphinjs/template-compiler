@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDSyntaxError } from '../parser/syntax-error';
-import CompileScope, { RuntimeSymbols as Symbols, RuntimeSymbols } from './scope';
+import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, Chunk } from './utils';
 import getStats, { collectDynamicStats } from './node-stats';
 import compileExpression, { generate, NodeGeneratorMap as JSNodeGeneratorMap } from './expression';
@@ -55,7 +55,7 @@ const generators: NodeGeneratorMap = {
             scope.exitTemplate(scope.createSymbol('update'))
         ), scope.indent);
 
-        body.unshift(`export default function ${scope.createSymbol('mount')} {\n${scope.indent}`);
+        body.unshift(`export default function ${scope.createSymbol('mount')}(${scope.host}) {\n${scope.indent}`);
         body.push('\n}\n');
 
         return sn(node, body);
@@ -66,9 +66,9 @@ const generators: NodeGeneratorMap = {
         const elemName = node.name.name;
         const varName = scope.localSymbol(elemName);
         const elem: SourceNode = !stats.text
-            ? sn(node.name, `${scope.use(Symbols.elem)}(${elemName}, ${scope.host})`)
+            ? sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}, ${scope.host})`)
             : sn(node.name, [
-                `${scope.use(Symbols.elemWithText)}(${elemName},`,
+                `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
                 sn(stats.text, qStr(stats.text.value)),
                 `, ${scope.host})`
             ]);
@@ -105,9 +105,10 @@ const generators: NodeGeneratorMap = {
         // NB expression for text node
         const fn = createExpressionFunction('textValue', scope, sn, node);
         const textVar = scope.localSymbol('text');
-        scope.template.update.push(`${textVar}.textContent = ${fn}(${scope.host});`);
+        const getter = `${fn}(${scope.host})`;
+        scope.template.update.push(`${textVar}.textContent = ${getter};`);
 
-        return sn(node, [`const ${textVar} = ${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(`, fn, '));'])
+        return sn(node, [`const ${textVar} = ${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(${getter}));`]);
     },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
         return sn(node, node.attributes.map(next));
@@ -254,7 +255,7 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
 
     // Import runtime symbols, used by template
     if (scope.symbols.size) {
-        body.push(`import { ${Array.from(scope.symbols).map(symbol => RuntimeSymbols[symbol]).join(', ')} } from '${scope.options.module}';`);
+        body.push(`import { ${Array.from(scope.symbols).map(symbol => Symbols[symbol]).join(', ')} } from "${scope.options.module}";`);
     }
 
     // In most cases, templates and scope body are function declarations
@@ -268,7 +269,7 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
 function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, sn: SourceNodeFactory): string {
     if (name instanceof JSAst.Identifier) {
         // Static attribute name
-        return name.name;
+        return qStr(name.name);
     }
 
     if (name instanceof JSAst.Program) {
@@ -393,7 +394,7 @@ function getEventSymbol(node: JSAst.JSNode): string {
 }
 
 function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[], scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {
-    const indent = scope.options.indent;
+    const indent = scope.indent;
 
     // Block entry point
     const blockEntry = scope.createSymbol('conditionBlock');

@@ -115,7 +115,7 @@ export class ENDForEachStatement extends ENDNode {
 }
 
 export class ENDPartialStatement extends ENDNode {
-    type = 'ENDForEachStatement';
+    type = 'ENDPartialStatement';
     constructor(readonly id: Identifier, readonly params: ENDAttribute[]) {
         super();
     }

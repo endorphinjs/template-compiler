@@ -195,7 +195,7 @@ export default class CompileScope {
             const innerIndent = indent + indent;
             output.add([`return function ${name}() {\n`]);
             template.update.forEach(node => output.add([innerIndent, node, '\n']));
-            output.add(`${indent}}`);
+            output.add(`${indent}};`);
         }
 
         this.template = this.template.parent;
