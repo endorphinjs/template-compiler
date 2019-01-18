@@ -1,6 +1,6 @@
 import Scanner from "../scanner";
 import { ENDElement, ParsedTag } from "../../ast/template";
-import { tagBody, InnerStatement, getAttributes } from "./utils";
+import { tagBody, InnerStatement } from "./utils";
 
 /**
  * Consumes regular output element
@@ -9,7 +9,7 @@ import { tagBody, InnerStatement, getAttributes } from "./utils";
  */
 export default function elementStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDElement {
     // Consume as regular tag
-    const elem = new ENDElement(openTag.name, getAttributes(openTag), openTag.events);
+    const elem = new ENDElement(openTag.name, openTag.attributes, openTag.directives);
     tagBody(scanner, openTag, elem.body, next);
     return elem;
 }

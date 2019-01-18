@@ -1,6 +1,6 @@
 import Scanner from '../scanner';
 import { ENDAttributeStatement, ParsedTag } from '../../ast/template';
-import { emptyBody, InnerStatement, getAttributes } from './utils';
+import { emptyBody, InnerStatement } from './utils';
 
 /**
  * Consumes <attribute> statement
@@ -8,9 +8,8 @@ import { emptyBody, InnerStatement, getAttributes } from './utils';
  * @param openTag
  */
 export default function attributeStatement(scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): ENDAttributeStatement {
-    const node = new ENDAttributeStatement();
+    const node = new ENDAttributeStatement(openTag.attributes, openTag.directives);
     node.loc = openTag.loc;
-    getAttributes(openTag).forEach(attr => node.attributes.push(attr));
     emptyBody(scanner, openTag);
     return node;
 }

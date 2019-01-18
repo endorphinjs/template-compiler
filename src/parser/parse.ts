@@ -11,7 +11,7 @@ import elementStatement from './elements/element';
 import attributeStatement from './elements/attribute';
 import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
-import { ignored, getControlName, InnerStatement, prefix, getAttr, assertExpression } from './elements/utils';
+import { ignored, getControlName, InnerStatement, assertExpression, getDirective } from './elements/utils';
 import { Program } from '../ast/expression';
 
 interface StatementMap {
@@ -27,8 +27,6 @@ const statements: StatementMap = {
     'for-each': forEachStatement,
     'partial': partialStatement
 };
-
-const ifAttr = `${prefix}if`;
 
 /**
  * Parses given Endorphin template text into AST
@@ -75,13 +73,12 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
         result = elementStatement(scanner, open, statement);
     }
 
-    // Check if open tag contains `if` attribute.
-    // If so, wrap output into `<if>` statement
-    const test = getAttr(open, ifAttr);
+    // Check if open tag contains `end:if` directive. If so, wrap output into
+    // `<if>` statement
+    const test = getDirective(open, 'end', 'if');
     if (test && result) {
         assertExpression(test);
         const ifStatement = new ENDIfStatement(test.value as Program);
-        ifStatement.loc = test.loc;
         ifStatement.consequent.push(result);
         result = ifStatement;
     }

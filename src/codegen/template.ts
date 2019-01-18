@@ -5,7 +5,8 @@ import { ENDSyntaxError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, Chunk } from './utils';
 import getStats, { collectDynamicStats } from './node-stats';
-import compileExpression, { generate, NodeGeneratorMap as JSNodeGeneratorMap } from './expression';
+import compileExpression, { generate } from './expression';
+import generateEvent from './assets/event';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -31,15 +32,6 @@ interface ConditionStatement {
     test?: JSAst.Program;
     consequent: Ast.ENDStatement[]
 }
-
-/**
- * Custom generators for generating event handlers
- */
-const eventGenerators: JSNodeGeneratorMap = {
-    ENDVariableIdentifier(node: JSAst.ENDVariableIdentifier, scope, sn) {
-        return sn(node, [`${scope.localVars()}.${qStr(node.name)}`], node.raw);
-    }
-};
 
 const generators: NodeGeneratorMap = {
     ENDTemplate(node: Ast.ENDTemplate, scope, sn, next) {
@@ -77,7 +69,7 @@ const generators: NodeGeneratorMap = {
         const decl = new SourceNode();
 
         // Check if template requires variable reference
-        if (node.attributes.length || node.events.length) {
+        if (node.attributes.length || node.directives.length) {
             decl.add(`const ${varName} = `);
         }
 
@@ -92,7 +84,7 @@ const generators: NodeGeneratorMap = {
             decl,
             scope.enterElement(varName, stats),
             node.attributes.map(next),
-            node.events.map(next),
+            node.directives.map(next),
             !stats.text ? node.body.map(next) : [],
             scope.exitElement()
         );
@@ -135,6 +127,11 @@ const generators: NodeGeneratorMap = {
 
         return sn(node, `${scope.element.symbol}.setAttribute(${outputName}, ${outputValue});`);
     },
+    ENDDirective(node: Ast.ENDDirective, scope, sn) {
+        if (node.prefix === 'on') {
+            return generateEvent(node, scope, sn);
+        }
+    },
     ENDAddClassStatement(node: Ast.ENDAddClassStatement, scope, sn, next) {
         let value: string;
         if (node.tokens.length === 1) {
@@ -167,47 +164,6 @@ const generators: NodeGeneratorMap = {
 
         const output = sn(node, [`${scope.use(Symbols.setVar)}(${scope.host}`, outputName, ', ', outputValue, ');']);
         scope.template.update.push(output);
-        return output;
-    },
-    ENDEvent(node: Ast.ENDEvent, scope) {
-        // Generate event handler expression. It has slightly different shape than
-        // basic expressions: they must use local variable as source of runtime
-        // variables
-        const scopeVar = scope.localVars();
-        const handlerName = scope.localSymbol('handler');
-        const handler = node.handler.body[0];
-        const eventSymbol = getEventSymbol(handler);
-
-        const output = new SourceNode();
-        output.add(`${scope.indent}function ${handlerName}(event) {\n`);
-        output.add([
-            `${scope.indent}const ${eventSymbol} = ${scope.host}.${eventSymbol} || ${scope.host}.componentModel.definition.${eventSymbol};\n`,
-            `${scope.indent}${eventSymbol}(`
-        ]);
-
-        if (handler instanceof JSAst.CallExpression) {
-            // on:click={handler(foo, bar)}
-            // Add arguments to function handler but ensure that variables are fetched
-            // from local variable: it is required for proper variable scoping in loops
-            handler.arguments.forEach(arg => {
-                output.add([generate(arg, scope, eventGenerators)]);
-            });
-        }
-
-        output.add(`${scope.host}, event, this)`);
-        output.add(`\n}\n\n`);
-
-        scope.template.update.push(`${scope.indent}${scopeVar} = ${scope.use(Symbols.getScope)}(${scope.host});\n`);
-
-        const eventType = node.name.name;
-        if (scope.element.stats.dynamicEvents.has(eventType)) {
-            const bindEvent = `${scope.use(Symbols.addEvent)}(${scope.element.symbol}, ${qStr(eventType)}, ${handlerName});\n`;
-            output.add([`${scope.indent}`, bindEvent]);
-            scope.template.update.push(bindEvent);
-        } else {
-            output.add(`${scope.indent}${scope.use(Symbols.addStaticEvent)}(${scope.element.symbol}, ${qStr(eventType)}, ${handlerName});\n`);
-        }
-
         return output;
     },
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
@@ -388,18 +344,6 @@ function isValidChunk(chunk: Chunk): boolean {
     return chunk instanceof SourceNode
         ? chunk.children.length !== 0
         : chunk.length !== 0;
-}
-
-function getEventSymbol(node: JSAst.JSNode): string {
-    if (node instanceof JSAst.Identifier) {
-        return node.name;
-    }
-
-    if (node instanceof JSAst.CallExpression && node.callee instanceof JSAst.Identifier) {
-        return node.callee.name;
-    }
-
-    throw new ENDSyntaxError(`Unable to get handler name from event expression`, node.loc.source, node.loc.start);
 }
 
 function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[], scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {

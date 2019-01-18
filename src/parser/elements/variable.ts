@@ -1,6 +1,6 @@
 import Scanner from '../scanner';
 import { ENDVariableStatement, ENDVariable, ParsedTag } from '../../ast/template';
-import { emptyBody, InnerStatement, getAttributes } from './utils';
+import { emptyBody, InnerStatement } from './utils';
 
 /**
  * Consumes <variable> statement
@@ -8,13 +8,8 @@ import { emptyBody, InnerStatement, getAttributes } from './utils';
  * @param openTag
  */
 export default function variableStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDVariableStatement {
-    const node = new ENDVariableStatement();
+    const node = new ENDVariableStatement(openTag.attributes.map(attr => new ENDVariable(attr.name, attr.value)));
     node.loc = openTag.loc;
-
-    getAttributes(openTag).forEach(attr => {
-        node.variables.push(new ENDVariable(attr.name, attr.value));
-    });
-
     emptyBody(scanner, openTag);
     return node;
 }

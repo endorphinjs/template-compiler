@@ -87,7 +87,11 @@ export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: Eleme
                     stats.attributeExpressions = true;
                 }
             });
-            node.events.forEach(evt => stats.dynamicEvents.add(evt.name.name));
+            node.directives.forEach(directive => {
+                if (directive.prefix === 'on') {
+                    stats.dynamicEvents.add(directive.name.name);
+                }
+            });
         }
         return false;
     });

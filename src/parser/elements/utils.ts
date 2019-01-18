@@ -26,9 +26,6 @@ export interface InnerStatement {
 
 /**
  * Consumes tag content from given scanner into `body` argument
- * @param scanner
- * @param open
- * @param body
  */
 export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[], consumeTag?: InnerStatement): void {
     if (open.selfClosing) {
@@ -140,6 +137,15 @@ export function getControlName(name: string): string {
  */
 export function getAttr(openTag: ParsedTag, name: string): ENDAttribute {
     return openTag.attributes.find(attr => attr.name instanceof Identifier && attr.name.name === name);
+}
+
+/**
+ * Returns directive with given prefix and name from tag name definition, if any
+ * @param openTag
+ * @param name
+ */
+export function getDirective(openTag: ParsedTag, prefix: string, name: string): ENDAttribute {
+    return openTag.directives.find(dir => dir.prefix === prefix && dir.name.name === name);
 }
 
 /**

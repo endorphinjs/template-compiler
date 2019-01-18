@@ -3,7 +3,7 @@
  */
 
 import { Node } from './base';
-import { Identifier, Program, Literal, Expression } from './expression';
+import { Identifier, Program, Literal } from './expression';
 
 export type ENDStatement = ENDElement | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement;
 export type ENDProgramStatement = ENDTemplate | ENDElement;
@@ -33,7 +33,7 @@ export class ENDTemplate extends ENDNode {
 
 export class ENDElement extends ENDNode {
     type = 'ENDElement';
-    constructor(readonly name: Identifier, readonly attributes: ENDAttribute[], readonly events: ENDEvent[], readonly body: ENDStatement[] = []) {
+    constructor(readonly name: Identifier, readonly attributes: ENDAttribute[], readonly directives: ENDDirective[], readonly body: ENDStatement[] = []) {
         super();
     }
 }
@@ -48,6 +48,13 @@ export class ENDAttribute extends ENDNode {
                 end: value ? value.loc.end : name.loc.end
             };
         }
+    }
+}
+
+export class ENDDirective extends ENDNode {
+    type = 'ENDDirective';
+    constructor(readonly prefix: string, readonly name: Identifier, readonly value: ENDAttributeValue) {
+        super();
     }
 }
 
@@ -68,13 +75,6 @@ export class ENDVariable extends ENDNode {
                 end: value ? value.loc.end : name.loc.end
             };
         }
-    }
-}
-
-export class ENDEvent extends ENDNode {
-    type = 'ENDEvent';
-    constructor(readonly name: Identifier, readonly handler: Program) {
-        super();
     }
 }
 
@@ -123,22 +123,15 @@ export class ENDPartialStatement extends ENDNode {
 
 export class ENDVariableStatement extends ENDNode {
     type = 'ENDVariableStatement';
-    variables: ENDVariable[]
-    constructor() {
+    constructor(readonly variables: ENDVariable[]) {
         super();
-        this.variables = [];
     }
 }
 
 export class ENDAttributeStatement extends ENDNode {
     type = 'ENDAttributeStatement';
-    attributes: ENDAttribute[];
-    events: ENDEvent[];
-    test: Expression | null;
-    constructor() {
+    constructor(readonly attributes: ENDAttribute[], readonly directives: ENDDirective[]) {
         super();
-        this.attributes = [];
-        this.events = [];
     }
 }
 
@@ -161,12 +154,12 @@ export class ENDText extends ENDNode {
 export class ParsedTag extends Node {
     name: Identifier;
     attributes: ENDAttribute[];
-    events: ENDEvent[];
+    directives: ENDDirective[];
     constructor(name: Identifier, readonly type: 'open' | 'close', readonly selfClosing: boolean = false) {
         super();
         this.name = name;
         this.attributes = [];
-        this.events = [];
+        this.directives = [];
     }
 
     /**
