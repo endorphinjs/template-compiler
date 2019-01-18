@@ -75,7 +75,12 @@ const generators: NodeGeneratorMap = {
 
         // Mount element
         const decl = new SourceNode();
-        decl.add(`const ${varName} = `);
+
+        // Check if template requires variable reference
+        if (node.attributes.length || node.events.length) {
+            decl.add(`const ${varName} = `);
+        }
+
         if (scope.requiresInjector()) {
             decl.add(sn(node, [`${scope.use(Symbols.insert)}(${scope.injector()}, `, elem, ');']));
         } else {
@@ -88,7 +93,7 @@ const generators: NodeGeneratorMap = {
             scope.enterElement(varName, stats),
             node.attributes.map(next),
             node.events.map(next),
-            node.body.map(next),
+            !stats.text ? node.body.map(next) : [],
             scope.exitElement()
         );
 
@@ -96,10 +101,10 @@ const generators: NodeGeneratorMap = {
     },
     ENDText(node: Ast.ENDText, scope, sn) {
         if (scope.requiresInjector()) {
-            return sn(node, [`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(`, qStr(node.value), '));\n'])
+            return sn(node, [`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(`, qStr(node.value), '));'])
         }
 
-        return sn(node, [`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(`, qStr(node.value), '));\n']);
+        return sn(node, [`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(`, qStr(node.value), '));']);
     },
     Program(node: JSAst.Program, scope, sn) {
         // NB expression for text node
@@ -108,7 +113,11 @@ const generators: NodeGeneratorMap = {
         const getter = `${fn}(${scope.host})`;
         scope.template.update.push(`${textVar}.textContent = ${getter};`);
 
-        return sn(node, [`const ${textVar} = ${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(${getter}));`]);
+        if (scope.requiresInjector()) {
+            return sn(node, [`const ${textVar} = ${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(${getter}));`]);
+        }
+
+        return sn(node, [`const ${textVar} = ${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(${getter}));`]);
     },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
         return sn(node, node.attributes.map(next));

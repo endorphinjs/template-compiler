@@ -1,7 +1,8 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
 import { Identifier, Program } from '../../ast/expression';
-import { ENDStatement, ENDAttribute, ParsedTag } from '../../ast/template';
+import { ENDStatement, ENDAttribute, ParsedTag, ENDText } from '../../ast/template';
+import { Node } from '../../ast/base';
 import { closeTag, openTag } from '../tag';
 import text from '../text';
 import syntaxError, { ENDSyntaxError } from '../syntax-error';
@@ -36,6 +37,7 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
     }
 
     const tagStack: ParsedTag[] = [open];
+    const items: ENDStatement[] = [];
     let tagEntry: ParsedTag;
     let token: ENDStatement;
 
@@ -43,19 +45,19 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
         if (closesTag(scanner, tagStack[tagStack.length - 1])) {
             tagStack.pop();
             if (!tagStack.length) {
-                return;
+                break;
             }
         } else if (tagEntry = openTag(scanner)) {
             if (consumeTag) {
                 const inner = consumeTag(scanner, tagEntry);
                 if (inner) {
-                    body.push(inner);
+                    items.push(inner);
                 }
             } else {
                 tagStack.push(tagEntry);
             }
         } else if (token = expression(scanner) || text(scanner)) {
-            body.push(token);
+            items.push(token);
         } else if (!ignored(scanner)) {
             throw syntaxError(scanner, `Unexpected token`);
         }
@@ -65,6 +67,8 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
     if (tagStack.length) {
         throw syntaxError(scanner, `Expecting </${tagStack.pop().getName()}>`);
     }
+
+    finalizeTagBody(body, items);
 }
 
 /**
@@ -174,4 +178,30 @@ export function assertExpression(attr: ENDAttribute): void {
 
         throw new ENDSyntaxError(`Expecting expression as${attrName ? ` "${attrName}"` : ''} attribute value`, attr.loc.source, attr.loc.start);
     }
+}
+
+/**
+ * Finalizes parsed body content
+ */
+function finalizeTagBody(parent: ENDStatement[], parsed: ENDStatement[]): void {
+    removeFormatting(parsed).forEach(item => parent.push(item));
+}
+
+/**
+ * Removes text formatting from given list of statements
+ */
+function removeFormatting(statements: ENDStatement[]): ENDStatement[] {
+    return statements.filter((node, i) => {
+        if (node instanceof ENDText && /[\r\n]/.test(node.value) && /^\s+$/.test(node.value)) {
+            // Looks like insignificant white-space character, check if we can
+            // remove it
+            return isContentNode(statements[i - 1]) || isContentNode(statements[i + 1]);
+        }
+
+        return true;
+    });
+}
+
+function isContentNode(node: Node): boolean {
+    return node instanceof ENDText || node instanceof Program;
 }

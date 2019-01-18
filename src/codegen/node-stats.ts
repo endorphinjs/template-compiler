@@ -5,8 +5,7 @@ import {
 import { Identifier, Program } from '../ast/expression';
 
 const dynamicContent: Set<string> = new Set([
-    'ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement',
-    'ENDPartialStatement', 'Program'
+    'ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement', 'ENDPartialStatement'
 ]);
 
 export interface ElementStats {
