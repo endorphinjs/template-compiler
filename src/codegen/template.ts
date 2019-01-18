@@ -48,7 +48,7 @@ const generators: NodeGeneratorMap = {
         ), scope.indent);
 
         body.unshift(`export default function ${scope.createSymbol('mount')}(${scope.host}) {\n${scope.indent}`);
-        body.push('\n}\n');
+        body.push('\n}');
 
         return sn(node, body);
     },
@@ -99,17 +99,28 @@ const generators: NodeGeneratorMap = {
         return sn(node, [`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(`, qStr(node.value), '));']);
     },
     Program(node: JSAst.Program, scope, sn) {
-        // NB expression for text node
-        const fn = createExpressionFunction('textValue', scope, sn, node);
-        const textVar = scope.localSymbol('text');
-        const getter = `${fn}(${scope.host})`;
-        scope.template.update.push(`${textVar}.textContent = ${getter};`);
+        // NB `Program` is used as expression for text node
+        const expr = compileExpression(node, scope);
+        const valueVar = scope.localSymbol('textValue');
+        const nodeVar = scope.localSymbol('text');
+
+        const mount = new SourceNode();
+        const update = new SourceNode();
+
+        mount.add([
+            `let ${valueVar} = `, expr, ';\n',
+            `${scope.indent}const ${nodeVar} = `
+        ]);
 
         if (scope.requiresInjector()) {
-            return sn(node, [`const ${textVar} = ${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(${getter}));`]);
+            mount.add([`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(`, expr, `);`]);
+        } else {
+            mount.add([`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(`, expr, `));`]);
         }
 
-        return sn(node, [`const ${textVar} = ${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(${getter}));`]);
+        update.add([`${valueVar} = ${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `, ${valueVar});`]);
+        scope.template.update.push(update);
+        return mount;
     },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
         return sn(node, node.attributes.map(next));
@@ -290,7 +301,7 @@ function createContentFunction(prefix: string, scope: CompileScope, statements: 
     const output = new SourceNode();
     output.add(`function ${fnName}(${scope.host}, ${injectorSymbol}) {\n${scope.indent}`);
     output.add(format(body, scope.indent));
-    output.add('\n}\n');
+    output.add('\n}');
 
     scope.push(output);
 

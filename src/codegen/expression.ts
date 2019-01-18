@@ -137,7 +137,7 @@ const generators: NodeGeneratorMap = {
 };
 
 export default function compileExpression(program: Ast.Program, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
-    return generate(program, scope);
+    return generate(program, scope, override);
 }
 
 export function generate(node: Ast.JSNode, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
