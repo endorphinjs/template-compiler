@@ -36,12 +36,9 @@ interface ConditionStatement {
 const generators: NodeGeneratorMap = {
     ENDTemplate(node: Ast.ENDTemplate, scope, sn, next) {
         // TODO compile partial
-        const elemSymbol = scope.scopeSymbol('target');
-
         scope.enterFunction('template');
         const body: ChunkList = [].concat(
-            `${elemSymbol} = ${scope.host}.componentView;`,
-            scope.enterElement(elemSymbol, collectDynamicStats(node)),
+            scope.enterElement('target', `${scope.host}.componentView`, collectDynamicStats(node)),
             node.body.map(next),
             scope.exitElement(),
         );
@@ -52,7 +49,6 @@ const generators: NodeGeneratorMap = {
         // TODO handle components
         const stats = getStats(node);
         const elemName = node.name.name;
-        const varName = scope.scopeSymbol(elemName);
         const elem: SourceNode = !stats.text
             ? sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}, ${scope.host})`)
             : sn(node.name, [
@@ -62,23 +58,17 @@ const generators: NodeGeneratorMap = {
             ]);
 
         // Mount element
-        const decl = new SourceNode();
-
-        // Check if template requires variable reference
-        if (node.attributes.length || node.directives.length) {
-            decl.add(`${varName} = `);
-        }
+        const mount = new SourceNode();
 
         if (scope.requiresInjector()) {
-            decl.add(sn(node, [`${scope.use(Symbols.insert)}(${scope.injector()}, `, elem, ');']));
+            mount.add(sn(node, [`${scope.use(Symbols.insert)}(${scope.localInjector()}, `, elem, ')']));
         } else {
-            decl.add(sn(node, [`${scope.element.symbol}.appendChild(`, elem, ');']));
+            mount.add(sn(node, [`${scope.element.localSymbol}.appendChild(`, elem, ')']));
         }
 
         // Output content
         const chunks: ChunkList = [].concat(
-            decl,
-            scope.enterElement(varName, stats),
+            scope.enterElement(elemName, mount, stats),
             node.attributes.map(next),
             node.directives.map(next),
             !stats.text ? node.body.map(next) : [],
@@ -89,10 +79,10 @@ const generators: NodeGeneratorMap = {
     },
     ENDText(node: Ast.ENDText, scope, sn) {
         if (scope.requiresInjector()) {
-            return sn(node, [`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(`, qStr(node.value), '));'])
+            return sn(node, [`${scope.use(Symbols.insert)}(${scope.localInjector()}, ${scope.use(Symbols.text)}(`, qStr(node.value), '));'])
         }
 
-        return sn(node, [`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(`, qStr(node.value), '));']);
+        return sn(node, [`${scope.element.localSymbol}.appendChild(${scope.use(Symbols.text)}(`, qStr(node.value), '));']);
     },
     Program(node: JSAst.Program, scope, sn) {
         // NB `Program` is used as expression for text node
@@ -106,13 +96,13 @@ const generators: NodeGeneratorMap = {
         mount.add(`${nodeVar} = `);
 
         if (scope.requiresInjector()) {
-            mount.add([`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(${valueVar} = `, expr, `);`]);
+            mount.add([`${scope.use(Symbols.insert)}(${scope.localInjector()}, ${scope.use(Symbols.text)}(${valueVar} = `, expr, `);`]);
         } else {
-            mount.add([`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
+            mount.add([`${scope.element.localSymbol}.appendChild(${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
         }
 
         update.add([`${valueVar} = ${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `, ${valueVar});`]);
-        scope.template.update.push(update);
+        scope.func.update.push(update);
         return mount;
     },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
@@ -124,12 +114,12 @@ const generators: NodeGeneratorMap = {
 
         // Dynamic attributes must be handled by runtime and re-rendered on update
         if (isDynamicAttribute(node)) {
-            const output = sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.injector()}`, outputName, ', ', outputValue, ');']);
-            scope.template.update.push(output);
+            const output = sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.scopeInjector()}`, outputName, ', ', outputValue, ');']);
+            scope.func.update.push(output);
             return output;
         }
 
-        return sn(node, `${scope.element.symbol}.setAttribute(${outputName}, ${outputValue});`);
+        return sn(node, `${scope.element.localSymbol}.setAttribute(${outputName}, ${outputValue});`);
     },
     ENDDirective(node: Ast.ENDDirective, scope, sn) {
         if (node.prefix === 'on') {
@@ -154,8 +144,8 @@ const generators: NodeGeneratorMap = {
         }
 
         if (value) {
-            const output = sn(node, [`${scope.use(Symbols.addClass)}(${scope.injector()}, ${value});`]);
-            scope.template.update.push(output);
+            const output = sn(node, [`${scope.use(Symbols.addClass)}(${scope.scopeInjector()}, ${value});`]);
+            scope.func.update.push(output);
             return output;
         }
     },
@@ -167,7 +157,7 @@ const generators: NodeGeneratorMap = {
         const outputValue = compileAttributeValue(node.value, scope, sn);
 
         const output = sn(node, [`${scope.scope}.${outputName} = `, outputValue, ';']);
-        scope.template.update.push(output);
+        scope.func.update.push(output);
         return output;
     },
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
@@ -194,11 +184,11 @@ const generators: NodeGeneratorMap = {
         const blockContent = createContentFunction('iteratorBlock', scope, node.body, next);
         const blockSymbol = scope.localSymbol('iter');
 
-        scope.template.update.push(`${scope.use(node.key ? Symbols.updateKeyIterator : Symbols.updateIterator)}(${blockSymbol});`);
+        scope.func.update.push(`${scope.use(node.key ? Symbols.updateKeyIterator : Symbols.updateIterator)}(${blockSymbol});`);
 
         return sn(node, [
             `const ${blockSymbol} = ${scope.use(node.key ? Symbols.mountKeyIterator : Symbols.mountIterator)}`,
-            `(${scope.host}, ${scope.injector()}${blockExpr}${node.key ? `, ${blockKey}` : ''}, ${blockContent});`
+            `(${scope.host}, ${scope.localInjector()}${blockExpr}${node.key ? `, ${blockKey}` : ''}, ${blockContent});`
         ]);
     }
 };
@@ -335,7 +325,7 @@ function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[
     scope.push(scope.exitFunction([blockEntryBody]));
 
     const blockVar = scope.scopeSymbol('block');
-    scope.template.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
+    scope.func.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
 
-    return sn(node, `${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.injector()}, ${blockEntry});`);
+    return sn(node, `${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.localInjector()}, ${blockEntry});`);
 }

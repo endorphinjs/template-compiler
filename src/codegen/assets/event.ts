@@ -48,11 +48,11 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
 
     const eventType = node.name.name;
     if (scope.element.stats.dynamicEvents.has(eventType)) {
-        const bindEvent = `${scope.use(Symbols.addEvent)}(${scope.element.symbol}, ${qStr(eventType)}, ${handlerName});\n`;
+        const bindEvent = `${scope.use(Symbols.addEvent)}(${scope.element.scopeSymbol}, ${qStr(eventType)}, ${handlerName});\n`;
         output.add([`${scope.indent}`, bindEvent]);
-        scope.template.update.push(bindEvent);
+        scope.func.update.push(bindEvent);
     } else {
-        output.add(`${scope.indent}${scope.use(Symbols.addStaticEvent)}(${scope.element.symbol}, ${qStr(eventType)}, ${handlerName});\n`);
+        output.add(`${scope.indent}${scope.use(Symbols.addStaticEvent)}(${scope.element.localSymbol}, ${qStr(eventType)}, ${handlerName});\n`);
     }
 
     return output;
