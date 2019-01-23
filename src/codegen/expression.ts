@@ -109,7 +109,7 @@ const generators: NodeGeneratorMap = {
         return sn(node, `${scope.host}.state${propAccessor(node.name)}`, node.raw);
     },
     ENDVariableIdentifier(node: Ast.ENDVariableIdentifier, scope, sn) {
-        return sn(node, `${scope.use(Symbols.getVar)}(${scope.host}, ${qStr(node.name)})`, node.raw);
+        return sn(node, `${scope.scope}${propAccessor(node.name)}`, node.raw);
     },
     ENDFilter(node: Ast.ENDFilter, scope, sn, next) {
         const params = node.filter.params.slice();
@@ -119,7 +119,7 @@ const generators: NodeGeneratorMap = {
         params.unshift(new Ast.Identifier(scope.host));
 
         // Generate function declaration for given filter
-        const fnName = scope.createSymbol('filter');
+        const fnName = scope.globalSymbol('filter');
         const fn = commaChunks(params.map(next), `function ${fnName}(`, ') ');
 
         fn.push('{\n\treturn ', next(node.filter.body), `;\n}`);

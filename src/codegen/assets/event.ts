@@ -3,7 +3,7 @@ import { ENDDirective } from '../../ast/template';
 import * as JSAst from '../../ast/expression';
 import { ENDSyntaxError } from '../../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from '../scope';
-import { SourceNodeFactory, qStr } from '../utils';
+import { SourceNodeFactory, qStr, propAccessor } from '../utils';
 import { generate, NodeGeneratorMap } from '../expression';
 
 /**
@@ -11,7 +11,7 @@ import { generate, NodeGeneratorMap } from '../expression';
  */
 const eventGenerators: NodeGeneratorMap = {
     ENDVariableIdentifier(node: JSAst.ENDVariableIdentifier, scope, sn) {
-        return sn(node, [`${scope.localVars()}.${qStr(node.name)}`], node.raw);
+        return sn(node, [`${scope.scope}${propAccessor(node.name)}`], node.raw);
     }
 };
 
@@ -23,7 +23,6 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
         throw new ENDSyntaxError(`Event handler must be expression`, node.value.loc.source, node.value.loc.start);
     }
 
-    const scopeVar = scope.localVars();
     const handlerName = scope.localSymbol('handler');
     const handler = node.value.body[0];
     const eventSymbol = getEventSymbol(handler);
@@ -46,8 +45,6 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
 
     output.add(`${scope.host}, event, this)`);
     output.add(`\n}\n`);
-
-    scope.template.update.push(`${scope.indent}${scopeVar} = ${scope.use(Symbols.getScope)}(${scope.host});\n`);
 
     const eventType = node.name.name;
     if (scope.element.stats.dynamicEvents.has(eventType)) {

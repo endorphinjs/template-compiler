@@ -3,7 +3,7 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDSyntaxError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, Chunk } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format } from './utils';
 import getStats, { collectDynamicStats } from './node-stats';
 import compileExpression, { generate } from './expression';
 import generateEvent from './assets/event';
@@ -36,27 +36,23 @@ interface ConditionStatement {
 const generators: NodeGeneratorMap = {
     ENDTemplate(node: Ast.ENDTemplate, scope, sn, next) {
         // TODO compile partial
-        const elemSymbol = 'target';
+        const elemSymbol = scope.scopeSymbol('target');
 
-        const body: ChunkList = format([].concat(
-            `const ${elemSymbol} = ${scope.host}.componentView;`,
-            scope.enterTemplate(),
+        scope.enterFunction('template');
+        const body: ChunkList = [].concat(
+            `${elemSymbol} = ${scope.host}.componentView;`,
             scope.enterElement(elemSymbol, collectDynamicStats(node)),
             node.body.map(next),
             scope.exitElement(),
-            scope.exitTemplate(scope.createSymbol('update'))
-        ), scope.indent);
+        );
 
-        body.unshift(`export default function ${scope.createSymbol('mount')}(${scope.host}) {\n${scope.indent}`);
-        body.push('\n}');
-
-        return sn(node, body);
+        return sn(node, [`export default `, scope.exitFunction(body)]);
     },
     ENDElement(node: Ast.ENDElement, scope, sn, next) {
         // TODO handle components
         const stats = getStats(node);
         const elemName = node.name.name;
-        const varName = scope.localSymbol(elemName);
+        const varName = scope.scopeSymbol(elemName);
         const elem: SourceNode = !stats.text
             ? sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}, ${scope.host})`)
             : sn(node.name, [
@@ -70,7 +66,7 @@ const generators: NodeGeneratorMap = {
 
         // Check if template requires variable reference
         if (node.attributes.length || node.directives.length) {
-            decl.add(`const ${varName} = `);
+            decl.add(`${varName} = `);
         }
 
         if (scope.requiresInjector()) {
@@ -101,21 +97,18 @@ const generators: NodeGeneratorMap = {
     Program(node: JSAst.Program, scope, sn) {
         // NB `Program` is used as expression for text node
         const expr = compileExpression(node, scope);
-        const valueVar = scope.localSymbol('textValue');
-        const nodeVar = scope.localSymbol('text');
+        const nodeVar = scope.scopeSymbol('text');
+        const valueVar = scope.scopeSymbol('textValue');
 
         const mount = new SourceNode();
         const update = new SourceNode();
 
-        mount.add([
-            `let ${valueVar} = `, expr, ';\n',
-            `${scope.indent}const ${nodeVar} = `
-        ]);
+        mount.add(`${nodeVar} = `);
 
         if (scope.requiresInjector()) {
-            mount.add([`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(`, expr, `);`]);
+            mount.add([`${scope.use(Symbols.insert)}(${scope.injector()}, ${scope.use(Symbols.text)}(${valueVar} = `, expr, `);`]);
         } else {
-            mount.add([`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(`, expr, `));`]);
+            mount.add([`${scope.element.symbol}.appendChild(${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
         }
 
         update.add([`${valueVar} = ${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `, ${valueVar});`]);
@@ -173,7 +166,7 @@ const generators: NodeGeneratorMap = {
         const outputName = compileAttributeName(node.name, scope, sn);
         const outputValue = compileAttributeValue(node.value, scope, sn);
 
-        const output = sn(node, [`${scope.use(Symbols.setVar)}(${scope.host}`, outputName, ', ', outputValue, ');']);
+        const output = sn(node, [`${scope.scope}.${outputName} = `, outputValue, ';']);
         scope.template.update.push(output);
         return output;
     },
@@ -230,8 +223,8 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
     let body: ChunkList = [];
 
     // Import runtime symbols, used by template
-    if (scope.symbols.size) {
-        body.push(`import { ${Array.from(scope.symbols).map(symbol => Symbols[symbol]).join(', ')} } from "${scope.options.module}";`);
+    if (scope.runtimeSymbols.size) {
+        body.push(`import { ${Array.from(scope.runtimeSymbols).map(symbol => Symbols[symbol]).join(', ')} } from "${scope.options.module}";`);
     }
 
     // In most cases, templates and scope body are function declarations
@@ -267,7 +260,7 @@ function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope
 
     if (value instanceof JSAst.Program) {
         // Dynamic expression, must be compiled to function
-        return `${createExpressionFunction('attrValue', scope, sn, value)}(${scope.host})`;
+        return `${createExpressionFunction('attrValue', scope, sn, value)}(${scope.host}, ${scope.scope})`;
     }
 
     if (value instanceof Ast.ENDAttributeValueExpression) {
@@ -279,52 +272,37 @@ function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope
 }
 
 function createExpressionFunction(prefix: string, scope: CompileScope, sn: SourceNodeFactory, value: JSAst.Program): string {
-    const fnName = scope.createSymbol(prefix);
-    scope.push(sn(value, [`function ${fnName}(${scope.host}) {\n`,
-        `${scope.indent}return `,
-        compileExpression(value, scope),
-        `;\n}`]));
+    const fnName = scope.enterFunction(prefix);
+    const output = scope.exitFunction([compileExpression(value, scope)]);
+    scope.push(output);
 
     return fnName;
 }
 
 function createContentFunction(prefix: string, scope: CompileScope, statements: Ast.ENDStatement[], next: Generator): string {
-    const fnName = scope.createSymbol(prefix);
-    const injectorSymbol = 'injector';
-
-    const body: ChunkList = [].concat(
-        scope.enterTemplate(injectorSymbol),
-        statements.map(next),
-        scope.exitTemplate(`update_${fnName}`)
-    );
-
-    const output = new SourceNode();
-    output.add(`function ${fnName}(${scope.host}, ${injectorSymbol}) {\n${scope.indent}`);
-    output.add(format(body, scope.indent));
-    output.add('\n}');
-
+    const fnName = scope.enterFunction(prefix, 'injector');
+    const output = scope.exitFunction(statements.map(next));
     scope.push(output);
 
     return fnName;
 }
 
 function createConcatFunction(prefix: string, scope: CompileScope, tokens: Array<string | JSAst.Program>): string {
-    const fnName = scope.createSymbol(prefix);
-    const output = new SourceNode();
-    output.add(`function ${fnName}(${scope.host}) {\n${scope.indent}return `);
+    const fnName = scope.enterFunction(prefix);
+    const body = new SourceNode();
 
     tokens.forEach((token, i) => {
         if (i !== 0) {
-            output.add(' + ');
+            body.add(' + ');
         }
         if (token instanceof JSAst.Program) {
-            output.add(['(', compileExpression(token, scope), ')']);
+            body.add(['(', compileExpression(token, scope), ')']);
         } else {
-            output.add(qStr(token));
+            body.add(qStr(token));
         }
     });
-    output.add('\n}');
-    scope.push(output);
+
+    scope.push(scope.exitFunction(['return ', body]));
     return fnName;
 }
 
@@ -334,57 +312,30 @@ function isDynamicAttribute(attr: Ast.ENDAttribute): boolean {
         || attr.value instanceof Ast.ENDAttributeValueExpression;
 }
 
-function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
-    const result: ChunkList = [];
-
-    chunks.filter(isValidChunk).forEach((chunk, i, arr) => {
-        if (i !== 0) {
-            result.push(prefix);
-        }
-
-        result.push(chunk);
-
-        if (i !== arr.length - 1) {
-            result.push(suffix);
-        }
-    });
-    return result;
-}
-
-function isValidChunk(chunk: Chunk): boolean {
-    return chunk instanceof SourceNode
-        ? chunk.children.length !== 0
-        : chunk.length !== 0;
-}
-
 function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[], scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {
     const indent = scope.indent;
-
-    // Block entry point
-    const blockEntry = scope.createSymbol('conditionBlock');
-    const entryFunction = new SourceNode();
     const innerIndent = indent.repeat(2);
 
-    entryFunction.add(`function ${blockEntry}(${scope.host}) {\n${indent}`);
+    // Block entry point
+    const blockEntry = scope.enterFunction('conditionEntry');
+    const blockEntryBody = new SourceNode();
     blocks.forEach((block, i) => {
         if (i === 0) {
-            entryFunction.add([`if (`, generate(block.test, scope), ')']);
+            blockEntryBody.add([`if (`, generate(block.test, scope), ')']);
         } else if (block.test) {
-            entryFunction.add([`else if (`, generate(block.test, scope), ')']);
+            blockEntryBody.add([`else if (`, generate(block.test, scope), ')']);
         } else {
-            entryFunction.add('else');
+            blockEntryBody.add('else');
         }
 
         const blockContent = createContentFunction('conditionContent', scope, block.consequent, next);
-        entryFunction.add(` {\n${innerIndent}return ${blockContent};\n${indent}} `);
+        blockEntryBody.add(` {\n${innerIndent}return ${blockContent};\n${indent}} `);
     });
 
-    entryFunction.add('\n}');
+    scope.push(scope.exitFunction([blockEntryBody]));
 
-    scope.push(entryFunction);
-
-    const blockVar = scope.localSymbol('block');
+    const blockVar = scope.scopeSymbol('block');
     scope.template.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
 
-    return sn(node, `const ${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.injector()}, ${blockEntry});`);
+    return sn(node, `${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.injector()}, ${blockEntry});`);
 }

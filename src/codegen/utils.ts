@@ -44,3 +44,47 @@ export const sn: SourceNodeFactory = (node, chunks, name) => {
 
     return output;
 }
+
+/**
+ * Converts given HTML tag name to JS variable name
+ */
+export function tagToJS(name: string, capitalize: boolean): string {
+    name = name.replace(/-(\w)/g, (str: string, p1: string) => p1.toUpperCase());
+    if (capitalize && name) {
+        name = name[0].toUpperCase() + name.slice(1);
+    }
+
+    return name;
+
+}
+
+export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
+    const result: ChunkList = [];
+
+    chunks.filter(isValidChunk).forEach((chunk, i, arr) => {
+        if (i !== 0) {
+            result.push(prefix);
+        }
+
+        result.push(chunk);
+
+        if (i !== arr.length - 1) {
+            result.push(suffix);
+        }
+    });
+    return result;
+}
+
+function isValidChunk(chunk: Chunk): boolean {
+    return chunk instanceof SourceNode
+        ? chunk.children.length !== 0
+        : chunk.length !== 0;
+}
+
+/**
+ * Generates property accessor code
+ */
+export function propAccessor(name: string): string {
+    return /^[a-zA-Z_$][\w_$]*$/.test(name)
+        ? `.${name}` : `[${qStr(name)}]`;
+}
