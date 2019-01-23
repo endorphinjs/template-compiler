@@ -97,6 +97,7 @@ export default class ElementContext {
         this.output.add([this.expr, `;`]);
 
         if (this.hasInjector) {
+            this.output.add(`\n${this.scope.indent}`);
             if (this._localInjector) {
                 this.output.add(`const ${this.localInjector} = `);
             }

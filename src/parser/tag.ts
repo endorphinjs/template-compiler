@@ -1,5 +1,5 @@
 import expression, { EXPRESSION_START } from './expression';
-import { Identifier, Literal, Program } from '../ast/expression';
+import { Identifier, Literal, Program, ExpressionStatement } from '../ast/expression';
 import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue, ENDDirective } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import Scanner from './scanner';
@@ -149,7 +149,7 @@ function attribute(scanner: Scanner): ENDAttribute {
 function attributeValue(scanner: Scanner): ENDAttributeValue {
     const expr = expression(scanner);
     if (expr) {
-        return expr;
+        return expandExpression(expr);
     }
 
     const start = scanner.pos;
@@ -157,14 +157,20 @@ function attributeValue(scanner: Scanner): ENDAttributeValue {
     if (eatQuoted(scanner)) {
         // Check if it’s interpolated value, e.g. "foo {bar}"
         const raw = scanner.current();
-        const node: ENDAttributeValue = raw.includes(exprStart)
-            ? attributeValueExpression(scanner)
-            : new Literal(raw.slice(1, -1), raw)
+        if (raw.includes(exprStart)) {
+            const attrExpression = attributeValueExpression(scanner.limit(scanner.start + 1, scanner.pos - 1));
+            if (attrExpression.elements.length === 1) {
+                return attrExpression.elements[0];
+            }
 
-        return scanner.astNode(node, start);
+            return scanner.astNode(attrExpression, start);
+        }
+
+        return scanner.astNode(new Literal(raw.slice(1, -1), raw), start);
     }
 
     if (scanner.eatWhile(isUnquoted)) {
+        scanner.start = start;
         const value = scanner.current();
         return scanner.astNode(new Literal(value, value), start);
     }
@@ -174,29 +180,28 @@ function attributeValue(scanner: Scanner): ENDAttributeValue {
  * Parses interpolated attribute value from current scanner context
  */
 function attributeValueExpression(scanner: Scanner): ENDAttributeValueExpression {
-    const subScanner = scanner.limit();
-    let start = subScanner.start;
-    let pos = subScanner.start;
+    let start = scanner.start;
+    let pos = scanner.start;
     let expr: Program;
     const items: ENDBaseAttributeValue[] = [];
 
-    while (!subScanner.eof()) {
-        pos = subScanner.pos;
-        if (expr = expression(subScanner)) {
+    while (!scanner.eof()) {
+        pos = scanner.pos;
+        if (expr = expression(scanner)) {
             if (pos !== start) {
-                const text = subScanner.substring(start, pos);
-                items.push(subScanner.astNode(new Literal(text, text), start));
+                const text = scanner.substring(start, pos);
+                items.push(scanner.astNode(new Literal(text, text), start));
             }
-            items.push(subScanner.astNode(expr, start));
-            start = subScanner.pos;
+            items.push(scanner.astNode(expr, start));
+            start = scanner.pos;
         } else {
-            subScanner.pos++;
+            scanner.pos++;
         }
     }
 
-    if (start !== subScanner.pos) {
-        const text = subScanner.substring(start, subScanner.pos);
-        items.push(subScanner.astNode(new Literal(text, text), start));
+    if (start !== scanner.pos) {
+        const text = scanner.substring(start, scanner.pos);
+        items.push(scanner.astNode(new Literal(text, text), start));
     }
 
     return new ENDAttributeValueExpression(items);
@@ -240,4 +245,18 @@ function getDirective(attr: ENDAttribute): ENDDirective {
             return new ENDDirective(prefix, directiveId, attr.value);
         }
     }
+}
+
+/**
+ * Detects if given expression is a single literal and returns it
+ */
+function expandExpression(expr: Program): Program | Literal {
+    if (expr.body.length === 1 && expr.body[0] instanceof ExpressionStatement) {
+        const inner = expr.body[0] as ExpressionStatement;
+        if (inner.expression instanceof Literal) {
+            return inner.expression;
+        }
+    }
+
+    return expr;
 }

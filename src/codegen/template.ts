@@ -113,8 +113,8 @@ const generators: NodeGeneratorMap = {
         const outputValue = compileAttributeValue(node.value, scope, sn);
 
         // Dynamic attributes must be handled by runtime and re-rendered on update
-        if (isDynamicAttribute(node)) {
-            const output = sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.scopeInjector()}`, outputName, ', ', outputValue, ');']);
+        if (isDynamicAttribute(node) || !scope.element) {
+            const output = sn(node, `${scope.use(Symbols.setAttribute)}(${scope.scopeInjector()}, ${outputName}, ${outputValue});`);
             scope.func.update.push(output);
             return output;
         }
@@ -263,8 +263,9 @@ function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope
 
 function createExpressionFunction(prefix: string, scope: CompileScope, sn: SourceNodeFactory, value: JSAst.Program): string {
     const fnName = scope.enterFunction(prefix);
-    const output = scope.exitFunction([compileExpression(value, scope)]);
-    scope.push(output);
+    const body = new SourceNode();
+    body.add(['return ', compileExpression(value, scope), ';']);
+    scope.push(scope.exitFunction([body]));
 
     return fnName;
 }
@@ -281,6 +282,7 @@ function createConcatFunction(prefix: string, scope: CompileScope, tokens: Array
     const fnName = scope.enterFunction(prefix);
     const body = new SourceNode();
 
+    body.add('return ');
     tokens.forEach((token, i) => {
         if (i !== 0) {
             body.add(' + ');
@@ -291,8 +293,9 @@ function createConcatFunction(prefix: string, scope: CompileScope, tokens: Array
             body.add(qStr(token));
         }
     });
+    body.add(';');
 
-    scope.push(scope.exitFunction(['return ', body]));
+    scope.push(scope.exitFunction([body]));
     return fnName;
 }
 

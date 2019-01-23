@@ -195,9 +195,9 @@ export default class CompileScope {
             output.add(args);
             output.add(`) {\n${indent}`);
             output.add(format(func.update, indent));
-            output.add(`\n}\n`);
+            output.add(`\n}`);
         } else {
-            output.add(`\n}\n`);
+            output.add(`\n}`);
         }
 
         this.func = this.func.parent;
