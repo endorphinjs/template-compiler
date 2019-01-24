@@ -44,6 +44,10 @@ interface FunctionContext {
     update: ChunkList;
     parent?: FunctionContext;
     localSymbols: SymbolGenerator;
+    updateSymbols: SymbolGenerator;
+    updateDeclarations: {
+        [name: string]: string
+    };
 
     /** Name of generated function */
     symbol: string;
@@ -104,11 +108,8 @@ export default class CompileScope {
 
     /** Symbol for referencing local scope */
     get scope(): string {
-        const name = this.options.scope;
-        if (this.func && !this.func.scopeArg.children.length) {
-            this.func.scopeArg.add(`, ${name}`);
-        }
-        return name;
+        this.markScopeAsUsed();
+        return this.options.scope;
     }
 
     /** Path to JS module that holds Endorphin runtime functions */
@@ -122,7 +123,7 @@ export default class CompileScope {
     }
 
     get element(): ElementContext {
-        return this.func.element;
+        return this.func && this.func.element;
     }
 
     /**
@@ -139,6 +140,7 @@ export default class CompileScope {
      * Creates scope symbol with given name
      */
     scopeSymbol(name: string): string {
+        this.markScopeAsUsed();
         return this.scopeSymbols.generate(name);
     }
 
@@ -163,15 +165,38 @@ export default class CompileScope {
         this.body.push(node);
     }
 
+    /**
+     * Adds given chunk as update item for current function
+     */
+    pushUpdate(chunk: Chunk): void {
+        this.func.update.push(chunk);
+    }
+
+    /**
+     * Generates symbol for update function. It can be used as a shorthand for
+     * referencing `value` in update function
+     */
+    updateSymbol(name: string, value: string): string {
+        if (!(value in this.func.updateDeclarations)) {
+            const symbol = this.func.updateDeclarations[value] = this.func.updateSymbols.generate(name);
+            this.func.update.unshift(`const ${symbol} = ${value};`);
+        }
+
+        return this.func.updateDeclarations[value];
+    }
+
     enterFunction(name: string, injectorSymbol?: string): string {
         const ctx: FunctionContext = {
             symbol: this.globalSymbol(name),
             localSymbols: new SymbolGenerator(),
+            updateSymbols: new SymbolGenerator(),
+            updateDeclarations: {},
             injector: injectorSymbol,
             parent: this.func,
             output: new SourceNode(),
             scopeArg: new SourceNode(),
-            update: []
+            update: [],
+            element: this.element
         };
         this.func = ctx;
         return ctx.symbol;
@@ -241,10 +266,17 @@ export default class CompileScope {
      */
     scopeInjector(): string {
         if (this.element) {
+            this.markScopeAsUsed();
             return this.element.scopeInjector;
         }
 
         return this.func.injector;
+    }
+
+    private markScopeAsUsed() {
+        if (this.func && !this.func.scopeArg.children.length) {
+            this.func.scopeArg.add(`, ${this.options.scope}`);
+        }
     }
 }
 

@@ -1,11 +1,11 @@
 import {
     ENDElement, ENDText, ENDStatement, ENDIfStatement, ENDChooseStatement,
-    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate
+    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate, ENDPartialStatement, ENDAttribute
 } from '../ast/template';
 import { Identifier, Program } from '../ast/expression';
 
 const dynamicContent: Set<string> = new Set([
-    'ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement', 'ENDPartialStatement'
+    'ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement'
 ]);
 
 export interface ElementStats {
@@ -17,6 +17,11 @@ export interface ElementStats {
      * during updates
      */
     staticContent: boolean;
+
+    /**
+     * Whether element contains partials
+     */
+    hasPartials: boolean;
 
     /** Static text content, if any */
     text?: ENDText;
@@ -43,18 +48,12 @@ export default function collectStats(elem: ENDElement): ElementStats {
     // TODO check for inner html
     const stats = createStats(elem.name.name);
 
-    // Check immediate attributes
-    elem.attributes.forEach(attr => {
-        if (attr.name instanceof Program) {
-            stats.attributeExpressions = true;
-        } else if (attr.name instanceof Identifier && (attr.value instanceof Program || attr.value instanceof ENDAttributeValueExpression)) {
-            stats.dynamicAttributes.add(attr.name.name);
-        }
-    });
+    topLevelAttributeStats(elem.attributes, stats);
 
     // Fast path: check if element contains text node only
-    if (elem.body.length === 1 && elem.body[0] instanceof ENDText) {
-        stats.text = elem.body[0] as ENDText;
+    const child = elem.body[0];
+    if (elem.body.length === 1 && child instanceof ENDText && typeof child.value === 'string') {
+        stats.text = child;
     } else {
         collectDynamicStats(elem, stats);
     }
@@ -66,37 +65,66 @@ export default function collectStats(elem: ENDElement): ElementStats {
  * Collects stats about dynamic content in given element
  */
 export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: ElementStats = createStats()): ElementStats {
-    // TODO respect partials, which will cause all attributes and events to be dynamic
     walk(elem, node => {
         if (dynamicContent.has(node.type)) {
             stats.staticContent = false;
+            collectStatsInBlock(node, stats);
+        } else if (node instanceof ENDPartialStatement) {
+            stats.staticContent = false;
+            stats.hasPartials = true;
+        } else if (node instanceof ENDAddClassStatement) {
+            stats.dynamicAttributes.add('class');
+        } else if (node instanceof ENDAttributeStatement) {
+            // Attribute statements in top-level element context are basically
+            // the same as immediate attributes of element
+            topLevelAttributeStats(node.attributes, stats);
+        }
+        return false;
+    });
+
+    return stats;
+}
+
+function collectStatsInBlock(node: ENDStatement, stats: ElementStats) {
+    walk(node, child => {
+        if (dynamicContent.has(child.type)) {
+            // get deeper into dynamic blocks
             return true;
         }
-        if (node instanceof ENDAddClassStatement) {
+
+        if (child instanceof ENDPartialStatement) {
+            stats.staticContent = false;
+            stats.hasPartials = true;
+        } else if (child instanceof ENDAddClassStatement) {
             stats.dynamicAttributes.add('class');
-        }
-        else if (node instanceof ENDAttributeStatement) {
-            // XXX technically, attribute statement promotes attributes
-            // to dynamic only if it’s inside control statement (if, choose,
-            // for-each) but requires more code analysis.
-            // For now, simply assume that all attributes in statement are dynamic
-            node.attributes.forEach(attr => {
+        } else if (child instanceof ENDAttributeStatement) {
+            child.attributes.forEach(attr => {
                 if (attr.name instanceof Identifier) {
                     stats.dynamicAttributes.add(attr.name.name);
                 } else if (attr.name instanceof Program) {
                     stats.attributeExpressions = true;
                 }
             });
-            node.directives.forEach(directive => {
+            child.directives.forEach(directive => {
                 if (directive.prefix === 'on') {
                     stats.dynamicEvents.add(directive.name.name);
                 }
             });
         }
-        return false;
     });
+}
 
-    return stats;
+/**
+ * Collects element’s immediate attribute stats
+ */
+function topLevelAttributeStats(attributes: ENDAttribute[], stats: ElementStats): void {
+    attributes.forEach(attr => {
+        if (attr.name instanceof Program) {
+            stats.attributeExpressions = true;
+        } else if (attr.name instanceof Identifier && (attr.value instanceof Program || attr.value instanceof ENDAttributeValueExpression)) {
+            stats.dynamicAttributes.add(attr.name.name);
+        }
+    });
 }
 
 /**
@@ -109,8 +137,9 @@ function createStats(name: string = ''): ElementStats {
         staticContent: true,
         dynamicAttributes: new Set(),
         dynamicEvents: new Set(),
-        attributeExpressions: false
-    }
+        attributeExpressions: false,
+        hasPartials: false
+    };
 }
 
 /**

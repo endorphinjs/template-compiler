@@ -82,9 +82,15 @@ function isValidChunk(chunk: Chunk): boolean {
 }
 
 /**
+ * Check if given name can be used as property identifier
+ */
+export function isIdentifier(name: string): boolean {
+    return /^[a-zA-Z_$][\w_$]*$/.test(name);
+}
+
+/**
  * Generates property accessor code
  */
 export function propAccessor(name: string): string {
-    return /^[a-zA-Z_$][\w_$]*$/.test(name)
-        ? `.${name}` : `[${qStr(name)}]`;
+    return isIdentifier(name) ? `.${name}` : `[${qStr(name)}]`;
 }

@@ -81,7 +81,9 @@ export default class ElementContext {
 
         // TODO finalize all data types
         if (this.stats.attributeExpressions || this.stats.dynamicAttributes.size) {
-            chunks.push(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${this.scopeSymbol});`);
+            const ref = this.scope.updateSymbol('injector', this.scopeInjector);
+            this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${ref});`);
+            chunks.push(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${this.localInjector});`);
         }
 
         result.add(format(chunks, this.scope.indent));

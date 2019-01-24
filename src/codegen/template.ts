@@ -3,7 +3,7 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDSyntaxError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier } from './utils';
 import getStats, { collectDynamicStats } from './node-stats';
 import compileExpression, { generate } from './expression';
 import generateEvent from './assets/event';
@@ -113,13 +113,13 @@ const generators: NodeGeneratorMap = {
         const outputValue = compileAttributeValue(node.value, scope, sn);
 
         // Dynamic attributes must be handled by runtime and re-rendered on update
-        if (isDynamicAttribute(node) || !scope.element) {
-            const output = sn(node, `${scope.use(Symbols.setAttribute)}(${scope.scopeInjector()}, ${outputName}, ${outputValue});`);
-            scope.func.update.push(output);
-            return output;
+        if (isDynamicAttribute(node, scope)) {
+            const ref = scope.updateSymbol('injector', scope.scopeInjector());
+            scope.pushUpdate(sn(node, [`${scope.use(Symbols.setAttribute)}(${ref}, `, outputName, ', ', outputValue, `);`]));
+            return sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.localInjector()}, `, outputName, ', ', outputValue, `);`]);
         }
 
-        return sn(node, `${scope.element.localSymbol}.setAttribute(${outputName}, ${outputValue});`);
+        return sn(node, [`${scope.element.localSymbol}.setAttribute(`, outputName, ', ', outputValue, `);`]);
     },
     ENDDirective(node: Ast.ENDDirective, scope, sn) {
         if (node.prefix === 'on') {
@@ -153,30 +153,55 @@ const generators: NodeGeneratorMap = {
         return sn(node, node.variables.map(next));
     },
     ENDVariable(node: Ast.ENDVariable, scope, sn) {
-        const outputName = compileAttributeName(node.name, scope, sn);
-        const outputValue = compileAttributeValue(node.value, scope, sn);
+        const declaration = new SourceNode();
+        declaration.add(scope.scope);
 
-        const output = sn(node, [`${scope.scope}.${outputName} = `, outputValue, ';']);
+        if (node.name instanceof JSAst.Identifier) {
+            // Static attribute name
+            if (isIdentifier(node.name.name)) {
+                declaration.add(['.', sn(node.name, node.name.name)]);
+            } else {
+                declaration.add(['[', qStr(node.name.name), ']']);
+            }
+        } else if (node.name instanceof JSAst.Program) {
+            // Dynamic attribute name
+            declaration.add(['[', compileExpression(node.name, scope), ']']);
+        }
+
+        const output = sn(node, [declaration, ` = `, compileAttributeValue(node.value, scope, sn), ';']);
         scope.func.update.push(output);
         return output;
     },
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
-        const blocks: ConditionStatement[] = [{
-            test: node.test,
-            consequent: node.consequent,
-        }];
+        // Edge case: if statement contains attributes only, we can create much simpler
+        // function
+        if (node.consequent.every(node => node instanceof Ast.ENDAttributeStatement)) {
+            const fn = scope.enterFunction('ifAttr', 'injector');
+            const body = new SourceNode();
+            const indent = scope.indent.repeat(2);
 
-        return generateConditionalBlock(node, blocks, scope, sn, next);
+            scope.func.element = null;
+            body.add([`if (`, generate(node.test, scope), ') {']);
+            node.consequent.forEach(node => {
+                body.add(['\n', indent, next(node)]);
+            });
+            body.add(`\n${scope.indent}}`);
+
+            // Reset update code since the very save function will be used for
+            // element update
+            scope.func.update.length = 0;
+            const { scopeArg } = scope.func;
+            scope.push(scope.exitFunction([body]));
+            const ref = scope.updateSymbol('injector', scope.scopeInjector());
+            scope.pushUpdate(sn(node, [`${fn}(${scope.host}, ${ref}`, scopeArg, `);`]));
+
+            return sn(node, [`${fn}(${scope.host}, ${scope.localInjector()}`, scopeArg, `);`]);
+        }
+
+        return generateConditionalBlock(node, [node], scope, sn, next);
     },
     ENDChooseStatement(node: Ast.ENDChooseStatement, scope, sn, next) {
-        const blocks: ConditionStatement[] = node.cases.map(item => {
-            return {
-                test: item.test,
-                consequent: item.consequent
-            }
-        });
-
-        return generateConditionalBlock(node, blocks, scope, sn, next);
+        return generateConditionalBlock(node, node.cases, scope, sn, next);
     },
     ENDForEachStatement(node: Ast.ENDForEachStatement, scope, sn, next) {
         const blockExpr = createExpressionFunction('iteratorExpr', scope, sn, node.select);
@@ -225,7 +250,7 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
     return sn(program, body);
 }
 
-function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, sn: SourceNodeFactory): string {
+function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, sn: SourceNodeFactory): Chunk {
     if (name instanceof JSAst.Identifier) {
         // Static attribute name
         return qStr(name.name);
@@ -233,11 +258,11 @@ function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, s
 
     if (name instanceof JSAst.Program) {
         // Dynamic attribute name
-        return `${createExpressionFunction('attrName', scope, sn, name)}(${scope.host})`;
+        return compileExpression(name, scope);
     }
 }
 
-function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope, sn: SourceNodeFactory): string {
+function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope, sn: SourceNodeFactory): Chunk {
     if (value === null) {
         // Static boolean attribute
         return qStr('');
@@ -245,12 +270,12 @@ function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope
 
     if (value instanceof JSAst.Literal) {
         // Static string attribute
-        return qStr(String(value.value));
+        return qStr(String(value.value != null ? value.value : ''));
     }
 
     if (value instanceof JSAst.Program) {
         // Dynamic expression, must be compiled to function
-        return `${createExpressionFunction('attrValue', scope, sn, value)}(${scope.host}, ${scope.scope})`;
+        return compileExpression(value, scope);
     }
 
     if (value instanceof Ast.ENDAttributeValueExpression) {
@@ -299,7 +324,20 @@ function createConcatFunction(prefix: string, scope: CompileScope, tokens: Array
     return fnName;
 }
 
-function isDynamicAttribute(attr: Ast.ENDAttribute): boolean {
+function isDynamicAttribute(attr: Ast.ENDAttribute, scope: CompileScope): boolean {
+    if (!scope.element) {
+        return true;
+    }
+
+    const stats = scope.element.stats;
+    if (stats.hasPartials || stats.attributeExpressions) {
+        return true;
+    }
+
+    if (attr.name instanceof JSAst.Identifier) {
+        return stats.dynamicAttributes.has(attr.name.name);
+    }
+
     return attr.name instanceof JSAst.Program
         || attr.value instanceof JSAst.Program
         || attr.value instanceof Ast.ENDAttributeValueExpression;
