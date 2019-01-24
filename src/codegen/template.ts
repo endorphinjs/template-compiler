@@ -175,7 +175,7 @@ const generators: NodeGeneratorMap = {
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
         // Edge case: if statement contains attributes only, we can create much simpler
         // function
-        if (node.consequent.every(node => node instanceof Ast.ENDAttributeStatement)) {
+        if (node.consequent.every(node => node instanceof Ast.ENDAttributeStatement || node instanceof Ast.ENDAddClassStatement)) {
             const fn = scope.enterFunction('ifAttr', 'injector');
             const body = new SourceNode();
             const indent = scope.indent.repeat(2);
@@ -297,6 +297,7 @@ function createExpressionFunction(prefix: string, scope: CompileScope, sn: Sourc
 
 function createContentFunction(prefix: string, scope: CompileScope, statements: Ast.ENDStatement[], next: Generator): string {
     const fnName = scope.enterFunction(prefix, 'injector');
+    scope.func.element = null;
     const output = scope.exitFunction(statements.map(next));
     scope.push(output);
 
