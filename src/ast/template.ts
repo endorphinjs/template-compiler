@@ -5,7 +5,7 @@
 import { Node } from './base';
 import { Identifier, Program, Literal } from './expression';
 
-export type ENDStatement = ENDElement | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement;
+export type ENDStatement = ENDElement | ENDInnerHTML | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement;
 export type ENDProgramStatement = ENDTemplate | ENDElement;
 export type ENDControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
 export type ENDPlainStatement = ENDText | Program;
@@ -147,6 +147,13 @@ export class ENDAddClassStatement extends ENDNode {
 export class ENDText extends ENDNode {
     type = 'ENDText';
     constructor(readonly value: string) {
+        super();
+    }
+}
+
+export class ENDInnerHTML extends ENDNode {
+    type = 'ENDInnerHTML';
+    constructor(readonly value: Program) {
         super();
     }
 }

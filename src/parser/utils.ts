@@ -1,8 +1,8 @@
 import Scanner, { MatchFunction } from './scanner';
 
-const SINGLE_QUOTE = 39; // '
-const DOUBLE_QUOTE = 34; // "
-const ESCAPE = 92; // \
+export const SINGLE_QUOTE = 39; // '
+export const DOUBLE_QUOTE = 34; // "
+export const ESCAPE = 92; // \
 
 /**
  * Tries to consume content from given stream that matches `fn` test. If consumed,

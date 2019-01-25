@@ -3,10 +3,11 @@ import { toCharCodes, eatSection, isSpace } from '../utils';
 import { Identifier, Program } from '../../ast/expression';
 import { ENDStatement, ENDAttribute, ParsedTag, ENDText } from '../../ast/template';
 import { Node } from '../../ast/base';
+import syntaxError, { ENDSyntaxError } from '../syntax-error';
 import { closeTag, openTag } from '../tag';
 import text from '../text';
-import syntaxError, { ENDSyntaxError } from '../syntax-error';
 import expression from '../expression';
+import innerHTML from '../inner-html';
 
 const cdataOpen = toCharCodes('<![CDATA[');
 const cdataClose = toCharCodes(']]>');
@@ -53,7 +54,7 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
             } else {
                 tagStack.push(tagEntry);
             }
-        } else if (token = expression(scanner) || text(scanner)) {
+        } else if (token = innerHTML(scanner) || expression(scanner) || text(scanner)) {
             items.push(token);
         } else if (!ignored(scanner)) {
             throw syntaxError(scanner, `Unexpected token`);

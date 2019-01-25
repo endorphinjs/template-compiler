@@ -105,6 +105,17 @@ const generators: NodeGeneratorMap = {
         scope.func.update.push(update);
         return mount;
     },
+    ENDInnerHTML(node: Ast.ENDInnerHTML, scope, sn) {
+        const blockExpr = createExpressionFunction('getHTML', scope, sn, node.value);
+        const blockSymbol = scope.scopeSymbol('html');
+
+        scope.func.update.push(`${scope.use(Symbols.updateInnerHTML)}(${blockSymbol});`);
+
+        return sn(node, [
+            `${blockSymbol} = ${scope.use(Symbols.mountInnerHTML)}`,
+            `(${scope.host}, ${scope.localInjector()}, ${blockExpr});`
+        ]);
+    },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
         return sn(node, [].concat(
             node.attributes.map(next),
