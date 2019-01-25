@@ -123,7 +123,13 @@ export default class CompileScope {
     }
 
     get element(): ElementContext {
-        return this.func && this.func.element;
+        let func = this.func;
+        while (func) {
+            if (func.element) {
+                return func.element;
+            }
+            func = func.parent;
+        }
     }
 
     /**
@@ -195,8 +201,7 @@ export default class CompileScope {
             parent: this.func,
             output: new SourceNode(),
             scopeArg: new SourceNode(),
-            update: [],
-            element: this.element
+            update: []
         };
         this.func = ctx;
         return ctx.symbol;
@@ -254,8 +259,8 @@ export default class CompileScope {
      * Returns local injector instance symbol for context element or function
      */
     localInjector(): string {
-        if (this.element) {
-            return this.element.localInjector;
+        if (this.func.element) {
+            return this.func.element.localInjector;
         }
 
         return this.func.injector;
@@ -265,9 +270,9 @@ export default class CompileScope {
      * Returns scope injector instance symbol for context element or function
      */
     scopeInjector(): string {
-        if (this.element) {
+        if (this.func.element) {
             this.markScopeAsUsed();
-            return this.element.scopeInjector;
+            return this.func.element.scopeInjector;
         }
 
         return this.func.injector;

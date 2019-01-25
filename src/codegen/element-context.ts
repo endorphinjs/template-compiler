@@ -1,7 +1,7 @@
 import { SourceNode } from 'source-map';
 import { ElementStats } from './node-stats';
 import CompileScope, { RuntimeSymbols } from './scope';
-import { format, Chunk, ChunkList } from './utils';
+import { format, Chunk, ChunkList, tagToJS } from './utils';
 
 export default class ElementContext {
     parent?: ElementContext;
@@ -23,7 +23,7 @@ export default class ElementContext {
      */
     get localSymbol(): string {
         if (!this._localSymbol) {
-            this._localSymbol = this.scope.localSymbol(this.name);
+            this._localSymbol = this.scope.localSymbol(tagToJS(this.name));
         }
 
         return this._localSymbol;
@@ -34,7 +34,7 @@ export default class ElementContext {
      */
     get scopeSymbol(): string {
         if (!this._scopeSymbol) {
-            this._scopeSymbol = this.scope.scopeSymbol(this.name);
+            this._scopeSymbol = this.scope.scopeSymbol(tagToJS(this.name));
         }
 
         return this._scopeSymbol;

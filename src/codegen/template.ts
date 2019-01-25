@@ -106,7 +106,10 @@ const generators: NodeGeneratorMap = {
         return mount;
     },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
-        return sn(node, node.attributes.map(next));
+        return sn(node, [].concat(
+            node.attributes.map(next),
+            node.directives.map(next)
+        ));
     },
     ENDAttribute(node: Ast.ENDAttribute, scope, sn) {
         const outputName = compileAttributeName(node.name, scope, sn);
@@ -153,29 +156,39 @@ const generators: NodeGeneratorMap = {
         return sn(node, node.variables.map(next));
     },
     ENDVariable(node: Ast.ENDVariable, scope, sn) {
-        const declaration = new SourceNode();
-        declaration.add(scope.scope);
+        const name = new SourceNode();
+        name.add(scope.scope);
 
         if (node.name instanceof JSAst.Identifier) {
             // Static attribute name
             if (isIdentifier(node.name.name)) {
-                declaration.add(['.', sn(node.name, node.name.name)]);
+                name.add(['.', sn(node.name, node.name.name)]);
             } else {
-                declaration.add(['[', qStr(node.name.name), ']']);
+                name.add(['[', qStr(node.name.name), ']']);
             }
         } else if (node.name instanceof JSAst.Program) {
             // Dynamic attribute name
-            declaration.add(['[', compileExpression(node.name, scope), ']']);
+            name.add(['[', compileExpression(node.name, scope), ']']);
         }
 
-        const output = sn(node, [declaration, ` = `, compileAttributeValue(node.value, scope, sn), ';']);
+        let value: SourceNode;
+        if (node.value instanceof JSAst.Literal) {
+            value = sn(node.value, JSON.stringify(node.value.value));
+        } else if (node.value instanceof JSAst.Program) {
+            value = compileExpression(node.value, scope);
+        } else {
+            value = new SourceNode();
+            value.add('null');
+        }
+
+        const output = sn(node, [name, ` = `, value, ';']);
         scope.func.update.push(output);
         return output;
     },
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
         // Edge case: if statement contains attributes only, we can create much simpler
         // function
-        if (node.consequent.every(node => node instanceof Ast.ENDAttributeStatement || node instanceof Ast.ENDAddClassStatement)) {
+        if (node.consequent.every(isSimpleConditionContent)) {
             const fn = scope.enterFunction('ifAttr', 'injector');
             const body = new SourceNode();
             const indent = scope.indent.repeat(2);
@@ -207,13 +220,13 @@ const generators: NodeGeneratorMap = {
         const blockExpr = createExpressionFunction('iteratorExpr', scope, sn, node.select);
         const blockKey: string = node.key ? createExpressionFunction('iteratorKey', scope, sn, node.key) : null;
         const blockContent = createContentFunction('iteratorBlock', scope, node.body, next);
-        const blockSymbol = scope.localSymbol('iter');
+        const blockSymbol = scope.scopeSymbol('iter');
 
         scope.func.update.push(`${scope.use(node.key ? Symbols.updateKeyIterator : Symbols.updateIterator)}(${blockSymbol});`);
 
         return sn(node, [
-            `const ${blockSymbol} = ${scope.use(node.key ? Symbols.mountKeyIterator : Symbols.mountIterator)}`,
-            `(${scope.host}, ${scope.localInjector()}${blockExpr}${node.key ? `, ${blockKey}` : ''}, ${blockContent});`
+            `${blockSymbol} = ${scope.use(node.key ? Symbols.mountKeyIterator : Symbols.mountIterator)}`,
+            `(${scope.host}, ${scope.localInjector()}, ${blockExpr}${node.key ? `, ${blockKey}` : ''}, ${blockContent});`
         ]);
     }
 };
@@ -297,7 +310,6 @@ function createExpressionFunction(prefix: string, scope: CompileScope, sn: Sourc
 
 function createContentFunction(prefix: string, scope: CompileScope, statements: Ast.ENDStatement[], next: Generator): string {
     const fnName = scope.enterFunction(prefix, 'injector');
-    scope.func.element = null;
     const output = scope.exitFunction(statements.map(next));
     scope.push(output);
 
@@ -370,4 +382,12 @@ function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[
     scope.func.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
 
     return sn(node, `${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.localInjector()}, ${blockEntry});`);
+}
+
+function isSimpleConditionContent(node: Ast.ENDNode): boolean {
+    if (node instanceof Ast.ENDAttributeStatement) {
+        return node.directives.filter(dir => dir.prefix === 'on').length === 0;
+    }
+
+    return node instanceof Ast.ENDAddClassStatement;
 }

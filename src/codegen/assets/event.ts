@@ -24,14 +24,19 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
     }
 
     const handlerName = scope.localSymbol('handler');
-    const handler = node.value.body[0];
+    const handler = (node.value.body[0] as JSAst.ExpressionStatement).expression;
+
+    // TODO properly generate nested path like `foo.bar.baz()`
+    // TODO for own element handlers, we must invoke method in context of element,
+    // e.g. `elem.method()` instead of `const { method } = elem; method()`
     const eventSymbol = getEventSymbol(handler);
+    const indent = scope.indent.repeat(2);
 
     const output = new SourceNode();
-    output.add(`${scope.indent}function ${handlerName}(event) {\n`);
+    output.add(`function ${handlerName}(event) {\n`);
     output.add([
-        `${scope.indent}const ${eventSymbol} = ${scope.host}.${eventSymbol} || ${scope.host}.componentModel.definition.${eventSymbol};\n`,
-        `${scope.indent}${eventSymbol}(`
+        `${indent}const ${eventSymbol} = ${scope.host}.${eventSymbol} || ${scope.host}.componentModel.definition.${eventSymbol};\n`,
+        `${indent}${eventSymbol}(`
     ]);
 
     if (handler instanceof JSAst.CallExpression) {
@@ -39,20 +44,20 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
         // Add arguments to function handler but ensure that variables are fetched
         // from local variable: it is required for proper variable scoping in loops
         handler.arguments.forEach(arg => {
-            output.add([generate(arg, scope, eventGenerators)]);
+            output.add([generate(arg, scope, eventGenerators), ', ']);
         });
     }
 
-    output.add(`${scope.host}, event, this)`);
-    output.add(`\n}\n`);
+    output.add(`${scope.host}, event, this);`);
+    output.add(`\n${scope.indent}}\n`);
 
     const eventType = node.name.name;
     if (scope.element.stats.dynamicEvents.has(eventType)) {
-        const bindEvent = `${scope.use(Symbols.addEvent)}(${scope.element.scopeSymbol}, ${qStr(eventType)}, ${handlerName});\n`;
-        output.add([`${scope.indent}`, bindEvent]);
-        scope.func.update.push(bindEvent);
+        const scopeSymbol = scope.scopeSymbol('handler');
+        scope.func.update.push(`${scope.use(Symbols.addEvent)}(${scope.scopeInjector()}, ${qStr(eventType)}, ${scopeSymbol});`);
+        output.add(`${scope.indent}${scope.use(Symbols.addEvent)}(${scope.localInjector()}, ${qStr(eventType)}, ${scopeSymbol} = ${handlerName});`);
     } else {
-        output.add(`${scope.indent}${scope.use(Symbols.addStaticEvent)}(${scope.element.localSymbol}, ${qStr(eventType)}, ${handlerName});\n`);
+        output.add(`${scope.indent}${scope.use(Symbols.addStaticEvent)}(${scope.element.localSymbol}, ${qStr(eventType)}, ${handlerName});`);
     }
 
     return output;
