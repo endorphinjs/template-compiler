@@ -76,7 +76,7 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     // Check if open tag contains `end:if` directive. If so, wrap output into
     // `<if>` statement
     const test = getDirective(open, 'end', 'if');
-    if (test && result) {
+    if (test) {
         assertExpression(test);
         const ifStatement = new ENDIfStatement(test.value as Program);
         ifStatement.consequent.push(result);

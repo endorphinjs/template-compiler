@@ -1,4 +1,4 @@
-import { elem, addEvent, updateBlock, mountBlock, createInjector } from "@endorphinjs/endorphin";
+import { elem, addEvent, updateBlock, mountBlock, finalizeEvents, createInjector } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -10,12 +10,15 @@ export default function $$template0(host, scope) {
 	}
 	addEvent(injector0, "click", scope.$_handler0 = handler0);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
+	finalizeEvents(injector0);
 	return $$template0Update;
 }
 
 function $$template0Update(host, scope) {
-	addEvent(scope.$_injector0, "click", scope.$_handler0);
+	const injector0 = scope.$_injector0;
+	addEvent(injector0, "click", scope.$_handler0);
 	updateBlock(scope.$_block0);
+	finalizeEvents(injector0);
 }
 
 function $$conditionContent0(host, injector, scope) {
@@ -28,7 +31,8 @@ function $$conditionContent0(host, injector, scope) {
 }
 
 function $$conditionContent0Update(host, injector, scope) {
-	addEvent(injector, "click", scope.$_handler1);
+	const injector0 = injector;
+	addEvent(injector0, "click", scope.$_handler1);
 }
 
 function $$conditionEntry0(host) {

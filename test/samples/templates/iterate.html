@@ -1,0 +1,18 @@
+<!-- Sample template with basic iteration -->
+<template>
+    <h1>Hello world</h1>
+
+    <end:if test={items}>
+        <p>will iterate</p>
+        <ul>
+            <end:for-each select={items}>
+                <li>
+                    item
+                    <end:if test={$value.marked}>
+                        <strong>*</strong>
+                    </end:if>
+                </li>
+            </end:for-each>
+        </ul>
+    </end:if>
+</template>

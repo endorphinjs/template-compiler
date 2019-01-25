@@ -54,7 +54,8 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
     const eventType = node.name.name;
     if (scope.element.stats.dynamicEvents.has(eventType)) {
         const scopeSymbol = scope.scopeSymbol('handler');
-        scope.func.update.push(`${scope.use(Symbols.addEvent)}(${scope.scopeInjector()}, ${qStr(eventType)}, ${scopeSymbol});`);
+        const ref = scope.updateSymbol('injector', scope.scopeInjector());
+        scope.func.update.push(`${scope.use(Symbols.addEvent)}(${ref}, ${qStr(eventType)}, ${scopeSymbol});`);
         output.add(`${scope.indent}${scope.use(Symbols.addEvent)}(${scope.localInjector()}, ${qStr(eventType)}, ${scopeSymbol} = ${handlerName});`);
     } else {
         output.add(`${scope.indent}${scope.use(Symbols.addStaticEvent)}(${scope.element.localSymbol}, ${qStr(eventType)}, ${handlerName});`);
