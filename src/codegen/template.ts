@@ -3,7 +3,7 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDSyntaxError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, propSetter } from './utils';
 import getStats, { collectDynamicStats } from './node-stats';
 import compileExpression, { generate } from './expression';
 import generateEvent from './assets/event';
@@ -35,7 +35,6 @@ interface ConditionStatement {
 
 const generators: NodeGeneratorMap = {
     ENDTemplate(node: Ast.ENDTemplate, scope, sn, next) {
-        // TODO compile partial
         scope.enterFunction('template');
         const body: ChunkList = [].concat(
             scope.enterElement('target', `${scope.host}.componentView`, collectDynamicStats(node)),
@@ -96,7 +95,7 @@ const generators: NodeGeneratorMap = {
         mount.add(`${nodeVar} = `);
 
         if (scope.requiresInjector()) {
-            mount.add([`${scope.use(Symbols.insert)}(${scope.localInjector()}, ${scope.use(Symbols.text)}(${valueVar} = `, expr, `);`]);
+            mount.add([`${scope.use(Symbols.insert)}(${scope.localInjector()}, ${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
         } else {
             mount.add([`${scope.element.localSymbol}.appendChild(${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
         }
@@ -239,6 +238,26 @@ const generators: NodeGeneratorMap = {
             `${blockSymbol} = ${scope.use(node.key ? Symbols.mountKeyIterator : Symbols.mountIterator)}`,
             `(${scope.host}, ${scope.localInjector()}, ${blockExpr}${node.key ? `, ${blockKey}` : ''}, ${blockContent});`
         ]);
+    },
+    ENDPartial(node: Ast.ENDPartial, scope, sn, next) {
+        const symbol = scope.enterFunction(`partial${tagToJS(node.id.name, true)}`, 'injector');
+
+        scope.partialsMap.set(node.id.name, {
+            name: symbol,
+            defaults: generateObject(node.params, scope, sn, 2)
+        });
+        return sn(node, scope.exitFunction(node.body.map(next)));
+    },
+    ENDPartialStatement(node: Ast.ENDPartialStatement, scope, sn) {
+        // Generate arguments to pass into partials
+        const params = generateObject(node.params, scope, sn, 1);
+        const getter = `${scope.host}.props['partial:${node.id.name}'] || ${scope.partials}${propAccessor(node.id.name)}`;
+        const symbol = scope.scopeSymbol('partial');
+        const update = new SourceNode();
+        update.add([`${scope.use(Symbols.updatePartial)}(${symbol}, ${getter}, `, params, `);`]);
+
+        scope.func.update.push(update);
+        return sn(node, [`${symbol} = ${scope.use(Symbols.mountPartial)}(${scope.host}, ${scope.localInjector()}, ${getter}, `, params, `);`]);
     }
 };
 
@@ -254,7 +273,7 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
 
     const templates: ChunkList = [];
     program.body.forEach(node => {
-        if (node instanceof Ast.ENDTemplate) {
+        if (node instanceof Ast.ENDTemplate || node instanceof Ast.ENDPartial) {
             templates.push(compile(node));
         }
     });
@@ -266,6 +285,27 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
         body.push(`import { ${Array.from(scope.runtimeSymbols).map(symbol => Symbols[symbol]).join(', ')} } from "${scope.options.module}";`);
     }
 
+    if (scope.partialsMap.size) {
+        const partials = new SourceNode();
+        partials.add(`export const ${scope.partials} = {`);
+        const innerIndent = scope.indent.repeat(2);
+        let count = 0;
+        scope.partialsMap.forEach((partial, name) => {
+            if (count++) {
+                partials.add(',\n');
+            }
+
+            partials.add([
+                `\n${scope.indent}`, isIdentifier(name) ? name : qStr(name), ': {\n',
+                `${innerIndent}body: ${partial.name},\n`,
+                `${innerIndent}defaults: `, partial.defaults, '\n',
+                `${scope.indent}}`
+            ]);
+        });
+
+        partials.add('\n};');
+        templates.unshift(partials);
+    }
     // In most cases, templates and scope body are function declarations
     templates.concat(scope.body).forEach(chunk => {
         body.push('\n\n', chunk);
@@ -401,4 +441,35 @@ function isSimpleConditionContent(node: Ast.ENDNode): boolean {
     }
 
     return node instanceof Ast.ENDAddClassStatement;
+}
+
+/**
+ * Generates object literal from given attributes
+ */
+function generateObject(params: Ast.ENDAttribute[], scope: CompileScope, sn: SourceNodeFactory, level: number = 0): SourceNode {
+    const result = new SourceNode();
+    result.add('{');
+    const indent = scope.indent.repeat(level);
+    const innerIndent = scope.indent.repeat(level + 1);
+    params.forEach((param, i) => {
+        if (i !== 0) {
+            result.add(',');
+        }
+
+        result.add(['\n', innerIndent, propSetter(param.name, scope), ': ']);
+
+        // Argument value
+        if (param.value instanceof JSAst.Literal) {
+            result.add(sn(param.value, JSON.stringify(param.value.value)));
+        } else if (param.value instanceof JSAst.Program) {
+            result.add(compileExpression(param.value, scope));
+        } else {
+            result.add('null');
+        }
+    });
+    if (params.length) {
+        result.add(`\n${indent}`);
+    }
+    result.add(`}`);
+    return result;
 }

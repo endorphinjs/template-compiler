@@ -14,7 +14,7 @@ export enum RuntimeSymbols {
     addClass, finalizeAttributes, finalizeProps, addEvent, addStaticEvent, finalizeEvents,
     getEventHandler, callEventHandler, renderSlot, setRef, setStaticRef, finalizeRefs, createComponent,
     mountComponent, updateComponent, unmountComponent, mountInnerHTML, updateInnerHTML,
-    elem, elemWithText, text, updateText, filter, insert
+    mountPartial, updatePartial, elem, elemWithText, text, updateText, filter, insert
 }
 
 interface CompileScopeOptions {
@@ -26,6 +26,9 @@ interface CompileScopeOptions {
 
     /** Symbol for referencing local scope of rendered component */
     scope?: string;
+
+    /** Symbol for referencing partials container of rendered component */
+    partials?: string;
 
     /** Name of component being compiled, must be in CamelCase */
     component?: string;
@@ -65,9 +68,15 @@ interface FunctionContext {
     element?: ElementContext;
 }
 
+interface PartialDeclaration {
+    name: string;
+    defaults: Chunk
+};
+
 export const defaultOptions: CompileScopeOptions = {
     host: 'host',
     scope: 'scope',
+    partials: 'partials',
     indent: '\t',
     prefix: '$$',
     suffix: '',
@@ -93,12 +102,15 @@ export default class CompileScope {
     /** Contents of compiled template */
     readonly body: SourceNode[] = [];
 
+    readonly partialsMap: Map<string, PartialDeclaration>;
+
     constructor(options?: CompileScopeOptions) {
         this.options = Object.assign({}, defaultOptions, options);
         const suffix = tagToJS(this.options.component || '', true) + (this.options.suffix || '');
 
         this.scopeSymbols = new SymbolGenerator(() => `${this.scope}.$_`);
         this.globalSymbols = new SymbolGenerator(this.options.prefix, num => suffix + num);
+        this.partialsMap = new Map();
     }
 
     /** Symbol for referencing host component of the rendered template */
@@ -115,6 +127,11 @@ export default class CompileScope {
     /** Path to JS module that holds Endorphin runtime functions */
     get module(): string {
         return this.options.module;
+    }
+
+    /** Symbol for referencing partials */
+    get partials(): string {
+        return this.options.partials;
     }
 
     /** Current indentation token */

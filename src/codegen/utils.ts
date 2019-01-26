@@ -1,5 +1,8 @@
 import { SourceNode } from 'source-map';
 import { Node } from '../ast/base';
+import { Identifier, Program } from '../ast/expression';
+import compileExpression from './expression';
+import CompileScope from './scope';
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Array<Chunk>;
@@ -93,4 +96,16 @@ export function isIdentifier(name: string): boolean {
  */
 export function propAccessor(name: string): string {
     return isIdentifier(name) ? `.${name}` : `[${qStr(name)}]`;
+}
+
+export function propSetter(node: Identifier | Program, scope: CompileScope): Chunk {
+    if (node instanceof Identifier) {
+        return isIdentifier(node.name) ? node.name : qStr(node.name)
+    }
+
+    if (node instanceof Program) {
+        const result = new SourceNode();
+        result.add(['[', compileExpression(node, scope), ']']);
+        return result;
+    }
 }

@@ -5,8 +5,8 @@
 import { Node } from './base';
 import { Identifier, Program, Literal } from './expression';
 
-export type ENDStatement = ENDElement | ENDInnerHTML | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement;
-export type ENDProgramStatement = ENDTemplate | ENDElement;
+export type ENDStatement = ENDElement | ENDInnerHTML | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement | ENDPartialStatement;
+export type ENDProgramStatement = ENDTemplate | ENDPartial | ENDStatement;
 export type ENDControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
 export type ENDPlainStatement = ENDText | Program;
 export type ENDAttributeName = Identifier | Program;
@@ -26,8 +26,17 @@ export class ENDProgram extends ENDNode {
 
 export class ENDTemplate extends ENDNode {
     type = 'ENDTemplate';
-    constructor(readonly name?: Literal, readonly body: ENDStatement[] = []) {
+    constructor(readonly body: ENDStatement[] = []) {
         super();
+    }
+}
+
+export class ENDPartial extends ENDNode {
+    type = 'ENDPartial';
+    readonly body: ENDStatement[]
+    constructor(readonly id: Identifier, readonly params: ENDAttribute[]) {
+        super();
+        this.body = [];
     }
 }
 
@@ -42,10 +51,10 @@ export class ENDAttribute extends ENDNode {
     type = 'ENDAttribute';
     constructor(readonly name: ENDAttributeName, readonly value: ENDAttributeValue) {
         super();
-        if (name.loc && value.loc) {
+        if (name.loc) {
             this.loc = {
                 start: name.loc.start,
-                end: value ? value.loc.end : name.loc.end
+                end: value && value.loc ? value.loc.end : name.loc.end
             };
         }
     }

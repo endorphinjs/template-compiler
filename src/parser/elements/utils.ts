@@ -145,8 +145,8 @@ export function getAttr(openTag: ParsedTag, name: string): ENDAttribute {
  * @param openTag
  * @param name
  */
-export function getDirective(openTag: ParsedTag, prefix: string, name: string): ENDAttribute {
-    return openTag.directives.find(dir => dir.prefix === prefix && dir.name.name === name);
+export function getDirective(openTag: ParsedTag, prefix: string, name?: string): ENDAttribute {
+    return openTag.directives.find(dir => dir.prefix === prefix && (!name || dir.name.name === name));
 }
 
 /**

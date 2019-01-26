@@ -8,6 +8,7 @@ import { emptyBody, InnerStatement } from './utils';
  * @param openTag
  */
 export default function attributeStatement(scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): ENDAttributeStatement {
+    // TODO extract class statements
     const node = new ENDAttributeStatement(openTag.attributes, openTag.directives);
     node.loc = openTag.loc;
     emptyBody(scanner, openTag);

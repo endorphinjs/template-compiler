@@ -1,5 +1,5 @@
 import Scanner from './scanner';
-import { ENDProgram, ENDStatement, ENDIfStatement, ParsedTag } from '../ast/template';
+import { ENDProgram, ENDStatement, ParsedTag, ENDIfStatement } from '../ast/template';
 import { openTag } from './tag';
 import syntaxError from './syntax-error';
 import templateStatement from './elements/template';
@@ -11,7 +11,7 @@ import elementStatement from './elements/element';
 import attributeStatement from './elements/attribute';
 import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
-import { ignored, getControlName, InnerStatement, assertExpression, getDirective } from './elements/utils';
+import { ignored, getControlName, InnerStatement, assertExpression } from './elements/utils';
 import { Program } from '../ast/expression';
 
 interface StatementMap {
@@ -61,6 +61,17 @@ export default function parse(text: string, url: string = null): ENDProgram {
 function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     const controlName = getControlName(open.getName());
     let result: ENDStatement;
+    let parents: ENDIfStatement[] = [];
+
+    // Check if open tag contains `end:if` directive. If so, wrap output into
+    // `<if>` statement and remove directives
+    for (let i = open.directives.length - 1; i >= 0; i--) {
+        const dir = open.directives[i];
+        if (dir.prefix === 'end' && dir.name.name === 'if') {
+            assertExpression(dir);
+            parents.push(new ENDIfStatement(dir.value as Program));
+        }
+    }
 
     if (controlName) {
         if (controlName in statements) {
@@ -73,14 +84,11 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
         result = elementStatement(scanner, open, statement);
     }
 
-    // Check if open tag contains `end:if` directive. If so, wrap output into
-    // `<if>` statement
-    const test = getDirective(open, 'end', 'if');
-    if (test) {
-        assertExpression(test);
-        const ifStatement = new ENDIfStatement(test.value as Program);
-        ifStatement.consequent.push(result);
-        result = ifStatement;
+    // Wrap result with IF statements
+    while (parents.length) {
+        const item = parents.pop();
+        item.consequent.push(result);
+        result = item;
     }
 
     return result;
