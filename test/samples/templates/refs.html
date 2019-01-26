@@ -1,0 +1,10 @@
+<!-- Template with refs -->
+<template>
+    <main ref="main">
+        <div ref="header"></div>
+        <end:if test={c1}>
+            <span ref="header"></span>
+        </end:if>
+        <footer ref="{dynRef}"></footer>
+    </main>
+</template>

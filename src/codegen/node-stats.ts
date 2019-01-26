@@ -1,6 +1,6 @@
 import {
     ENDElement, ENDText, ENDStatement, ENDIfStatement, ENDChooseStatement,
-    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate, ENDPartialStatement, ENDAttribute
+    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate, ENDPartialStatement, ENDAttribute, ENDPartial
 } from '../ast/template';
 import { Identifier, Program } from '../ast/expression';
 
@@ -85,6 +85,23 @@ export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: Eleme
     return stats;
 }
 
+/**
+ * Check if given template contains element references
+ */
+export function hasRefs(template: ENDTemplate): boolean {
+    let result = false;
+    walk(template, node => {
+        // Since partials can be overridden in runtime, we don’t know if they
+        // contain any refs for sure so assume they does.
+        result = node instanceof ENDPartial
+            || ((node instanceof ENDElement || node instanceof ENDAttributeStatement) && node.attributes.some(isRef));
+
+        return !result;
+    });
+
+    return result;
+}
+
 function collectStatsInBlock(node: ENDStatement, stats: ElementStats) {
     walk(node, child => {
         if (dynamicContent.has(child.type)) {
@@ -99,7 +116,7 @@ function collectStatsInBlock(node: ENDStatement, stats: ElementStats) {
             stats.dynamicAttributes.add('class');
         } else if (child instanceof ENDAttributeStatement) {
             child.attributes.forEach(attr => {
-                if (attr.name instanceof Identifier) {
+                if (attr.name instanceof Identifier && !isRef(attr)) {
                     stats.dynamicAttributes.add(attr.name.name);
                 } else if (attr.name instanceof Program) {
                     stats.attributeExpressions = true;
@@ -121,10 +138,14 @@ function topLevelAttributeStats(attributes: ENDAttribute[], stats: ElementStats)
     attributes.forEach(attr => {
         if (attr.name instanceof Program) {
             stats.attributeExpressions = true;
-        } else if (attr.name instanceof Identifier && (attr.value instanceof Program || attr.value instanceof ENDAttributeValueExpression)) {
+        } else if (!isRef(attr) && attr.name instanceof Identifier && (attr.value instanceof Program || attr.value instanceof ENDAttributeValueExpression)) {
             stats.dynamicAttributes.add(attr.name.name);
         }
     });
+}
+
+function isRef(attr: ENDAttribute):boolean {
+    return attr.name instanceof Identifier && attr.name.name === 'ref';
 }
 
 /**

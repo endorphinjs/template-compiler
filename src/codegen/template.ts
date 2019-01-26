@@ -4,7 +4,7 @@ import * as JSAst from '../ast/expression';
 import { ENDSyntaxError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, propSetter } from './utils';
-import getStats, { collectDynamicStats } from './node-stats';
+import getStats, { collectDynamicStats, hasRefs } from './node-stats';
 import compileExpression, { generate } from './expression';
 import generateEvent from './assets/event';
 
@@ -41,6 +41,12 @@ const generators: NodeGeneratorMap = {
             node.body.map(next),
             scope.exitElement(),
         );
+
+        if (hasRefs(node)) {
+            const refs = `${scope.use(Symbols.finalizeRefs)}(${scope.host});`;
+            scope.pushUpdate(refs);
+            body.push(refs);
+        }
 
         return sn(node, [`export default `, scope.exitFunction(body)]);
     },
@@ -122,6 +128,14 @@ const generators: NodeGeneratorMap = {
         ));
     },
     ENDAttribute(node: Ast.ENDAttribute, scope, sn) {
+        if (node.name instanceof JSAst.Identifier && node.name.name === 'ref') {
+            // Element reference: ref="name"
+            // TODO support static refs
+            const refName = compileAttributeValue(node.value, scope, sn);
+            scope.pushUpdate(sn(node, [`${scope.use(Symbols.setRef)}(${scope.host}, `, refName, `, ${scope.element.scopeSymbol});`]));
+            return sn(node, [`${scope.use(Symbols.setRef)}(${scope.host}, `, refName, `, ${scope.element.localSymbol});`]);
+        }
+
         const outputName = compileAttributeName(node.name, scope, sn);
         const outputValue = compileAttributeValue(node.value, scope, sn);
 
