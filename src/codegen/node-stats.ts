@@ -2,7 +2,7 @@ import {
     ENDElement, ENDText, ENDStatement, ENDIfStatement, ENDChooseStatement,
     ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate, ENDPartialStatement, ENDAttribute, ENDPartial
 } from '../ast/template';
-import { Identifier, Program } from '../ast/expression';
+import { Identifier, Program, Literal } from '../ast/expression';
 
 const dynamicContent: Set<string> = new Set([
     'ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement'
@@ -17,6 +17,11 @@ export interface ElementStats {
      * during updates
      */
     staticContent: boolean;
+
+    /**
+     * Name of target slot where element should be outputted
+     */
+    slotContent?: string;
 
     /**
      * Whether element contains partials
@@ -136,6 +141,10 @@ function collectStatsInBlock(node: ENDStatement, stats: ElementStats) {
  */
 function topLevelAttributeStats(attributes: ENDAttribute[], stats: ElementStats): void {
     attributes.forEach(attr => {
+        if (attr.name instanceof Identifier && attr.name.name === 'slot') {
+            stats.slotContent = String((attr.value as Literal).value);
+        }
+
         if (attr.name instanceof Program) {
             stats.attributeExpressions = true;
         } else if (!isRef(attr) && attr.name instanceof Identifier && (attr.value instanceof Program || attr.value instanceof ENDAttributeValueExpression)) {

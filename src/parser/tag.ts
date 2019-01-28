@@ -3,6 +3,7 @@ import { Identifier, Literal, Program, ExpressionStatement } from '../ast/expres
 import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue, ENDDirective } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import Scanner from './scanner';
+import { syntaxErrorFromNode } from './syntax-error';
 
 export const TAG_START = 60; // <
 export const TAG_END = 62; // >
@@ -44,6 +45,16 @@ export function openTag(scanner: Scanner): ParsedTag {
                 if (directive) {
                     tag.directives.push(directive);
                 } else {
+                    // Validate some edge cases:
+                    // * Currently, we do not support dynamic names in slots.
+                    //   Make sure all slot names are literals
+                    const attrName = attr.name instanceof Identifier ? attr.name.name : null;
+                    const shouldValidateSlot = attrName === (name.name === 'slot' ? 'name' : 'slot');
+
+                    if (shouldValidateSlot && attr.value && !(attr.value instanceof Literal)) {
+                        throw syntaxErrorFromNode(`Slot name must be a string literal, expressions are not supported`, attr.value);
+                    }
+
                     tag.attributes.push(attr);
                 }
             });

@@ -8,6 +8,7 @@ import getStats, { collectDynamicStats, hasRefs } from './node-stats';
 import compileExpression, { generate } from './expression';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
+import { getAttrValue } from '../parser/elements/utils';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -77,7 +78,8 @@ const generators: NodeGeneratorMap = {
         const mount = new SourceNode();
 
         if (scope.requiresInjector()) {
-            mount.add(sn(node, [`${scope.use(Symbols.insert)}(${scope.localInjector()}, `, elem, ')']));
+            const slotName = getAttrValue(node, 'slot');
+            mount.add(sn(node, [`${scope.use(Symbols.insert)}(${scope.localInjector()}, `, elem, slotName ? `, ${qStr(String(slotName))}` : '', ')']));
         } else {
             mount.add(sn(node, [`${scope.element.localSymbol}.appendChild(`, elem, ')']));
         }
@@ -93,6 +95,10 @@ const generators: NodeGeneratorMap = {
             // in runtime) must be added during component mount. Thus, we should
             // process dynamic attributes only
             attributes = attributes.filter(attr => isDynamicAttribute(attr, scope));
+        }
+
+        if (elemName === 'slot') {
+            body = null;
         }
 
         chunks = chunks.concat(
@@ -112,6 +118,10 @@ const generators: NodeGeneratorMap = {
             }
 
             scope.pushUpdate(`${scope.use(Symbols.updateComponent)}(${scope.element.scopeSymbol});`);
+        }
+
+        if (elemName === 'slot') {
+            chunks.push(generateSlot(node, scope, sn, next));
         }
 
         chunks.push(scope.exitElement());
@@ -493,4 +503,27 @@ function isSimpleConditionContent(node: Ast.ENDNode): boolean {
     }
 
     return node instanceof Ast.ENDAddClassStatement;
+}
+
+function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {
+    if (!node.body.length) {
+        // Slot doesn’t have default content: no need to mount block
+        scope.func.update.push(sn(node, `${scope.use(Symbols.renderSlot)}(${scope.element.scopeSymbol}, ${scope.host}.slots);`));
+        return sn(node, `${scope.use(Symbols.renderSlot)}(${scope.element.localSymbol}, ${scope.host}.slots);`);
+    }
+
+    const indent = scope.indent;
+    const innerIndent = indent.repeat(2);
+    const slotName = String(getAttrValue(node, 'name') || '');
+    const blockVar = scope.scopeSymbol('slot');
+
+    const renderSlot = `${scope.use(Symbols.renderSlot)}(injector.parentNode, ${scope.host}.slots)`;
+    const blockEntry = scope.enterFunction(`slot${tagToJS(slotName || 'default', true)}`, 'injector');
+    const blockContent = createContentFunction(`slot${tagToJS(slotName || 'default', true)}Content`, scope, node.body, next);
+
+    scope.push(scope.exitFunction([`if(!${renderSlot}) {\n${innerIndent}return ${blockContent};\n${indent}}`]));
+
+    scope.func.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
+
+    return sn(node, `${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.localInjector()}, ${blockEntry});`);
 }

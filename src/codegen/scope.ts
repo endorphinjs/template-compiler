@@ -284,8 +284,12 @@ export default class CompileScope {
      * Check if content must be inserted via injector at current context
      */
     requiresInjector(): boolean {
-        const { element } = this;
-        return element ? this.inComponent() || !element.stats.staticContent : !!this.func.injector;
+        const { element } = this.func;
+
+        // NB: slot content must be inserted via injector
+        return element
+            ? this.inComponent() || !element.stats.staticContent || !!element.stats.slotContent
+            : !!this.func.injector;
     }
 
     /**

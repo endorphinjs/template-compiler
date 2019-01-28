@@ -1,7 +1,7 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
 import { Identifier, Program, Literal } from '../../ast/expression';
-import { ENDStatement, ENDAttribute, ParsedTag, ENDText } from '../../ast/template';
+import { ENDStatement, ENDAttribute, ParsedTag, ENDText, ENDElement, ENDAttributeStatement } from '../../ast/template';
 import { Node } from '../../ast/base';
 import syntaxError, { ENDSyntaxError, syntaxErrorFromNode } from '../syntax-error';
 import { closeTag, openTag } from '../tag';
@@ -134,14 +134,14 @@ export function getControlName(name: string): string {
 /**
  * Returns attribute with given name from tag name definition, if any
  */
-export function getAttr(openTag: ParsedTag, name: string): ENDAttribute {
-    return openTag.attributes.find(attr => attr.name instanceof Identifier && attr.name.name === name);
+export function getAttr(elem: ParsedTag | ENDElement | ENDAttributeStatement, name: string): ENDAttribute {
+    return elem.attributes.find(attr => attr.name instanceof Identifier && attr.name.name === name);
 }
 
 /**
  * Returns value of attribute with given name from tag name definition, if any
  */
-export function getAttrValue(openTag: ParsedTag, name: string): string | number | boolean {
+export function getAttrValue(openTag: ParsedTag | ENDElement | ENDAttributeStatement, name: string): string | number | boolean {
     const attr = getAttr(openTag, name);
     if (attr && attr.value instanceof Literal) {
         return attr.value.value;
