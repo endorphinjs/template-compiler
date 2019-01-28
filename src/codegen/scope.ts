@@ -2,6 +2,7 @@ import { SourceNode } from 'source-map';
 import { ChunkList, tagToJS, format, Chunk } from './utils';
 import { ElementStats } from './node-stats';
 import ElementContext from './element-context';
+import { ENDImport } from '../ast/template';
 
 /**
  * Template compiler scope
@@ -73,6 +74,17 @@ interface PartialDeclaration {
     defaults: Chunk
 };
 
+interface ComponentImport {
+    /** JS symbol for referencing imported module */
+    symbol: string;
+
+    /** URL of module */
+    href: string;
+
+    /** Source node */
+    node: ENDImport
+}
+
 export const defaultOptions: CompileScopeOptions = {
     host: 'host',
     scope: 'scope',
@@ -104,6 +116,9 @@ export default class CompileScope {
 
     readonly partialsMap: Map<string, PartialDeclaration>;
 
+    /** List of child components */
+    readonly componentsMap: Map<string, ComponentImport>;
+
     constructor(options?: CompileScopeOptions) {
         this.options = Object.assign({}, defaultOptions, options);
         const suffix = tagToJS(this.options.component || '', true) + (this.options.suffix || '');
@@ -111,6 +126,7 @@ export default class CompileScope {
         this.scopeSymbols = new SymbolGenerator(() => `${this.scope}.$_`);
         this.globalSymbols = new SymbolGenerator(this.options.prefix, num => suffix + num);
         this.partialsMap = new Map();
+        this.componentsMap = new Map();
     }
 
     /** Symbol for referencing host component of the rendered template */
@@ -252,7 +268,7 @@ export default class CompileScope {
     }
 
     enterElement(name: string, expr: Chunk, stats: ElementStats): SourceNode {
-        const ctx = new ElementContext(name, expr, stats, this);
+        const ctx = new ElementContext(name, expr, stats, this, this.isComponent(name));
         ctx.parent = this.func.element;
         this.func.element = ctx;
         return ctx.output;
@@ -269,7 +285,7 @@ export default class CompileScope {
      */
     requiresInjector(): boolean {
         const { element } = this;
-        return element ? !element.stats.staticContent : !!this.func.injector;
+        return element ? this.inComponent() || !element.stats.staticContent : !!this.func.injector;
     }
 
     /**
@@ -293,6 +309,21 @@ export default class CompileScope {
         }
 
         return this.func.injector;
+    }
+
+    /**
+     * Check if given tag name is a component in current scope
+     */
+    isComponent(tagName: string): boolean {
+        return this.componentsMap.has(tagName);
+    }
+
+    /**
+     * Check if scope is currently in component
+     */
+    inComponent(): boolean {
+        const elem = this.element;
+        return !!elem && this.isComponent(elem.name);
     }
 
     private markScopeAsUsed() {

@@ -11,7 +11,8 @@ import elementStatement from './elements/element';
 import attributeStatement from './elements/attribute';
 import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
-import { ignored, getControlName, InnerStatement, assertExpression } from './elements/utils';
+import importStatement from './elements/import';
+import { ignored, getControlName, InnerStatement, assertExpression, getAttrValue } from './elements/utils';
 import { Program } from '../ast/expression';
 
 interface StatementMap {
@@ -40,10 +41,15 @@ export default function parse(text: string, url: string = null): ENDProgram {
 
     while (!scanner.eof()) {
         if (entry = openTag(scanner)) {
-            if (entry.getName() === 'template') {
+            const name = entry.getName();
+            if (name === 'template') {
                 program.body.push(templateStatement(scanner, entry, statement));
-            } else if (getControlName(entry.getName()) == null) {
-                program.body.push(elementStatement(scanner, entry, statement));
+            } else if (getControlName(name) == null) {
+                if (name === 'link' && getAttrValue(entry, 'rel') === 'import') {
+                    program.body.push(importStatement(scanner, entry));
+                } else {
+                    program.body.push(elementStatement(scanner, entry, statement));
+                }
             } else {
                 throw syntaxError(scanner, `Unexpected control statement <${entry.getName()}>`, entry.loc.start);
             }

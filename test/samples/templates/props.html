@@ -1,0 +1,10 @@
+<link rel="import" href="./sub-component.html" as="sub-component" />
+
+<template>
+    <sub-component p1="1" id={id}>
+        <end:if test={c1}>
+            <end:attribute p2=2 />
+        </end:if>
+        <end:attribute p3=3 />
+    </sub-component>
+</template>

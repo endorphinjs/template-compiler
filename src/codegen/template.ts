@@ -3,10 +3,11 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDSyntaxError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, propSetter } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
 import getStats, { collectDynamicStats, hasRefs } from './node-stats';
 import compileExpression, { generate } from './expression';
 import generateEvent from './assets/event';
+import generateObject from './assets/object';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -51,16 +52,36 @@ const generators: NodeGeneratorMap = {
         return sn(node, [`export default `, scope.exitFunction(body)]);
     },
     ENDElement(node: Ast.ENDElement, scope, sn, next) {
-        // TODO handle components
-        const stats = getStats(node);
         const elemName = node.name.name;
-        const elem: SourceNode = !stats.text
-            ? sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}, ${scope.host})`)
-            : sn(node.name, [
+        const stats = getStats(node);
+        let elem: SourceNode;
+        let { attributes, body } = node;
+
+        if (scope.isComponent(elemName)) {
+            // Create component
+            elem = sn(node, [`${scope.use(Symbols.createComponent)}(${qStr(elemName)}, ${scope.componentsMap.get(elemName).symbol}, ${scope.host})`]);
+            // In component, static attributes/props (e.g. ones which won’t change
+            // in runtime) must be added during component mount. Thus, we should
+            // process dynamic attributes only
+            const staticAttrs: Ast.ENDAttribute[] = [];
+            attributes = attributes.filter(attr => {
+                if (isDynamicAttribute(attr, scope)) {
+                    return true;
+                }
+                staticAttrs.push(attr);
+            });
+        } else if (stats.text) {
+            // Create plain DOM element with static text
+            elem = sn(node.name, [
                 `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
                 sn(stats.text, qStr(stats.text.value)),
                 `, ${scope.host})`
             ]);
+            body = null;
+        } else {
+            // Create plain DOM element
+            elem = sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}, ${scope.host})`);
+        }
 
         // Mount element
         const mount = new SourceNode();
@@ -72,13 +93,33 @@ const generators: NodeGeneratorMap = {
         }
 
         // Output content
-        const chunks: ChunkList = [].concat(
-            scope.enterElement(elemName, mount, stats),
-            node.attributes.map(next),
+        let chunks: ChunkList = [scope.enterElement(elemName, mount, stats)];
+
+        if (scope.inComponent()) {
+            // Redirect input into component injector
+            scope.element.injector = `${scope.element.localSymbol}.componentModel.input`;
+        }
+
+        chunks = chunks.concat(
+            attributes.map(next),
             node.directives.map(next),
-            !stats.text ? node.body.map(next) : [],
-            scope.exitElement()
+            body ? body.map(next) : []
         );
+
+        if (scope.inComponent()) {
+            const staticAttrs = node.attributes.filter(attr => !isDynamicAttribute(attr, scope));
+            if (staticAttrs.length) {
+                const mountComponent = new SourceNode();
+                mountComponent.add([`${scope.use(Symbols.mountComponent)}(${scope.element.localSymbol}, `, generateObject(staticAttrs, scope, sn, 1), `);`]);
+                chunks.push(mountComponent);
+            } else {
+                chunks.push(`${scope.use(Symbols.mountComponent)}(${scope.element.localSymbol});`);
+            }
+
+            scope.pushUpdate(`${scope.use(Symbols.updateComponent)}(${scope.element.scopeSymbol});`);
+        }
+
+        chunks.push(scope.exitElement());
 
         return sn(node, format(chunks, scope.indent));
     },
@@ -140,7 +181,7 @@ const generators: NodeGeneratorMap = {
         const outputValue = compileAttributeValue(node.value, scope, sn);
 
         // Dynamic attributes must be handled by runtime and re-rendered on update
-        if (isDynamicAttribute(node, scope)) {
+        if (isDynamicAttribute(node, scope) || scope.inComponent()) {
             const ref = scope.updateSymbol('injector', scope.scopeInjector());
             scope.pushUpdate(sn(node, [`${scope.use(Symbols.setAttribute)}(${ref}, `, outputName, ', ', outputValue, `);`]));
             return sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.localInjector()}, `, outputName, ', ', outputValue, `);`]);
@@ -285,6 +326,19 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
             node.loc && node.loc.source, node.loc && node.loc.start);
     };
 
+    // 1. Collect child components
+    program.body.forEach(node => {
+        if (node instanceof Ast.ENDImport) {
+            const tagName = String(node.name.value);
+            scope.componentsMap.set(String(node.name.value), {
+                symbol: tagToJS(tagName, true),
+                href: String(node.href.value),
+                node
+            });
+        }
+    });
+
+    // 2. Compile templates
     const templates: ChunkList = [];
     program.body.forEach(node => {
         if (node instanceof Ast.ENDTemplate || node instanceof Ast.ENDPartial) {
@@ -292,11 +346,19 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
         }
     });
 
+    // Generate final output
     let body: ChunkList = [];
 
     // Import runtime symbols, used by template
     if (scope.runtimeSymbols.size) {
         body.push(`import { ${Array.from(scope.runtimeSymbols).map(symbol => Symbols[symbol]).join(', ')} } from "${scope.options.module}";`);
+    }
+
+    // Import child components
+    if (scope.componentsMap.size) {
+        scope.componentsMap.forEach((item, name) => {
+            body.push(`\nimport * as ${item.symbol} from ${qStr(item.href)};`);
+        });
     }
 
     if (scope.partialsMap.size) {
@@ -402,25 +464,6 @@ function createConcatFunction(prefix: string, scope: CompileScope, tokens: Array
     return fnName;
 }
 
-function isDynamicAttribute(attr: Ast.ENDAttribute, scope: CompileScope): boolean {
-    if (!scope.element) {
-        return true;
-    }
-
-    const stats = scope.element.stats;
-    if (stats.hasPartials || stats.attributeExpressions) {
-        return true;
-    }
-
-    if (attr.name instanceof JSAst.Identifier) {
-        return stats.dynamicAttributes.has(attr.name.name);
-    }
-
-    return attr.name instanceof JSAst.Program
-        || attr.value instanceof JSAst.Program
-        || attr.value instanceof Ast.ENDAttributeValueExpression;
-}
-
 function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[], scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {
     const indent = scope.indent;
     const innerIndent = indent.repeat(2);
@@ -455,35 +498,4 @@ function isSimpleConditionContent(node: Ast.ENDNode): boolean {
     }
 
     return node instanceof Ast.ENDAddClassStatement;
-}
-
-/**
- * Generates object literal from given attributes
- */
-function generateObject(params: Ast.ENDAttribute[], scope: CompileScope, sn: SourceNodeFactory, level: number = 0): SourceNode {
-    const result = new SourceNode();
-    result.add('{');
-    const indent = scope.indent.repeat(level);
-    const innerIndent = scope.indent.repeat(level + 1);
-    params.forEach((param, i) => {
-        if (i !== 0) {
-            result.add(',');
-        }
-
-        result.add(['\n', innerIndent, propSetter(param.name, scope), ': ']);
-
-        // Argument value
-        if (param.value instanceof JSAst.Literal) {
-            result.add(sn(param.value, JSON.stringify(param.value.value)));
-        } else if (param.value instanceof JSAst.Program) {
-            result.add(compileExpression(param.value, scope));
-        } else {
-            result.add('null');
-        }
-    });
-    if (params.length) {
-        result.add(`\n${indent}`);
-    }
-    result.add(`}`);
-    return result;
 }

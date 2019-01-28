@@ -13,8 +13,9 @@ export default class ElementContext {
     private _scopeSymbol: string;
     private _localInjector: string;
     private _scopeInjector: string;
+    private _injector: string;
 
-    constructor(readonly name: string, readonly expr: Chunk, readonly stats: ElementStats, readonly scope: CompileScope) {
+    constructor(readonly name: string, readonly expr: Chunk, readonly stats: ElementStats, readonly scope: CompileScope, readonly isComponent: boolean) {
         this.output = new SourceNode();
     }
 
@@ -70,6 +71,20 @@ export default class ElementContext {
     }
 
     /**
+     * Sets symbol for mounting injector
+     */
+    set injector(value: string) {
+        this._injector = value;
+    }
+
+    /**
+     * Returns symbol for mounting injector
+     */
+    get injector(): string {
+        return this._injector || `${this.scope.use(RuntimeSymbols.createInjector)}(${this.localSymbol})`;
+    }
+
+    /**
      * Finalizes element and returns code required for element finalization
      */
     finalize(): SourceNode {
@@ -78,12 +93,12 @@ export default class ElementContext {
 
         // First, we have generate finalization code to create local variable
         // references, if required
-
-        // TODO finalize all data types
-        if (this.stats.attributeExpressions || this.stats.dynamicAttributes.size) {
-            const ref = this.scope.updateSymbol('injector', this.scopeInjector);
-            this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${ref});`);
-            chunks.push(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${this.localInjector});`);
+        if (!this.isComponent) {
+            if (this.stats.attributeExpressions || this.stats.dynamicAttributes.size) {
+                const ref = this.scope.updateSymbol('injector', this.scopeInjector);
+                this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${ref});`);
+                chunks.push(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${this.localInjector});`);
+            }
         }
 
         if (this.stats.dynamicEvents.size) {
@@ -114,7 +129,7 @@ export default class ElementContext {
                 this.output.add(`${this.scopeInjector} = `);
             }
 
-            this.output.add(`${this.scope.use(RuntimeSymbols.createInjector)}(${this.localSymbol});`);
+            this.output.add([this.injector, ';']);
         }
 
         return result;

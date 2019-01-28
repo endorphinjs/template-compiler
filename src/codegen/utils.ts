@@ -3,6 +3,7 @@ import { Node } from '../ast/base';
 import { Identifier, Program } from '../ast/expression';
 import compileExpression from './expression';
 import CompileScope from './scope';
+import { ENDAttribute, ENDAttributeValueExpression } from '../ast/template';
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Array<Chunk>;
@@ -108,4 +109,26 @@ export function propSetter(node: Identifier | Program, scope: CompileScope): Chu
         result.add(['[', compileExpression(node, scope), ']']);
         return result;
     }
+}
+
+/**
+ * Check if given attribute is dynamic, e.g. it’s value will be changed in runtime
+ */
+export function isDynamicAttribute(attr: ENDAttribute, scope: CompileScope): boolean {
+    if (!scope.element) {
+        return true;
+    }
+
+    const stats = scope.element.stats;
+    if (stats.hasPartials || stats.attributeExpressions) {
+        return true;
+    }
+
+    if (attr.name instanceof Identifier) {
+        return stats.dynamicAttributes.has(attr.name.name);
+    }
+
+    return attr.name instanceof Program
+        || attr.value instanceof Program
+        || attr.value instanceof ENDAttributeValueExpression;
 }

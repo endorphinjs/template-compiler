@@ -6,7 +6,7 @@ import { Node } from './base';
 import { Identifier, Program, Literal } from './expression';
 
 export type ENDStatement = ENDElement | ENDInnerHTML | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement | ENDPartialStatement;
-export type ENDProgramStatement = ENDTemplate | ENDPartial | ENDStatement;
+export type ENDProgramStatement = ENDTemplate | ENDPartial | ENDImport | ENDStatement;
 export type ENDControlStatement = ENDIfStatement | ENDChooseStatement | ENDForEachStatement | ENDPartialStatement;
 export type ENDPlainStatement = ENDText | Program;
 export type ENDAttributeName = Identifier | Program;
@@ -163,6 +163,13 @@ export class ENDText extends ENDNode {
 export class ENDInnerHTML extends ENDNode {
     type = 'ENDInnerHTML';
     constructor(readonly value: Program) {
+        super();
+    }
+}
+
+export class ENDImport extends ENDNode {
+    type = 'ENDImport';
+    constructor(readonly name: Literal, readonly href: Literal) {
         super();
     }
 }

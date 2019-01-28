@@ -1,7 +1,7 @@
 import Scanner from './scanner';
-import { Position } from '../ast/base';
+import { Position, Node } from '../ast/base';
 
-export default function syntaxError(scanner: Scanner, message: string, pos: Position | number = scanner.pos) {
+export default function syntaxError(scanner: Scanner, message: string, pos: Position | number = scanner.pos): ENDSyntaxError {
     if (typeof pos === 'number') {
         pos = scanner.sourceLocation(pos);
     }
@@ -16,6 +16,11 @@ export default function syntaxError(scanner: Scanner, message: string, pos: Posi
     }
 
     return new ENDSyntaxError(message, scanner.url, loc);
+}
+
+export function syntaxErrorFromNode(message: string, node: Node): ENDSyntaxError {
+    const loc = node.loc;
+    return new ENDSyntaxError(message, loc && loc.source, loc && loc.start);
 }
 
 export class ENDSyntaxError extends SyntaxError {

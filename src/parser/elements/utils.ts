@@ -1,9 +1,9 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
-import { Identifier, Program } from '../../ast/expression';
+import { Identifier, Program, Literal } from '../../ast/expression';
 import { ENDStatement, ENDAttribute, ParsedTag, ENDText } from '../../ast/template';
 import { Node } from '../../ast/base';
-import syntaxError, { ENDSyntaxError } from '../syntax-error';
+import syntaxError, { ENDSyntaxError, syntaxErrorFromNode } from '../syntax-error';
 import { closeTag, openTag } from '../tag';
 import text from '../text';
 import expression from '../expression';
@@ -133,17 +133,23 @@ export function getControlName(name: string): string {
 
 /**
  * Returns attribute with given name from tag name definition, if any
- * @param openTag
- * @param name
  */
 export function getAttr(openTag: ParsedTag, name: string): ENDAttribute {
     return openTag.attributes.find(attr => attr.name instanceof Identifier && attr.name.name === name);
 }
 
 /**
+ * Returns value of attribute with given name from tag name definition, if any
+ */
+export function getAttrValue(openTag: ParsedTag, name: string): string | number | boolean {
+    const attr = getAttr(openTag, name);
+    if (attr && attr.value instanceof Literal) {
+        return attr.value.value;
+    }
+}
+
+/**
  * Returns directive with given prefix and name from tag name definition, if any
- * @param openTag
- * @param name
  */
 export function getDirective(openTag: ParsedTag, prefix: string, name?: string): ENDAttribute {
     return openTag.directives.find(dir => dir.prefix === prefix && (!name || dir.name.name === name));
@@ -176,14 +182,29 @@ export function expectAttributeExpression(tag: ParsedTag, name: string): ENDAttr
     return attr;
 }
 
+export function expectAttributeLiteral(tag: ParsedTag, name: string): ENDAttribute {
+    const attr = expectAttribute(tag, name);
+    assertLiteral(attr);
+    return attr;
+}
+
 /**
  * Check if value of given attribute is an expression. If not, throws exception
  */
 export function assertExpression(attr: ENDAttribute): void {
     if (!(attr.value instanceof Program)) {
         const attrName: string = attr.name instanceof Identifier ? attr.name.name : null;
+        throw syntaxErrorFromNode(`Expecting expression as${attrName ? ` "${attrName}"` : ''} attribute value`, attr);
+    }
+}
 
-        throw new ENDSyntaxError(`Expecting expression as${attrName ? ` "${attrName}"` : ''} attribute value`, attr.loc.source, attr.loc.start);
+/**
+ * Check if value of given attribute is a literal. If not, throws exception
+ */
+export function assertLiteral(attr: ENDAttribute): void {
+    if (!(attr.value instanceof Literal)) {
+        const attrName: string = attr.name instanceof Identifier ? attr.name.name : null;
+        throw syntaxErrorFromNode(`Expecting string literal as${attrName ? ` "${attrName}"` : ''} attribute value`, attr);
     }
 }
 
