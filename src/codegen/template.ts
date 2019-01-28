@@ -60,16 +60,6 @@ const generators: NodeGeneratorMap = {
         if (scope.isComponent(elemName)) {
             // Create component
             elem = sn(node, [`${scope.use(Symbols.createComponent)}(${qStr(elemName)}, ${scope.componentsMap.get(elemName).symbol}, ${scope.host})`]);
-            // In component, static attributes/props (e.g. ones which won’t change
-            // in runtime) must be added during component mount. Thus, we should
-            // process dynamic attributes only
-            const staticAttrs: Ast.ENDAttribute[] = [];
-            attributes = attributes.filter(attr => {
-                if (isDynamicAttribute(attr, scope)) {
-                    return true;
-                }
-                staticAttrs.push(attr);
-            });
         } else if (stats.text) {
             // Create plain DOM element with static text
             elem = sn(node.name, [
@@ -98,6 +88,11 @@ const generators: NodeGeneratorMap = {
         if (scope.inComponent()) {
             // Redirect input into component injector
             scope.element.injector = `${scope.element.localSymbol}.componentModel.input`;
+
+            // In component, static attributes/props (e.g. ones which won’t change
+            // in runtime) must be added during component mount. Thus, we should
+            // process dynamic attributes only
+            attributes = attributes.filter(attr => isDynamicAttribute(attr, scope));
         }
 
         chunks = chunks.concat(
