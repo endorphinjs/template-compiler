@@ -1,7 +1,7 @@
 import { SourceNode } from 'source-map';
 import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
-import { ENDSyntaxError } from '../parser/syntax-error';
+import { syntaxErrorFromNode } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
 import getStats, { collectDynamicStats, hasRefs } from './node-stats';
@@ -327,8 +327,7 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
             return generators[node.type](node, scope, sn, compile);
         }
 
-        throw new ENDSyntaxError(`${node.type} is not supported in templates`,
-            node.loc && node.loc.source, node.loc && node.loc.start);
+        throw syntaxErrorFromNode(`${node.type} is not supported in templates`, node);
     };
 
     // 1. Collect child components

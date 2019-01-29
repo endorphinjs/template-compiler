@@ -3,7 +3,7 @@ import { toCharCodes, eatSection, isSpace } from '../utils';
 import { Identifier, Program, Literal } from '../../ast/expression';
 import { ENDStatement, ENDAttribute, ParsedTag, ENDText, ENDElement, ENDAttributeStatement } from '../../ast/template';
 import { Node } from '../../ast/base';
-import syntaxError, { ENDSyntaxError, syntaxErrorFromNode } from '../syntax-error';
+import syntaxError, { syntaxErrorFromNode } from '../syntax-error';
 import { closeTag, openTag } from '../tag';
 import text from '../text';
 import expression from '../expression';
@@ -170,7 +170,7 @@ export function getAttributes(tag: ParsedTag): ENDAttribute[] {
 export function expectAttribute(tag: ParsedTag, name: string): ENDAttribute {
     const attr = getAttr(tag, name);
     if (!attr) {
-        throw new ENDSyntaxError(`Expecting "${name}" attribute in <${tag.getName()}> element`, tag.loc.source, tag.loc.start);
+        throw syntaxErrorFromNode(`Expecting "${name}" attribute in <${tag.getName()}> element`, tag);
     }
 
     return attr;

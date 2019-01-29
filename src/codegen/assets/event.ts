@@ -1,7 +1,7 @@
 import { SourceNode } from 'source-map';
 import { ENDDirective } from '../../ast/template';
 import * as JSAst from '../../ast/expression';
-import { ENDSyntaxError } from '../../parser/syntax-error';
+import { syntaxErrorFromNode } from '../../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from '../scope';
 import { SourceNodeFactory, qStr, propAccessor } from '../utils';
 import { generate, NodeGeneratorMap } from '../expression';
@@ -20,7 +20,7 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
     // basic expressions: they must use local variable as source of runtime
     // variables
     if (!(node.value instanceof JSAst.Program)) {
-        throw new ENDSyntaxError(`Event handler must be expression`, node.value.loc.source, node.value.loc.start);
+        throw syntaxErrorFromNode(`Event handler must be expression`, node.value);
     }
 
     const handlerName = scope.localSymbol('handler');
@@ -73,5 +73,5 @@ function getEventSymbol(node: JSAst.JSNode): string {
         return node.callee.name;
     }
 
-    throw new ENDSyntaxError(`Unable to get handler name from event expression`, node.loc.source, node.loc.start);
+    throw syntaxErrorFromNode(`Unable to get handler name from event expression`, node);
 }
