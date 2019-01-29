@@ -51,11 +51,13 @@ describe('Node stats', () => {
         assert(!isStatic(stats));
         assert.deepEqual(Array.from(stats.dynamicAttributes), ['foo']);
 
+        // NB content expression doesn’t affect static nodes since expression
+        // is created as text node with own update process
         stats = getStats('<div>{bar}</div>');
-        assert(!isStatic(stats));
+        assert(isStatic(stats));
 
         stats = getStats('<div>foo {bar}</div>');
-        assert(!isStatic(stats));
+        assert(isStatic(stats));
 
         stats = getStats('<div><end:if test={foo}>bar</end:if></div>');
         assert(!isStatic(stats));

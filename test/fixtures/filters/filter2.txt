@@ -1,5 +1,5 @@
-import { filter, get } from '@endorphinjs/endorphin';
+import { filter, get } from "@endorphinjs/endorphin";
 
-function filter0$$$end(host, {c}) {
+function $$filter0(host, {c}) {
 	return (c === host.props.foo);
 }

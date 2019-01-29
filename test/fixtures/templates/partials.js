@@ -11,18 +11,6 @@ export const partials = {
 	}
 };
 
-export default function $$template0(host, scope) {
-	const target0 = host.componentView;
-	const ul0 = target0.appendChild(elem("ul", host));
-	const injector0 = createInjector(ul0);
-	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
-	return $$template0Update;
-}
-
-function $$template0Update(host, scope) {
-	updateIterator(scope.$_iter0);
-}
-
 function $$partialButton0(host, injector, scope) {
 	const li0 = insert(injector, elem("li", host));
 	const injector0 = scope.$_injector0 = createInjector(li0);
@@ -37,6 +25,18 @@ function $$partialButton0Update(host, injector, scope) {
 	$$ifAttr0(host, injector0, scope);
 	scope.$_textValue0 = updateText(scope.$_text0, scope.item, scope.$_textValue0);
 	finalizeAttributes(injector0);
+}
+
+export default function $$template0(host, scope) {
+	const target0 = host.componentView;
+	const ul0 = target0.appendChild(elem("ul", host));
+	const injector0 = createInjector(ul0);
+	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
+	return $$template0Update;
+}
+
+function $$template0Update(host, scope) {
+	updateIterator(scope.$_iter0);
 }
 
 function $$iteratorExpr0(host) {

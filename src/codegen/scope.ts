@@ -1,5 +1,5 @@
 import { SourceNode } from 'source-map';
-import { ChunkList, tagToJS, format, Chunk } from './utils';
+import { ChunkList, tagToJS, format, Chunk, qStr, isIdentifier } from './utils';
 import { ElementStats } from './node-stats';
 import ElementContext from './element-context';
 import { ENDImport } from '../ast/template';
@@ -328,6 +328,51 @@ export default class CompileScope {
     inComponent(): boolean {
         const elem = this.element;
         return !!elem && this.isComponent(elem.name);
+    }
+
+    /**
+     * Compiles current scope state to final JS code
+     */
+    compile(): SourceNode {
+        // Generate final output
+        const body = new SourceNode();
+
+        // Import runtime symbols, used by template
+        if (this.runtimeSymbols.size) {
+            body.add(`import { ${Array.from(this.runtimeSymbols).map(symbol => RuntimeSymbols[symbol]).join(', ')} } from "${this.options.module}";\n`);
+        }
+
+        // Import child components
+        if (this.componentsMap.size) {
+            this.componentsMap.forEach(item => {
+                body.add(`import * as ${item.symbol} from ${qStr(item.href)};\n`);
+            });
+        }
+
+        // Partials declarations
+        if (this.partialsMap.size) {
+            body.add(`\nexport const ${this.partials} = {`);
+            const innerIndent = this.indent.repeat(2);
+            let count = 0;
+            this.partialsMap.forEach((partial, name) => {
+                if (count++) {
+                    body.add(',\n');
+                }
+
+                body.add([
+                    `\n${this.indent}`, isIdentifier(name) ? name : qStr(name), ': {\n',
+                    `${innerIndent}body: ${partial.name},\n`,
+                    `${innerIndent}defaults: `, partial.defaults, '\n',
+                    `${this.indent}}`
+                ]);
+            });
+
+            body.add('\n};\n');
+        }
+
+        this.body.forEach(chunk => body.add(['\n', chunk, '\n']));
+
+        return body;
     }
 
     private markScopeAsUsed() {

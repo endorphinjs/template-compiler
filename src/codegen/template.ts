@@ -344,55 +344,13 @@ export default function compileTemplate(program: Ast.ENDProgram, scope: CompileS
     });
 
     // 2. Compile templates
-    const templates: ChunkList = [];
     program.body.forEach(node => {
         if (node instanceof Ast.ENDTemplate || node instanceof Ast.ENDPartial) {
-            templates.push(compile(node));
+            scope.body.unshift(compile(node));
         }
     });
 
-    // Generate final output
-    let body: ChunkList = [];
-
-    // Import runtime symbols, used by template
-    if (scope.runtimeSymbols.size) {
-        body.push(`import { ${Array.from(scope.runtimeSymbols).map(symbol => Symbols[symbol]).join(', ')} } from "${scope.options.module}";`);
-    }
-
-    // Import child components
-    if (scope.componentsMap.size) {
-        scope.componentsMap.forEach((item, name) => {
-            body.push(`\nimport * as ${item.symbol} from ${qStr(item.href)};`);
-        });
-    }
-
-    if (scope.partialsMap.size) {
-        const partials = new SourceNode();
-        partials.add(`export const ${scope.partials} = {`);
-        const innerIndent = scope.indent.repeat(2);
-        let count = 0;
-        scope.partialsMap.forEach((partial, name) => {
-            if (count++) {
-                partials.add(',\n');
-            }
-
-            partials.add([
-                `\n${scope.indent}`, isIdentifier(name) ? name : qStr(name), ': {\n',
-                `${innerIndent}body: ${partial.name},\n`,
-                `${innerIndent}defaults: `, partial.defaults, '\n',
-                `${scope.indent}}`
-            ]);
-        });
-
-        partials.add('\n};');
-        templates.unshift(partials);
-    }
-    // In most cases, templates and scope body are function declarations
-    templates.concat(scope.body).forEach(chunk => {
-        body.push('\n\n', chunk);
-    });
-
-    return sn(program, body);
+    return scope.compile();
 }
 
 function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, sn: SourceNodeFactory): Chunk {

@@ -1,26 +1,7 @@
 {
-  "type": "ENDProgram",
   "body": [
     {
-      "type": "ENDTemplate",
       "body": [
-        {
-          "value": "\n    ",
-          "type": "ENDText",
-          "loc": {
-            "source": "samples/template1.html",
-            "start": {
-              "pos": 10,
-              "line": 1,
-              "column": 10
-            },
-            "end": {
-              "pos": 15,
-              "line": 2,
-              "column": 4
-            }
-          }
-        },
         {
           "name": {
             "name": "h1",
@@ -40,7 +21,7 @@
             }
           },
           "attributes": [],
-          "type": "ENDElement",
+          "directives": [],
           "body": [
             {
               "value": "Hello world",
@@ -59,24 +40,8 @@
                 }
               }
             }
-          ]
-        },
-        {
-          "value": "\n    ",
-          "type": "ENDText",
-          "loc": {
-            "source": "samples/template1.html",
-            "start": {
-              "pos": 35,
-              "line": 2,
-              "column": 24
-            },
-            "end": {
-              "pos": 40,
-              "line": 3,
-              "column": 4
-            }
-          }
+          ],
+          "type": "ENDElement"
         },
         {
           "test": {
@@ -166,23 +131,6 @@
           "type": "ENDIfStatement",
           "consequent": [
             {
-              "value": "\n        ",
-              "type": "ENDText",
-              "loc": {
-                "source": "samples/template1.html",
-                "start": {
-                  "pos": 64,
-                  "line": 3,
-                  "column": 28
-                },
-                "end": {
-                  "pos": 73,
-                  "line": 4,
-                  "column": 8
-                }
-              }
-            },
-            {
               "name": {
                 "name": "div",
                 "type": "Identifier",
@@ -252,7 +200,7 @@
                   }
                 }
               ],
-              "type": "ENDElement",
+              "directives": [],
               "body": [
                 {
                   "value": "Foo is ",
@@ -322,24 +270,8 @@
                   },
                   "raw": " foo "
                 }
-              ]
-            },
-            {
-              "value": "\n    ",
-              "type": "ENDText",
-              "loc": {
-                "source": "samples/template1.html",
-                "start": {
-                  "pos": 113,
-                  "line": 4,
-                  "column": 48
-                },
-                "end": {
-                  "pos": 118,
-                  "line": 5,
-                  "column": 4
-                }
-              }
+              ],
+              "type": "ENDElement"
             }
           ],
           "loc": {
@@ -355,25 +287,9 @@
               "column": 28
             }
           }
-        },
-        {
-          "value": "\n",
-          "type": "ENDText",
-          "loc": {
-            "source": "samples/template1.html",
-            "start": {
-              "pos": 127,
-              "line": 5,
-              "column": 13
-            },
-            "end": {
-              "pos": 128,
-              "line": 6,
-              "column": 0
-            }
-          }
         }
       ],
+      "type": "ENDTemplate",
       "loc": {
         "source": "samples/template1.html",
         "start": {
@@ -388,5 +304,6 @@
         }
       }
     }
-  ]
+  ],
+  "type": "ENDProgram"
 }
