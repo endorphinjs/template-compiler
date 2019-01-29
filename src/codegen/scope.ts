@@ -10,11 +10,9 @@ import { ENDImport } from '../ast/template';
 
 export enum RuntimeSymbols {
     get, mountBlock, updateBlock, mountIterator, updateIterator, mountKeyIterator,
-    updateKeyIterator, createInjector, block, enterScope, exitScope, getScope,
-    getProp, getState, getVar, setVar, setAttribute, updateAttribute, updateProps,
-    addClass, finalizeAttributes, finalizeProps, addEvent, addStaticEvent, finalizeEvents,
-    getEventHandler, callEventHandler, renderSlot, setRef, setStaticRef, finalizeRefs, createComponent,
-    mountComponent, updateComponent, unmountComponent, mountInnerHTML, updateInnerHTML,
+    updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
+    addEvent, addStaticEvent, finalizeEvents, renderSlot, setRef, setStaticRef,
+    finalizeRefs, createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
     mountPartial, updatePartial, elem, elemWithText, text, updateText, filter, insert
 }
 
