@@ -5,7 +5,7 @@ import { syntaxErrorFromNode } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
 import getStats, { collectDynamicStats, hasRefs } from './node-stats';
-import compileExpression, { generate } from './expression';
+import compileExpression from './expression';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
 import { getAttrValue } from '../parser/elements/utils';
@@ -264,7 +264,7 @@ const generators: NodeGeneratorMap = {
             const indent = scope.indent.repeat(2);
 
             scope.func.element = null;
-            body.add([`if (`, generate(node.test, scope), ') {']);
+            body.add([`if (`, compileExpression(node.test, scope), ') {']);
             node.consequent.forEach(node => {
                 body.add(['\n', indent, next(node)]);
             });
@@ -435,9 +435,9 @@ function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[
     const blockEntryBody = new SourceNode();
     blocks.forEach((block, i) => {
         if (i === 0) {
-            blockEntryBody.add([`if (`, generate(block.test, scope), ')']);
+            blockEntryBody.add([`if (`, compileExpression(block.test, scope), ')']);
         } else if (block.test) {
-            blockEntryBody.add([`else if (`, generate(block.test, scope), ')']);
+            blockEntryBody.add([`else if (`, compileExpression(block.test, scope), ')']);
         } else {
             blockEntryBody.add('else');
         }

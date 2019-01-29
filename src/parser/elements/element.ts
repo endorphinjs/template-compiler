@@ -12,13 +12,8 @@ export default function elementStatement(scanner: Scanner, openTag: ParsedTag, n
     // Consume as regular tag
     const elem = new ENDElement(openTag.name, openTag.attributes, openTag.directives);
     tagBody(scanner, openTag, elem.body, next);
-    return expandDirectives(elem);
-}
 
-/**
- * Expands directives in given element: replaces some known directives with AST nodes
- */
-function expandDirectives(elem: ENDElement): ENDStatement {
+    // Expand directives in parsed element: replaces some known directives with AST nodes
     let ctx: ENDStatement = elem;
 
     for (let i = elem.directives.length - 1; i >= 0; i--) {
@@ -33,7 +28,7 @@ function expandDirectives(elem: ENDElement): ENDStatement {
             classStatement.tokens.push(className);
 
             if (dir.value !== null) {
-                assertExpression(dir);
+                assertExpression(scanner, dir);
                 const ifStatement = new ENDIfStatement(dir.value as Program);
                 ifStatement.consequent.push(classStatement);
                 elem.body.unshift(ifStatement);

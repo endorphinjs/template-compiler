@@ -3,7 +3,6 @@ import endorphinParser from './acorn-plugin';
 import { Node } from '../../ast/base';
 import * as Ast from '../../ast/expression';
 import Scanner from '../scanner';
-import syntaxError from '../syntax-error';
 
 // @ts-ignore
 const JSParser = Parser.extend(endorphinParser);
@@ -124,7 +123,7 @@ const converters: AstConverterMap = {
     },
     ArrowFunctionExpression(aNode, scope, scanner, next) {
         if (aNode.generator || aNode.async) {
-            throw syntaxError(scanner, 'Generators and async functions are not supported', aNode.start + scanner.start);
+            throw scanner.error('Generators and async functions are not supported', aNode.start + scanner.start);
         }
 
         // Rewrite arrow function body: function arguments must be kept as-is (identifiers)
@@ -202,7 +201,7 @@ const converters: AstConverterMap = {
         }
 
         if (!root) {
-            throw syntaxError(scanner, `Unexpected "${aNode.object.type}" in object expression`, aNode.object.start);
+            throw scanner.error(`Unexpected "${aNode.object.type}" in object expression`, aNode.object.start);
         }
 
         return new Ast.ENDGetter(root, path);

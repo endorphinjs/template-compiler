@@ -3,7 +3,6 @@ import { ENDAddClassStatement, ENDPlainStatement, ParsedTag } from '../../ast/te
 import { InnerStatement, ignored, closesTag } from './utils';
 import expression from '../expression';
 import text from '../text';
-import syntaxError from '../syntax-error';
 
 export default function addClassStatement(scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): ENDAddClassStatement {
     if (openTag.selfClosing) {
@@ -19,7 +18,7 @@ export default function addClassStatement(scanner: Scanner, openTag: ParsedTag, 
         if (token = expression(scanner) || text(scanner)) {
             node.tokens.push(token);
         } else if (!ignored(scanner)) {
-            throw syntaxError(scanner, `Unexpected token, <${openTag.getName()}> must contain text or expressions`);
+            throw scanner.error(`Unexpected token, <${openTag.getName()}> must contain text or expressions`);
         }
     }
 

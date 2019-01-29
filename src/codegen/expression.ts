@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { syntaxErrorFromNode } from '../parser/syntax-error';
-import { Chunk, ChunkList, qStr } from './utils';
+import { Chunk, ChunkList, qStr, sn, propAccessor } from './utils';
 
 /**
  * SourceNode factory which attaches location info to source map node from given
@@ -136,11 +136,7 @@ const generators: NodeGeneratorMap = {
     }
 };
 
-export default function compileExpression(program: Ast.Program, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
-    return generate(program, scope, override);
-}
-
-export function generate(node: Ast.JSNode, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
+export default function compileExpression(node: Ast.JSNode, scope: CompileScope, override?: NodeGeneratorMap): SourceNode {
     const localGenerators = { ...generators, ...override };
 
     const next: Generator = node => {
@@ -152,24 +148,6 @@ export function generate(node: Ast.JSNode, scope: CompileScope, override?: NodeG
     }
 
     return next(node);
-}
-
-const sn: SourceNodeFactory = (node, chunks, name) => {
-    if (node.loc) {
-        return new SourceNode(node.loc.start.line, node.loc.start.column, node.loc.source, chunks, name);
-    }
-
-    const output = new SourceNode();
-    output.add(chunks);
-    return output;
-}
-
-/**
- * Generates property accessor code
- */
-function propAccessor(name: string): string {
-    return /^[a-zA-Z_$][\w_$]*$/.test(name)
-        ? `.${name}` : `[${qStr(name)}]`;
 }
 
 /**

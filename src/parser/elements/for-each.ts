@@ -9,10 +9,10 @@ import { Program } from "../../ast/expression";
  * @param openTag
  */
 export default function forEachStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDForEachStatement {
-    const select = expectAttributeExpression(openTag, 'select');
+    const select = expectAttributeExpression(scanner, openTag, 'select');
     const key = getAttr(openTag, 'key');
     if (key) {
-        assertExpression(key);
+        assertExpression(scanner, key);
     }
 
     // TODO parse attributes for internal variables

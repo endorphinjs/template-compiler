@@ -4,7 +4,7 @@ import * as JSAst from '../../ast/expression';
 import { syntaxErrorFromNode } from '../../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from '../scope';
 import { SourceNodeFactory, qStr, propAccessor } from '../utils';
-import { generate, NodeGeneratorMap } from '../expression';
+import compileExpression, { NodeGeneratorMap } from '../expression';
 
 /**
  * Custom generators for generating event handlers
@@ -44,7 +44,7 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
         // Add arguments to function handler but ensure that variables are fetched
         // from local variable: it is required for proper variable scoping in loops
         handler.arguments.forEach(arg => {
-            output.add([generate(arg, scope, eventGenerators), ', ']);
+            output.add([compileExpression(arg, scope, eventGenerators), ', ']);
         });
     }
 

@@ -1,36 +1,50 @@
-import Scanner from './scanner';
 import { Position, Node } from '../ast/base';
 
-export default function syntaxError(scanner: Scanner, message: string, pos: Position | number = scanner.pos): ENDSyntaxError {
-    if (typeof pos === 'number') {
-        pos = scanner.sourceLocation(pos);
-    }
-
-    const loc: Position = typeof pos === 'number'
-        ? scanner.sourceLocation(pos)
-        : pos as Position;
-
-    message += ` at line ${loc.line}, column ${loc.column}`;
-    if (scanner.url) {
-        message += ` in ${scanner.url}`;
-    }
-
-    return new ENDSyntaxError(message, scanner.url, loc);
-}
-
-export function syntaxErrorFromNode(message: string, node: Node): ENDSyntaxError {
+export function syntaxErrorFromNode(message: string, node: Node, source?: string): ENDSyntaxError {
     const loc = node.loc;
-    return new ENDSyntaxError(message, loc && loc.source, loc && loc.start);
+    return new ENDSyntaxError(message, loc && loc.source, loc && loc.start, source);
 }
 
 export class ENDSyntaxError extends SyntaxError {
-    fileName: string | null;
-    lineNumber: number;
-    columnNumber: number;
-    constructor(message: string, fileName?: string | null, pos?: Position) {
+    readonly fileName: string | null;
+    readonly lineNumber: number;
+    readonly columnNumber: number;
+    readonly snippet?: string;
+
+    constructor(message: string, fileName?: string | null, pos?: Position, source?: string) {
+        if (pos) {
+            message += ` at line ${pos.line}, column ${pos.column}`;
+        }
+
+        if (fileName) {
+            message += ` in ${fileName}`;
+        }
+
+        let snippet: string;
+        if (pos && source) {
+            snippet = getSnippet(source, pos.line, pos.column);
+            message += `\n\n${snippet}`;
+        }
+
         super(message);
         this.fileName = fileName;
         this.lineNumber = pos && pos.line;
         this.columnNumber = pos && pos.column;
+        this.snippet = snippet;
     }
+}
+
+/**
+ * Returns code fragment with pointer to given `line` and `column`
+ */
+function getSnippet(code: string, line: number, column: number): string {
+    const lines = splitByLines(code);
+    const start = Math.max(line - 3, 0);
+    const chunk = lines.slice(start, start + 5);
+    chunk.splice(line - start, 0, '-'.repeat(column) + '^^^');
+    return chunk.join('\n');
+}
+
+function splitByLines(text: string): string[] {
+    return text.replace(/\r\n/g, '\n').split('\n');
 }

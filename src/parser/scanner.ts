@@ -2,6 +2,7 @@ const LF = 10;
 const CR = 13;
 
 import { Position, Node } from '../ast/base';
+import { ENDSyntaxError } from './syntax-error';
 
 export interface MatchFunction { (ch: number): boolean; }
 
@@ -168,11 +169,13 @@ export default class Scanner {
     /**
      * Creates error object with current stream state
      */
-    error(message: string, pos: Position | number = this.pos): ParseError {
-        if (typeof pos === 'number') {
+    error(message: string, pos: Node | Position | number = this.pos): ENDSyntaxError {
+        if (pos instanceof Node) {
+            pos = pos.loc.start;
+        } else if (typeof pos === 'number') {
             pos = this.sourceLocation(pos);
         }
-        return new ParseError(message, pos, this);
+        return new ENDSyntaxError(message, this.url, pos, this.string);
     }
 
     expect<T extends Node>(consumer: (scanner: Scanner) => T, error: string): T;
@@ -212,10 +215,4 @@ function getLines(text: string): number[] {
     }
 
     return lines;
-}
-
-class ParseError extends Error {
-    constructor(message: string, readonly location: Position, readonly scanner: Scanner) {
-        super(`${message} at line ${location.line} column ${location.column}`);
-    }
 }

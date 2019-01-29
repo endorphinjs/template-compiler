@@ -1,7 +1,6 @@
 import Scanner from './scanner';
 import { ENDProgram, ENDStatement, ParsedTag, ENDIfStatement } from '../ast/template';
 import { openTag } from './tag';
-import syntaxError from './syntax-error';
 import templateStatement from './elements/template';
 import ifStatement from './elements/if';
 import chooseStatement from './elements/choose';
@@ -51,7 +50,7 @@ export default function parse(text: string, url: string = null): ENDProgram {
                     program.body.push(elementStatement(scanner, entry, statement));
                 }
             } else {
-                throw syntaxError(scanner, `Unexpected control statement <${entry.getName()}>`, entry.loc.start);
+                throw scanner.error(`Unexpected control statement <${entry.getName()}>`, entry);
             }
         } else if (!ignored(scanner, true)) {
             throw scanner.error('Unexpected token');
@@ -74,7 +73,7 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     for (let i = open.directives.length - 1; i >= 0; i--) {
         const dir = open.directives[i];
         if (dir.prefix === 'end' && dir.name.name === 'if') {
-            assertExpression(dir);
+            assertExpression(scanner, dir);
             parents.push(new ENDIfStatement(dir.value as Program));
         }
     }
@@ -83,7 +82,7 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
         if (controlName in statements) {
             result = statements[controlName](scanner, open, statement);
         } else {
-            throw syntaxError(scanner, `Unknown control statement <${open.getName()}>`, open.loc.start);
+            throw scanner.error(`Unknown control statement <${open.getName()}>`, open);
         }
     } else {
         // Consume as regular tag

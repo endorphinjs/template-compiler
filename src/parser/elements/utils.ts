@@ -3,7 +3,6 @@ import { toCharCodes, eatSection, isSpace } from '../utils';
 import { Identifier, Program, Literal } from '../../ast/expression';
 import { ENDStatement, ENDAttribute, ParsedTag, ENDText, ENDElement, ENDAttributeStatement } from '../../ast/template';
 import { Node } from '../../ast/base';
-import syntaxError, { syntaxErrorFromNode } from '../syntax-error';
 import { closeTag, openTag } from '../tag';
 import text from '../text';
 import expression from '../expression';
@@ -57,13 +56,13 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
         } else if (token = innerHTML(scanner) || expression(scanner) || text(scanner)) {
             items.push(token);
         } else if (!ignored(scanner)) {
-            throw syntaxError(scanner, `Unexpected token`);
+            throw scanner.error(`Unexpected token`);
         }
     }
 
     // If we reached here then most likely we have unclosed tags
     if (tagStack.length) {
-        throw syntaxError(scanner, `Expecting </${tagStack.pop().getName()}>`);
+        throw scanner.error(`Expecting </${tagStack.pop().getName()}>`);
     }
 
     finalizeTagBody(body, items);
@@ -83,7 +82,7 @@ export function emptyBody(scanner: Scanner, open: ParsedTag): void {
 
     while (!scanner.eof() && !closesTag(scanner, open)) {
         if (!ignored(scanner)) {
-            throw syntaxError(scanner, `Unexpected token, tag <${open.getName()}> must be empty`);
+            throw scanner.error(`Unexpected token, tag <${open.getName()}> must be empty`);
         }
     }
 }
@@ -99,7 +98,7 @@ export function closesTag(scanner: Scanner, open: ParsedTag): boolean {
             return true;
         }
 
-        throw syntaxError(scanner, `Unexpected closing tag <${close.getName()}>, expecting </${open.getName()}>`, pos);
+        throw scanner.error(`Unexpected closing tag <${close.getName()}>, expecting </${open.getName()}>`, pos);
     }
 
     return false;
@@ -167,44 +166,44 @@ export function getAttributes(tag: ParsedTag): ENDAttribute[] {
  * Check if `tag` element contains attribute with given name and returns it. If not,
  * throws exception
  */
-export function expectAttribute(tag: ParsedTag, name: string): ENDAttribute {
+export function expectAttribute(scanner: Scanner, tag: ParsedTag, name: string): ENDAttribute {
     const attr = getAttr(tag, name);
     if (!attr) {
-        throw syntaxErrorFromNode(`Expecting "${name}" attribute in <${tag.getName()}> element`, tag);
+        throw scanner.error(`Expecting "${name}" attribute in <${tag.getName()}> element`, tag);
     }
 
     return attr;
 }
 
-export function expectAttributeExpression(tag: ParsedTag, name: string): ENDAttribute {
-    const attr = expectAttribute(tag, name);
-    assertExpression(attr);
+export function expectAttributeExpression(scanner: Scanner, tag: ParsedTag, name: string): ENDAttribute {
+    const attr = expectAttribute(scanner, tag, name);
+    assertExpression(scanner, attr);
     return attr;
 }
 
-export function expectAttributeLiteral(tag: ParsedTag, name: string): ENDAttribute {
-    const attr = expectAttribute(tag, name);
-    assertLiteral(attr);
+export function expectAttributeLiteral(scanner: Scanner, tag: ParsedTag, name: string): ENDAttribute {
+    const attr = expectAttribute(scanner, tag, name);
+    assertLiteral(scanner, attr);
     return attr;
 }
 
 /**
  * Check if value of given attribute is an expression. If not, throws exception
  */
-export function assertExpression(attr: ENDAttribute): void {
+export function assertExpression(scanner: Scanner, attr: ENDAttribute): void {
     if (!(attr.value instanceof Program)) {
         const attrName: string = attr.name instanceof Identifier ? attr.name.name : null;
-        throw syntaxErrorFromNode(`Expecting expression as${attrName ? ` "${attrName}"` : ''} attribute value`, attr);
+        throw scanner.error(`Expecting expression as${attrName ? ` "${attrName}"` : ''} attribute value`, attr);
     }
 }
 
 /**
  * Check if value of given attribute is a literal. If not, throws exception
  */
-export function assertLiteral(attr: ENDAttribute): void {
+export function assertLiteral(scanner: Scanner, attr: ENDAttribute): void {
     if (!(attr.value instanceof Literal)) {
         const attrName: string = attr.name instanceof Identifier ? attr.name.name : null;
-        throw syntaxErrorFromNode(`Expecting string literal as${attrName ? ` "${attrName}"` : ''} attribute value`, attr);
+        throw scanner.error(`Expecting string literal as${attrName ? ` "${attrName}"` : ''} attribute value`, attr);
     }
 }
 

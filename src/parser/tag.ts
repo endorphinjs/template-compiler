@@ -3,7 +3,6 @@ import { Identifier, Literal, Program, ExpressionStatement } from '../ast/expres
 import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue, ENDDirective } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import Scanner from './scanner';
-import { syntaxErrorFromNode } from './syntax-error';
 
 export const TAG_START = 60; // <
 export const TAG_END = 62; // >
@@ -52,7 +51,7 @@ export function openTag(scanner: Scanner): ParsedTag {
                     const shouldValidateSlot = attrName === (name.name === 'slot' ? 'name' : 'slot');
 
                     if (shouldValidateSlot && attr.value && !(attr.value instanceof Literal)) {
-                        throw syntaxErrorFromNode(`Slot name must be a string literal, expressions are not supported`, attr.value);
+                        throw scanner.error(`Slot name must be a string literal, expressions are not supported`, attr.value)
                     }
 
                     tag.attributes.push(attr);

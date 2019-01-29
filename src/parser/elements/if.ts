@@ -9,7 +9,7 @@ import { Program } from '../../ast/expression';
  * @param openTag
  */
 export default function ifStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDIfStatement {
-    const test = expectAttributeExpression(openTag, 'test');
+    const test = expectAttributeExpression(scanner, openTag, 'test');
     const node = new ENDIfStatement(test.value as Program);
     node.loc = openTag.loc;
     tagBody(scanner, openTag, node.consequent, next);
