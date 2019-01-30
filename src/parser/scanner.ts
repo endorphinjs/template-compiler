@@ -139,7 +139,6 @@ export default class Scanner {
             this.lines = getLines(this.string);
         }
 
-
         const { lines } = this;
         let line = 0;
 

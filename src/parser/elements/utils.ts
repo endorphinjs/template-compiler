@@ -98,7 +98,7 @@ export function closesTag(scanner: Scanner, open: ParsedTag): boolean {
             return true;
         }
 
-        throw scanner.error(`Unexpected closing tag <${close.getName()}>, expecting </${open.getName()}>`, pos);
+        throw scanner.error(`Unexpected closing tag </${close.getName()}>, expecting </${open.getName()}>`, pos);
     }
 
     return false;

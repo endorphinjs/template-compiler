@@ -96,7 +96,7 @@ export function eatQuoted(scanner: Scanner): boolean {
             }
         }
 
-        throw scanner.error('Unable to consume quoted string');
+        throw scanner.error('Missing closing quote for string', start);
     }
 
     return false;

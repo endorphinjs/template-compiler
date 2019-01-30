@@ -41,11 +41,44 @@ export class ENDCompileError extends Error {
 function getSnippet(code: string, line: number, column: number): string {
     const lines = splitByLines(code);
     const start = Math.max(line - 3, 0);
-    const chunk = lines.slice(start, start + 5);
-    chunk.splice(line - start, 0, '-'.repeat(column) + '^^^');
+    const targetLine = line - start - 1;
+
+    // Replace all tab characters with spaces for better representation in TTY
+    const indent = '  ';
+    const chunk = lines.slice(start, start + 5).map((line, i) => {
+        if (i === targetLine) {
+            const result = replaceTabs(line, indent, column);
+            column += result.offset;
+            return result.text;
+        }
+
+        return line.replace(/\t/g, indent);
+    });
+
+    chunk.splice(targetLine + 1, 0, '-'.repeat(column) + '^');
     return chunk.join('\n');
 }
 
 function splitByLines(text: string): string[] {
     return text.replace(/\r\n/g, '\n').split('\n');
+}
+
+function replaceTabs(text: string, replacement: string, column: number = 0): { text: string, offset: number} {
+    let offset = 0
+    let output = '';
+
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '\t') {
+            output += replacement;
+            if (i < column) {
+                // NB -1 because of tab character length
+                offset += replacement.length - 1;
+            }
+        } else {
+            output += ch;
+        }
+    }
+
+    return { text: output, offset };
 }

@@ -285,12 +285,7 @@ function parseKeyword(code: string, scanner: Scanner): Ast.Program {
  * Parses given JavaScript code
  */
 function parseScript(code: string, scanner: Scanner): Ast.Program {
-    const ast = JSParser.parse(code, {
-        sourceType: 'module',
-        sourceFile: scanner.url
-    });
     const scope = new Scope();
-
     const convert = (aNode: any): Node => {
         if (aNode == null) {
             return aNode;
@@ -302,6 +297,16 @@ function parseScript(code: string, scanner: Scanner): Ast.Program {
         }
 
         throw new UnsupportedError(aNode.type, aNode.start + scanner.start, aNode.end + scanner.start);
+    }
+
+    let ast: AcornNode;
+    try {
+        ast = JSParser.parse(code, {
+            sourceType: 'module',
+            sourceFile: scanner.url
+        });
+    } catch (err) {
+        throw scanner.error(err.message.replace(/\s*\(\d+:\d+\)$/, ''), scanner.start + err.pos - 1);
     }
 
     return convert(ast) as Ast.Program;
