@@ -4,9 +4,12 @@ export class ENDSyntaxError extends SyntaxError {
     readonly fileName: string | null;
     readonly lineNumber: number;
     readonly columnNumber: number;
+    readonly rawMessage: string;
     readonly snippet?: string;
 
     constructor(message: string, fileName?: string | null, pos?: Position, source?: string) {
+        const rawMessage = message;
+
         if (pos) {
             message += ` at line ${pos.line}, column ${pos.column}`;
         }
@@ -26,6 +29,7 @@ export class ENDSyntaxError extends SyntaxError {
         this.lineNumber = pos && pos.line;
         this.columnNumber = pos && pos.column;
         this.snippet = snippet;
+        this.rawMessage = rawMessage;
     }
 }
 
