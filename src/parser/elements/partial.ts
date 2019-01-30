@@ -18,5 +18,7 @@ export default function partialStatement(scanner: Scanner, openTag: ParsedTag): 
     // Ignore partial content, if any
     tagBody(scanner, openTag, []);
 
-    return new ENDPartialStatement(id, getAttributes(openTag));
+    const partial = new ENDPartialStatement(id, getAttributes(openTag));
+    partial.loc = openTag.loc;
+    return partial;
 }

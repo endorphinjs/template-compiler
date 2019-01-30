@@ -38,8 +38,7 @@ class Scope {
  * @param sourceFile Source file URL from which expression is parsed
  */
 export default function parse(code: string, scanner: Scanner): Ast.Program {
-    const program: Ast.Program = parseKeyword(code, scanner)
-        || parseScript(code, scanner);
+    const program = parseKeyword(code, scanner) || parseScript(code, scanner);
     program.raw = code;
     return scanner.astNode(program, scanner.start, scanner.start + code.length);
 }
@@ -266,7 +265,7 @@ function parseKeyword(code: string, scanner: Scanner): Ast.Program {
         // Quick test to bypass Acorn restriction on using single reserved literal
         // as expression
         const offset = scanner.start + m[1].length;
-        let value: boolean | null;
+        let value: boolean;
         if (m[2] === 'true') {
             value = true
         } else if (m[2] === 'false') {
@@ -275,8 +274,10 @@ function parseKeyword(code: string, scanner: Scanner): Ast.Program {
             value = null;
         }
 
-        const literal = scanner.astNode(new Ast.Literal(value, m[2]), offset, offset + m[2].length);
-        return new Ast.Program([literal]);
+        const start = offset;
+        const end = offset + m[2].length;
+        const literal = scanner.astNode(new Ast.Literal(value, m[2]), start, end);
+        return scanner.astNode(new Ast.Program([literal]), start, end);
     }
 }
 
@@ -312,7 +313,8 @@ function parseScript(code: string, scanner: Scanner): Ast.Program {
 function loc<T extends Node>(node: T, aNode: AcornNode, scanner: Scanner): T {
     node.loc = {
         start: scanner.sourceLocation(aNode.start + scanner.start),
-        end: scanner.sourceLocation(aNode.end + scanner.start)
+        end: scanner.sourceLocation(aNode.end + scanner.start),
+        source: scanner.url
     };
     return node;
 }

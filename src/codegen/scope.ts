@@ -16,7 +16,7 @@ export enum RuntimeSymbols {
     mountPartial, updatePartial, elem, elemWithText, text, updateText, filter, insert
 }
 
-interface CompileScopeOptions {
+export interface CompileScopeOptions {
     /** Path to JS module that holds Endorphin runtime functions */
     module?: string;
 

@@ -33,8 +33,7 @@ const statements: StatementMap = {
  * @param text Template source
  * @param url Location of source, used for source mapping
  */
-export default function parse(text: string, url: string = null): ENDProgram {
-    const scanner = new Scanner(text, url);
+export default function parseToAst(scanner: Scanner): ENDProgram {
     const program = new ENDProgram();
     let entry : ParsedTag;
 

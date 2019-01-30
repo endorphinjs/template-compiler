@@ -11,6 +11,7 @@ import { Program } from "../../ast/expression";
 export default function elementStatement(scanner: Scanner, openTag: ParsedTag, next: InnerStatement): ENDStatement {
     // Consume as regular tag
     const elem = new ENDElement(openTag.name, openTag.attributes, openTag.directives);
+    elem.loc = openTag.loc;
     tagBody(scanner, openTag, elem.body, next);
 
     // Expand directives in parsed element: replaces some known directives with AST nodes
@@ -30,6 +31,7 @@ export default function elementStatement(scanner: Scanner, openTag: ParsedTag, n
             if (dir.value !== null) {
                 assertExpression(scanner, dir);
                 const ifStatement = new ENDIfStatement(dir.value as Program);
+                ifStatement.loc = dir.loc;
                 ifStatement.consequent.push(classStatement);
                 elem.body.unshift(ifStatement);
             } else {

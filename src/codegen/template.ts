@@ -1,7 +1,7 @@
 import { SourceNode } from 'source-map';
 import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
-import { syntaxErrorFromNode } from '../parser/syntax-error';
+import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
 import getStats, { collectDynamicStats, hasRefs } from './node-stats';
@@ -251,7 +251,8 @@ const generators: NodeGeneratorMap = {
             value.add('null');
         }
 
-        const output = sn(node, [name, ` = `, value, ';']);
+        const output = new SourceNode();
+        output.add([name, ` = `, value, ';']);
         scope.func.update.push(output);
         return output;
     },
@@ -321,13 +322,13 @@ const generators: NodeGeneratorMap = {
     }
 };
 
-export default function compileTemplate(program: Ast.ENDProgram, scope: CompileScope = new CompileScope()): SourceNode {
+export default function compileToJS(program: Ast.ENDProgram, scope: CompileScope = new CompileScope()): SourceNode {
     const compile: Generator = node => {
         if (node.type in generators) {
             return generators[node.type](node, scope, sn, compile);
         }
 
-        throw syntaxErrorFromNode(`${node.type} is not supported in templates`, node);
+        throw new ENDCompileError(`${node.type} is not supported in templates`, node);
     };
 
     // 1. Collect child components

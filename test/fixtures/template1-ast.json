@@ -41,7 +41,20 @@
               }
             }
           ],
-          "type": "ENDElement"
+          "type": "ENDElement",
+          "loc": {
+            "source": "samples/template1.html",
+            "start": {
+              "pos": 15,
+              "line": 2,
+              "column": 4
+            },
+            "end": {
+              "pos": 19,
+              "line": 2,
+              "column": 8
+            }
+          }
         },
         {
           "test": {
@@ -63,7 +76,8 @@
                         "pos": 57,
                         "line": 3,
                         "column": 21
-                      }
+                      },
+                      "source": "samples/template1.html"
                     }
                   },
                   "right": {
@@ -80,7 +94,8 @@
                         "pos": 62,
                         "line": 3,
                         "column": 26
-                      }
+                      },
+                      "source": "samples/template1.html"
                     }
                   },
                   "type": "BinaryExpression",
@@ -94,7 +109,8 @@
                       "pos": 62,
                       "line": 3,
                       "column": 26
-                    }
+                    },
+                    "source": "samples/template1.html"
                   }
                 },
                 "type": "ExpressionStatement",
@@ -108,7 +124,8 @@
                     "pos": 62,
                     "line": 3,
                     "column": 26
-                  }
+                  },
+                  "source": "samples/template1.html"
                 }
               }
             ],
@@ -187,10 +204,11 @@
                   },
                   "type": "ENDAttribute",
                   "loc": {
+                    "source": "samples/template1.html",
                     "start": {
-                      "pos": 78,
+                      "pos": 83,
                       "line": 4,
-                      "column": 13
+                      "column": 18
                     },
                     "end": {
                       "pos": 92,
@@ -236,7 +254,8 @@
                             "pos": 105,
                             "line": 4,
                             "column": 40
-                          }
+                          },
+                          "source": "samples/template1.html"
                         }
                       },
                       "type": "ExpressionStatement",
@@ -250,7 +269,8 @@
                           "pos": 105,
                           "line": 4,
                           "column": 40
-                        }
+                        },
+                        "source": "samples/template1.html"
                       }
                     }
                   ],
@@ -271,7 +291,20 @@
                   "raw": " foo "
                 }
               ],
-              "type": "ENDElement"
+              "type": "ENDElement",
+              "loc": {
+                "source": "samples/template1.html",
+                "start": {
+                  "pos": 73,
+                  "line": 4,
+                  "column": 8
+                },
+                "end": {
+                  "pos": 93,
+                  "line": 4,
+                  "column": 28
+                }
+              }
             }
           ],
           "loc": {

@@ -1,10 +1,5 @@
 import { Position, Node } from '../ast/base';
 
-export function syntaxErrorFromNode(message: string, node: Node, source?: string): ENDSyntaxError {
-    const loc = node.loc;
-    return new ENDSyntaxError(message, loc && loc.source, loc && loc.start, source);
-}
-
 export class ENDSyntaxError extends SyntaxError {
     readonly fileName: string | null;
     readonly lineNumber: number;
@@ -31,6 +26,12 @@ export class ENDSyntaxError extends SyntaxError {
         this.lineNumber = pos && pos.line;
         this.columnNumber = pos && pos.column;
         this.snippet = snippet;
+    }
+}
+
+export class ENDCompileError extends Error {
+    constructor(message: string, readonly node: Node) {
+        super(message);
     }
 }
 

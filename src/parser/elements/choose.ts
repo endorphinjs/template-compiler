@@ -15,6 +15,7 @@ export default function chooseStatement(scanner: Scanner, open: ParsedTag, next:
     }
 
     const chooseStatement = new ENDChooseStatement();
+    chooseStatement.loc = open.loc;
     let finished = false;
     let tagEntry: ParsedTag;
 
@@ -38,6 +39,7 @@ export default function chooseStatement(scanner: Scanner, open: ParsedTag, next:
             }
 
             const chooseCase = new ENDChooseCase(test && (test.value as Program));
+            chooseCase.loc = tagEntry.loc;
             tagBody(scanner, tagEntry, chooseCase.consequent, next);
             chooseStatement.cases.push(chooseCase);
         } else if (!ignored(scanner, true)) {

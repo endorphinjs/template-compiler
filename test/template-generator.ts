@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
-import { parse, generate } from '../index';
+import { compile } from '../index';
 
 describe('Template generator', () => {
     function read(fileName: string): string {
@@ -16,9 +16,8 @@ describe('Template generator', () => {
         files.forEach(file => {
             const template = read(path.join(samples, file));
             const fixture = read(path.join(fixtures, file.replace(/\.\w+$/, '.js')));
-            const ast = parse(template, file);
-            const output = generate(ast);
-            assert.equal(output.toString().trim(), fixture, file);
+            const output = compile(template, file);
+            assert.equal(output.code.trim(), fixture, file);
         });
     });
 });

@@ -28,7 +28,7 @@ export default class Scanner {
      * @param start Initial parsing location
      * @param end  Final parsing location in string
      */
-    constructor(readonly string: string, readonly url: string | null, start: number = 0, end: number = string.length) {
+    constructor(readonly string: string, readonly url?: string | null, start: number = 0, end: number = string.length) {
         this.pos = this.start = start;
         this.end = end;
         this.lines = null;

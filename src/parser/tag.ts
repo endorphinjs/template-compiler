@@ -140,6 +140,7 @@ function consumeAttributes(scanner: Scanner): ENDAttribute[] {
  */
 function attribute(scanner: Scanner): ENDAttribute {
     const name: ENDAttributeName = ident(scanner) || expression(scanner);
+    const start = scanner.pos;
     if (name) {
         let value: ENDAttributeValue = null;
 
@@ -147,7 +148,7 @@ function attribute(scanner: Scanner): ENDAttribute {
             value = scanner.expect(attributeValue, 'Expecting attribute value');
         }
 
-        return new ENDAttribute(name, value);
+        return scanner.astNode(new ENDAttribute(name, value), start);
     }
 }
 

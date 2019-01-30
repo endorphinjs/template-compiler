@@ -1,7 +1,7 @@
 import { SourceNode } from 'source-map';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
-import { syntaxErrorFromNode } from '../parser/syntax-error';
+import { ENDCompileError } from '../parser/syntax-error';
 import { Chunk, ChunkList, qStr, sn, propAccessor } from './utils';
 
 /**
@@ -144,7 +144,7 @@ export default function compileExpression(node: Ast.JSNode, scope: CompileScope,
             return localGenerators[node.type](node, scope, sn, next);
         }
 
-        throw syntaxErrorFromNode(`${node.type} is not supported in getter expressions`, node);
+        throw new ENDCompileError(`${node.type} is not supported in getter expressions`, node);
     }
 
     return next(node);
