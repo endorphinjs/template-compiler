@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
-import CompileScope, { RuntimeSymbols as Symbols } from './scope';
+import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
 import getStats, { collectDynamicStats, hasRefs } from './node-stats';
 import compileExpression from './expression';
@@ -322,7 +322,8 @@ const generators: NodeGeneratorMap = {
     }
 };
 
-export default function compileToJS(program: Ast.ENDProgram, scope: CompileScope = new CompileScope()): SourceNode {
+export default function compileToJS(program: Ast.ENDProgram, options?: CompileScopeOptions): SourceNode {
+    const scope = new CompileScope(options);
     const compile: Generator = node => {
         if (node.type in generators) {
             return generators[node.type](node, scope, sn, compile);

@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { compile } from '../index';
+import compile from '../index';
 
 describe('Error reporting', () => {
     it('XML errors', () => {

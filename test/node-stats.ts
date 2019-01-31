@@ -5,7 +5,7 @@ import collectStats, { ElementStats } from '../src/codegen/node-stats';
 
 describe('Node stats', () => {
     const getElem = (code: string): ENDElement =>
-        parse(code).body[0] as ENDElement;
+        parse(code).ast.body[0] as ENDElement;
 
     const getStats = (code: string): ElementStats =>
         collectStats(getElem(code));

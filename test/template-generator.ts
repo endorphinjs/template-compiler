@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
 import { Linter } from 'eslint';
-import { compile } from '../index';
+import compile from '../index';
 
 describe('Template generator', () => {
     const linter = new Linter();
