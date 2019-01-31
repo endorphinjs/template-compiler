@@ -7,6 +7,7 @@ import { closeTag, openTag } from '../tag';
 import text from '../text';
 import expression from '../expression';
 import innerHTML from '../inner-html';
+import { ENDCompileError } from '../syntax-error';
 
 const cdataOpen = toCharCodes('<![CDATA[');
 const cdataClose = toCharCodes(']]>');
@@ -66,6 +67,34 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
     }
 
     finalizeTagBody(body, items);
+}
+
+/**
+ * Consumes contents of given tag as text, e.g. parses it until it reaches closing
+ * tag that matches `open`.
+ */
+export function tagText(scanner: Scanner, open: ParsedTag): ENDText {
+    if (open.selfClosing) {
+        // Nothing to consume in self-closing tag
+        return;
+    }
+
+    const start = scanner.pos;
+    let end: number, close: ParsedTag;
+
+    while (!scanner.eof()) {
+        end = scanner.pos;
+        if (close = closeTag(scanner)) {
+            if (close.getName() === open.getName()) {
+                return scanner.astNode(new ENDText(scanner.substring(start, end)), start, end);
+            }
+        } else {
+            scanner.pos++
+        }
+    }
+
+    // If we reached here then most likely we have unclosed tags
+    throw scanner.error(`Expecting </${open.getName()}>`);
 }
 
 /**
@@ -144,6 +173,20 @@ export function getAttrValue(openTag: ParsedTag | ENDElement | ENDAttributeState
     const attr = getAttr(openTag, name);
     if (attr && attr.value instanceof Literal) {
         return attr.value.value;
+    }
+}
+
+/**
+ * Returns value of attribute with given name from tag name definition, if any
+ */
+export function getAttrValueIfLiteral(openTag: ParsedTag, name: string): string | number | boolean {
+    const attr = getAttr(openTag, name);
+    if (attr) {
+        if (attr.value instanceof Literal) {
+            return attr.value.value;
+        }
+
+        throw new ENDCompileError(`Expecting literal value of ${name} attribute in <${openTag.getName()}> tag`, attr.value);
     }
 }
 

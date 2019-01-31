@@ -19,7 +19,11 @@ export class ENDNode extends Node {
 
 export class ENDProgram extends ENDNode {
     type = 'ENDProgram';
-    constructor(readonly body: ENDProgramStatement[] = []) {
+    filename?: string;
+    readonly body: ENDProgramStatement[] = [];
+    readonly stylesheets: ENDStylesheet[] = [];
+    readonly scripts: ENDScript[] = [];
+    constructor() {
         super();
     }
 }
@@ -170,6 +174,20 @@ export class ENDInnerHTML extends ENDNode {
 export class ENDImport extends ENDNode {
     type = 'ENDImport';
     constructor(readonly name: Literal, readonly href: Literal) {
+        super();
+    }
+}
+
+export class ENDStylesheet extends ENDNode {
+    type = 'ENDStylesheet';
+    constructor(readonly mime: string, readonly content?: ENDText, readonly url?: string) {
+        super();
+    }
+}
+
+export class ENDScript extends ENDNode {
+    type = 'ENDScript';
+    constructor(readonly mime: string, readonly content?: ENDText, readonly url?: string) {
         super();
     }
 }

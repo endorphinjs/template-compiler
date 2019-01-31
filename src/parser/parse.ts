@@ -11,7 +11,9 @@ import attributeStatement from './elements/attribute';
 import addClassStatement from './elements/add-class';
 import variableStatement from './elements/variable';
 import importStatement from './elements/import';
-import { ignored, getControlName, InnerStatement, assertExpression, getAttrValue } from './elements/utils';
+import stylesheetStatement from './elements/stylesheet';
+import scriptStatement from './elements/script';
+import { ignored, getControlName, InnerStatement, assertExpression, getAttrValueIfLiteral, tagText } from './elements/utils';
 import { Program } from '../ast/expression';
 
 interface StatementMap {
@@ -35,21 +37,33 @@ const statements: StatementMap = {
  */
 export default function parseToAst(scanner: Scanner): ENDProgram {
     const program = new ENDProgram();
+    program.filename = scanner.url;
     let entry : ParsedTag;
 
     while (!scanner.eof()) {
         if (entry = openTag(scanner)) {
             const name = entry.getName();
+
+            if (getControlName(name)) {
+                throw scanner.error(`Unexpected control statement <${entry.getName()}>`, entry);
+            }
+
             if (name === 'template') {
                 program.body.push(templateStatement(scanner, entry, statement));
-            } else if (getControlName(name) == null) {
-                if (name === 'link' && getAttrValue(entry, 'rel') === 'import') {
-                    program.body.push(importStatement(scanner, entry));
-                } else {
-                    program.body.push(elementStatement(scanner, entry, statement));
+            } else if (name === 'style' || (name === 'link' && getAttrValueIfLiteral(entry, 'rel') === 'stylesheet')) {
+                const stylesheet = stylesheetStatement(scanner, entry);
+                if (stylesheet) {
+                    program.stylesheets.push(stylesheet);
+                }
+            } else if (name === 'link' && getAttrValueIfLiteral(entry, 'rel') === 'import') {
+                program.body.push(importStatement(scanner, entry));
+            } else if (name === 'script') {
+                const script = scriptStatement(scanner, entry);
+                if (script) {
+                    program.scripts.push(script);
                 }
             } else {
-                throw scanner.error(`Unexpected control statement <${entry.getName()}>`, entry);
+                program.body.push(elementStatement(scanner, entry, statement));
             }
         } else if (!ignored(scanner, true)) {
             throw scanner.error('Unexpected token');
@@ -83,6 +97,8 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
         } else {
             throw scanner.error(`Unknown control statement <${open.getName()}>`, open);
         }
+    } else if (open.getName() === 'script' || open.getName() === 'style') {
+        result = tagText(scanner, open);
     } else {
         // Consume as regular tag
         result = elementStatement(scanner, open, statement);
