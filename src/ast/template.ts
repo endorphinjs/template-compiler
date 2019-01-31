@@ -4,6 +4,7 @@
 
 import { Node } from './base';
 import { Identifier, Program, Literal } from './expression';
+import { SourceNode } from 'source-map';
 
 export type ENDStatement = ENDElement | ENDInnerHTML | ENDPlainStatement | ENDAttributeStatement | ENDAddClassStatement | ENDVariableStatement | ENDControlStatement | ENDPartialStatement;
 export type ENDProgramStatement = ENDTemplate | ENDPartial | ENDImport | ENDStatement;
@@ -180,6 +181,7 @@ export class ENDImport extends ENDNode {
 
 export class ENDStylesheet extends ENDNode {
     type = 'ENDStylesheet';
+    transformed?: SourceNode;
     constructor(readonly mime: string, readonly content?: ENDText, readonly url?: string) {
         super();
     }
@@ -187,6 +189,7 @@ export class ENDStylesheet extends ENDNode {
 
 export class ENDScript extends ENDNode {
     type = 'ENDScript';
+    transformed?: SourceNode;
     constructor(readonly mime: string, readonly content?: ENDText, readonly url?: string) {
         super();
     }

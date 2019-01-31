@@ -350,6 +350,19 @@ export default function compileToJS(program: Ast.ENDProgram, scope: CompileScope
         }
     });
 
+    // 3. Output scripts
+    program.scripts.forEach(script => {
+        if (script.transformed) {
+            scope.body.push(script.transformed);
+        } else if (script.url) {
+            const node = new SourceNode();
+            node.add(`export * from ${qStr(script.url)};`);
+            scope.body.push(node);
+        } else if (script.content) {
+            scope.body.push(sn(script.content, script.content.value));
+        }
+    });
+
     return scope.compile();
 }
 
