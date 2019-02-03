@@ -29,6 +29,14 @@ export interface CompileScopeOptions {
     /** Symbol for referencing partials container of rendered component */
     partials?: string;
 
+    /**
+     * List of supported helpers. Key is an URL of module and value is a list of
+     * available (exported) functions in this module
+     */
+    helpers?: {
+        [url: string]: string[];
+    };
+
     /** Name of component being compiled, must be in CamelCase */
     component?: string;
 
@@ -116,6 +124,14 @@ export default class CompileScope {
 
     /** List of child components */
     readonly componentsMap: Map<string, ComponentImport>;
+
+    /**
+     * List of available helpers. Key is a helper name (name of function) and value
+     * is a module URL
+     */
+    readonly helpers: {
+        [name: string]: string;
+    }
 
     constructor(options?: CompileScopeOptions) {
         this.options = Object.assign({}, defaultOptions, options);
