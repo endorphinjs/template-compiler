@@ -5,3 +5,5 @@ jspm_packages
 /.*
 /*.*
 /test
+/src
+/coverage
