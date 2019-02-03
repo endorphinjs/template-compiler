@@ -1,4 +1,3 @@
-import { CodeWithSourceMap } from 'source-map';
 import { ENDProgram } from './src/ast/template';
 import { default as parseToAst } from './src/parser/parse';
 import { default as compileToJS } from './src/codegen/template';
@@ -11,13 +10,20 @@ interface ParsedTemplate {
     url?: string
 }
 
+interface CodeWithMap {
+    code: string,
+    map: object
+}
+
+export { CompileScopeOptions }
+
 /**
  * Compiles given Endorphin template into JS
  * @param code Template source code
  * @param url Template file URL
  * @param options Compiler options
  */
-export default function compile(code: string, url?: string, options?: CompileScopeOptions): CodeWithSourceMap {
+export default function compile(code: string, url?: string, options?: CompileScopeOptions): CodeWithMap {
     return generate(parse(code, url), options);
 }
 
@@ -35,11 +41,15 @@ export function parse(code: string, url?: string): ParsedTemplate {
  * @param parsed Parsed template AST
  * @param options Compiler options
  */
-export function generate(parsed: ParsedTemplate, options?: CompileScopeOptions): CodeWithSourceMap {
+export function generate(parsed: ParsedTemplate, options?: CompileScopeOptions): CodeWithMap {
     try {
         const sourceMap = compileToJS(parsed.ast, options);
         sourceMap.setSourceContent(parsed.url, parsed.code);
-        return sourceMap.toStringWithSourceMap({ file: parsed.url });
+        const result = sourceMap.toStringWithSourceMap({ file: parsed.url });
+        return {
+            code: result.code,
+            map: result.map.toJSON()
+        };
     } catch (err) {
         if (err instanceof ENDCompileError) {
             const { loc } = err.node;

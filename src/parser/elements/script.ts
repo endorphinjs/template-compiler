@@ -8,8 +8,9 @@ export default function scriptStatement(scanner: Scanner, openTag: ParsedTag): E
     const src = getAttrValueIfLiteral(openTag, 'src');
     const mime = getAttrValueIfLiteral(openTag, 'type');
     const text = tagText(scanner, openTag);
+    const hasText = text && text.value && !/^\s+$/.test(text.value);
 
-    if (src || (text && text.value && !/^\s+$/.test(text.value))) {
-        return new ENDScript(mime ? String(mime) : defaultMIME, text, src ? String(src) : scanner.url);
+    if (src || hasText) {
+        return new ENDScript(mime ? String(mime) : defaultMIME, hasText ? text : null, src ? String(src) : scanner.url);
     }
 }

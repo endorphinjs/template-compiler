@@ -7,6 +7,7 @@
     "noImplicitThis": true,
     "module": "commonjs",
     "outDir": "./dist",
+    "declaration": true
   },
   "files": ["index.ts"]
 }

@@ -354,13 +354,21 @@ export default function compileToJS(program: Ast.ENDProgram, options?: CompileSc
     // 3. Output scripts
     program.scripts.forEach(script => {
         if (script.transformed) {
-            scope.body.push(script.transformed);
+            let transformed: SourceNode;
+            if (typeof script.transformed === 'string') {
+                transformed = new SourceNode();
+                transformed.add(script.transformed);
+            } else {
+                transformed = script.transformed;
+            }
+
+            scope.body.push(transformed);
+        } else if (script.content) {
+            scope.body.push(sn(script.content, script.content.value));
         } else if (script.url) {
             const node = new SourceNode();
             node.add(`export * from ${qStr(script.url)};`);
             scope.body.push(node);
-        } else if (script.content) {
-            scope.body.push(sn(script.content, script.content.value));
         }
     });
 

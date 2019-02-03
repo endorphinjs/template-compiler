@@ -160,8 +160,10 @@ export class ENDAddClassStatement extends ENDNode {
 
 export class ENDText extends ENDNode {
     type = 'ENDText';
-    constructor(readonly value: string) {
+    value: string;
+    constructor(value: string) {
         super();
+        this.value = value;
     }
 }
 
@@ -189,7 +191,7 @@ export class ENDStylesheet extends ENDNode {
 
 export class ENDScript extends ENDNode {
     type = 'ENDScript';
-    transformed?: SourceNode;
+    transformed?: SourceNode | string;
     constructor(readonly mime: string, readonly content?: ENDText, readonly url?: string) {
         super();
     }

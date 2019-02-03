@@ -5,4 +5,7 @@ export default function $$template0(host) {
 	target0.appendChild(elemWithText("h1", "Hello world", host));
 }
 
-export * from "script1.html";
+
+export function willRender(component) {
+	console.log('rendered', component.nodeName);
+}
