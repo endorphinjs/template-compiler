@@ -64,12 +64,19 @@ const generators: NodeGeneratorMap = {
         return sn(node, commaChunks(node.properties.map(next), '{', '}'));
     },
     Property(node: Ast.Property, scope, sn, next) {
-        if (node.key instanceof Ast.Identifier && node.value instanceof Ast.Identifier && node.key.name === node.value.name) {
-            // Shorthand property
-            return sn(node.key, next(node.key));
+        const key: Chunk = node.key instanceof Ast.Identifier
+            ? node.key.name
+            : next(node.key);
+
+        if (node.computed) {
+            return sn(node, ['[', key, ']: ', next(node.value)]);
         }
 
-        return sn(node, [next(node.key), ': ', next(node.value)]);
+        if (node.shorthand) {
+            return sn(node, [key, ': ', next(node.value)]);
+        }
+
+        return sn(node, [key, ': ', next(node.value)]);
     },
     RegExpLiteral(node: Ast.RegExpLiteral, scope, sn) {
         return sn(node, `${node.regex.pattern}/${node.regex.flags}`);
@@ -83,8 +90,17 @@ const generators: NodeGeneratorMap = {
     ArrowFunctionExpression(node: Ast.ArrowFunctionExpression) {
         throw new Error(`Not implemented ${node.type}`);
     },
-    CallExpression(node: Ast.CallExpression) {
-        throw new Error(`Not implemented ${node.type}`);
+    CallExpression(node: Ast.CallExpression, scope, sn, next) {
+        const chunks: ChunkList = commaChunks(node.arguments.map(next), '(', ')');
+        if (node.callee instanceof Ast.Identifier && node.callee.name in scope.helpers) {
+            // Calling helper method
+            // TODO handle deep requests like `helper.bar()`
+            chunks.unshift(sn(node.callee, [scope.useHelper(node.callee.name)]));
+        } else {
+            chunks.unshift(next(node.callee));
+        }
+
+        return sn(node, chunks);
     },
     EmptyStatement(node: Ast.EmptyStatement) {
         return sn(node, '');

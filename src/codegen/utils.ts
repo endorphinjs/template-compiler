@@ -132,3 +132,16 @@ export function isDynamicAttribute(attr: ENDAttribute, scope: CompileScope): boo
         || attr.value instanceof Program
         || attr.value instanceof ENDAttributeValueExpression;
 }
+
+interface PlainObject {
+    [key: string]: string
+}
+
+export function reverseObject(obj: { [key: string]: string[] }): PlainObject {
+    const result: PlainObject = {};
+    Object.keys(obj).forEach(key => {
+        obj[key].forEach(value => result[value] = key);
+    });
+
+    return result;
+}

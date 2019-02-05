@@ -63,4 +63,22 @@ describe('Expression codegen', () => {
         assert.equal(result, 'filter(host, get(host.props.a, "b"), $$filter0)');
         assert.equal(toString(scope), read('fixtures/filters/filter3.txt'));
     });
+
+    it('should generate call expressions', () => {
+        assert.equal(compile('foo()'), 'host.props.foo()');
+        assert.equal(compile('foo(1, 2)'), 'host.props.foo(1, 2)');
+        assert.equal(compile('foo([bar])'), 'host.props.foo([host.props.bar])');
+
+        const scope = new CompileScope({
+            helpers: {
+                '@helper-module': ['setState', 'myHelper']
+            }
+        });
+
+        assert.equal(compile('setState()', scope), 'setState()');
+        assert.equal(compile('setState({ enabled: !#enabled })', scope), 'setState({enabled: !host.state.enabled})');
+        const helpers = scope.getHelpersMap();
+        assert.equal(helpers.size, 1);
+        assert.deepEqual(helpers.get('@helper-module'), ['setState']);
+    });
 });
