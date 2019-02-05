@@ -52,4 +52,11 @@ describe('Template generator', () => {
             lint(code, file);
         });
     });
+
+    it('should export CSS scope', () => {
+        const { code } = compile(read('./samples/css-scope.html'), 'css-scope.html', { cssScope: 'scope123' });
+        const fixture = read('./fixtures/css-scope.js');
+        assert.equal(code.trim(), fixture);
+        lint(code, 'css-scope.html');
+    });
 });

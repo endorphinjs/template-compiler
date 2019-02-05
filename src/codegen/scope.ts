@@ -29,6 +29,9 @@ export interface CompileScopeOptions {
     /** Symbol for referencing partials container of rendered component */
     partials?: string;
 
+    /** String token for scoping CSS styles of component */
+    cssScope?: string;
+
     /**
      * List of supported helpers. Key is an URL of module and value is a list of
      * available (exported) functions in this module
@@ -361,6 +364,11 @@ export default class CompileScope {
             this.componentsMap.forEach(item => {
                 body.add(`import * as ${item.symbol} from ${qStr(item.href)};\n`);
             });
+        }
+
+        // CSS scoping
+        if (this.options.cssScope) {
+            body.add(`\nexport const cssScope = ${qStr(this.options.cssScope)};\n`);
         }
 
         // Partials declarations

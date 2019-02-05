@@ -332,7 +332,8 @@ export default function compileToJS(program: Ast.ENDProgram, options?: CompileSc
         throw new ENDCompileError(`${node.type} is not supported in templates`, node);
     };
 
-    // 1. Collect child components
+    // Collect child components. We should do it in separate pass to hoist component
+    // definitions before templates are rendered
     program.body.forEach(node => {
         if (node instanceof Ast.ENDImport) {
             const tagName = String(node.name.value);
@@ -344,14 +345,14 @@ export default function compileToJS(program: Ast.ENDProgram, options?: CompileSc
         }
     });
 
-    // 2. Compile templates
+    // Compile templates
     program.body.forEach(node => {
         if (node instanceof Ast.ENDTemplate || node instanceof Ast.ENDPartial) {
             scope.body.unshift(compile(node));
         }
     });
 
-    // 3. Output scripts
+    // Output scripts
     program.scripts.forEach(script => {
         if (script.transformed) {
             let transformed: SourceNode;
