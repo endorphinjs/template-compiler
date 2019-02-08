@@ -176,7 +176,7 @@ export class ENDInnerHTML extends ENDNode {
 
 export class ENDImport extends ENDNode {
     type = 'ENDImport';
-    constructor(readonly name: Literal, readonly href: Literal) {
+    constructor(readonly name: string, readonly href: string) {
         super();
     }
 }

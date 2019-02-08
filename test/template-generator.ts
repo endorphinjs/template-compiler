@@ -59,4 +59,10 @@ describe('Template generator', () => {
         assert.equal(code.trim(), fixture);
         lint(code, 'css-scope.html');
     });
+
+    it('should resolve tag name from import', () => {
+        const { code } = compile(read('./samples/imports.html'), 'imports.html');
+        const fixture = read('./fixtures/imports.js');
+        assert.equal(code.trim(), fixture);
+    });
 });

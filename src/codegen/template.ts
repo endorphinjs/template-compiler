@@ -336,10 +336,9 @@ export default function compileToJS(program: Ast.ENDProgram, options?: CompileSc
     // definitions before templates are rendered
     program.body.forEach(node => {
         if (node instanceof Ast.ENDImport) {
-            const tagName = String(node.name.value);
-            scope.componentsMap.set(String(node.name.value), {
-                symbol: tagToJS(tagName, true),
-                href: String(node.href.value),
+            scope.componentsMap.set(node.name, {
+                symbol: tagToJS(node.name, true),
+                href: String(node.href),
                 node
             });
         }
