@@ -3,8 +3,8 @@
     <ul>
         <end:variable foo={1} />
         <end:for-each select={items}>
-            <end:variable bar={$foo} />
-            <li on:click={handleClick($index, $foo, $bar)}>item</li>
+            <end:variable bar={@foo} />
+            <li on:click={handleClick(@index, @foo, @bar)}>item</li>
         </end:for-each>
         <end:variable foo={2} />
     </ul>

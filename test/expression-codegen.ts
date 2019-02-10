@@ -41,8 +41,8 @@ describe('Expression codegen', () => {
     it('should generate state & variable accessors', () => {
         assert.equal(compile('#foo'), 'host.state.foo');
         assert.equal(compile('#foo-bar'), 'host.state["foo-bar"]');
-        assert.equal(compile('$foo'), 'scope.foo');
-        assert.equal(compile('$foo-bar'), 'scope["foo-bar"]');
+        assert.equal(compile('@foo'), 'scope.foo');
+        assert.equal(compile('@foo-bar'), 'scope["foo-bar"]');
     });
 
     it('should generate filters', () => {

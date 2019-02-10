@@ -8,7 +8,7 @@
             <end:for-each select={items} key={id}>
                 <li id={id}>
                     item
-                    <end:if test={$value.marked}>
+                    <end:if test={@value.marked}>
                         <strong>*</strong>
                     </end:if>
                 </li>

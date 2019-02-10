@@ -71,12 +71,12 @@ const converters: AstConverterMap = {
             return new Ast.ENDStateIdentifier(name.slice(1), name);
         }
 
-        if (name[0] === '$') {
+        if (name[0] === '@') {
             // Runtime template variable
             return new Ast.ENDVariableIdentifier(name.slice(1), name);
         }
 
-        if (name[0] === '@') {
+        if (name[0] === '$') {
             // Store property accessor
             return new Ast.ENDStoreIdentifier(name.slice(1), name);
         }
