@@ -1,4 +1,5 @@
-import { Parser, isIdentifierStart, isIdentifierChar, tokTypes } from 'acorn';
+// @ts-ignore
+import { Parser, isIdentifierStart, isIdentifierChar, tokTypes, keywordTypes } from 'acorn';
 
 /**
  * Acorn plugin for parsing Endorphin expressions
@@ -25,8 +26,15 @@ export default function endorphinJS(P: typeof Parser): typeof Parser {
                 // @ts-ignore
                 ch = this.input.charCodeAt(++this.pos);
             } while (isIdentifierChar(ch) || ch === 45); // '-'
+
             // @ts-ignore
-            return this.finishToken(tokTypes.name, this.input.slice(start, this.pos));
+            const value = this.input.slice(start, this.pos);
+            // @ts-ignore
+            const isKeyword = this.keywords.test(value)
+            const type = isKeyword ? keywordTypes[value] : tokTypes.name;
+
+            // @ts-ignore
+            return this.finishToken(type, value);
         }
     }
 }

@@ -7,8 +7,6 @@ import Scanner from '../scanner';
 // @ts-ignore
 const JSParser = Parser.extend(endorphinParser);
 
-const allowedKeywords = /^(\s*)(true|false|null|undefined|this)\s*;?\s*$/;
-
 class Scope {
     private reserved: Set<string> = new Set();
     private stack: Set<string>[] = [];
@@ -38,7 +36,7 @@ class Scope {
  * @param sourceFile Source file URL from which expression is parsed
  */
 export default function parse(code: string, scanner: Scanner): Ast.Program {
-    const program = parseKeyword(code, scanner) || parseScript(code, scanner);
+    const program = parseScript(code, scanner);
     program.raw = code;
     return scanner.astNode(program, scanner.start, scanner.start + code.length);
 }
@@ -252,32 +250,6 @@ const converters: AstConverterMap = {
 export class UnsupportedError extends Error {
     constructor(readonly type: string, readonly start: number, readonly end: number) {
         super(`Unsupported type ${type}`);
-    }
-}
-
-/**
- * Parses code which consists of a single keyword expression to bypass Acorn
- * restriction on using single reserved literal as expression
- */
-function parseKeyword(code: string, scanner: Scanner): Ast.Program {
-    const m = code.match(allowedKeywords);
-    if (m) {
-        // Quick test to bypass Acorn restriction on using single reserved literal
-        // as expression
-        const offset = scanner.start + m[1].length;
-        let value: boolean;
-        if (m[2] === 'true') {
-            value = true
-        } else if (m[2] === 'false') {
-            value = false;
-        } else if (m[2] === 'null') {
-            value = null;
-        }
-
-        const start = offset;
-        const end = offset + m[2].length;
-        const literal = scanner.astNode(new Ast.Literal(value, m[2]), start, end);
-        return scanner.astNode(new Ast.Program([literal]), start, end);
     }
 }
 
