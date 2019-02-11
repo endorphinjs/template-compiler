@@ -37,9 +37,10 @@ interface ConditionStatement {
 
 const generators: NodeGeneratorMap = {
     ENDTemplate(node: Ast.ENDTemplate, scope, sn, next) {
+        const stats = collectDynamicStats(node);
         scope.enterFunction('template');
         const body: ChunkList = [].concat(
-            scope.enterElement('target', `${scope.host}.componentView`, collectDynamicStats(node)),
+            scope.enterElement('target', `${scope.host}.componentView`, stats),
             node.body.map(next),
             scope.exitElement(),
         );
@@ -48,6 +49,17 @@ const generators: NodeGeneratorMap = {
             const refs = `${scope.use(Symbols.finalizeRefs)}(${scope.host});`;
             scope.pushUpdate(refs);
             body.push(refs);
+        }
+
+        // Subscribe to store updates
+        if (scope.usedStore.size) {
+            let storeKeys: string = '';
+            // Without partials, we can safely assume that we know about
+            // all used store keys
+            if (!stats.hasPartials) {
+                storeKeys = `, [${Array.from(scope.usedStore).map(qStr).join(', ')}]`;
+            }
+            body.push(`${scope.use(Symbols.subscribeStore)}(${scope.host}${storeKeys});`);
         }
 
         return sn(node, [`export default `, scope.exitFunction(body)]);

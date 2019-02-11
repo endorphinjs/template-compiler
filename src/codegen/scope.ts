@@ -1,5 +1,5 @@
 import { SourceNode } from 'source-map';
-import { ChunkList, tagToJS, format, Chunk, qStr, isIdentifier, reverseObject } from './utils';
+import { ChunkList, tagToJS, format, Chunk, qStr, isIdentifier, reverseObject, propAccessor } from './utils';
 import { ElementStats } from './node-stats';
 import ElementContext from './element-context';
 import { ENDImport } from '../ast/template';
@@ -13,7 +13,8 @@ export enum RuntimeSymbols {
     updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, renderSlot, setRef, setStaticRef,
     finalizeRefs, createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
-    mountPartial, updatePartial, elem, elemWithText, text, updateText, filter, insert
+    mountPartial, updatePartial, elem, elemWithText, text, updateText, filter, insert,
+    subscribeStore
 }
 
 export interface CompileScopeOptions {
@@ -133,6 +134,9 @@ export default class CompileScope {
     /** List of child components */
     readonly componentsMap: Map<string, ComponentImport>;
 
+    /** List of symbols used for store access */
+    readonly usedStore: Set<string>;
+
     /**
      * List of available helpers. Key is a helper name (name of function) and value
      * is a module URL
@@ -147,6 +151,7 @@ export default class CompileScope {
 
         this.scopeSymbols = new SymbolGenerator(() => `${this.scope}.$_`);
         this.globalSymbols = new SymbolGenerator(this.options.prefix, num => suffix + num);
+        this.usedStore = new Set();
         this.partialsMap = new Map();
         this.componentsMap = new Map();
 
@@ -209,6 +214,14 @@ export default class CompileScope {
     useHelper(symbol: string): string {
         this.usedHelpers.add(symbol);
         return symbol;
+    }
+
+    /**
+     * Marks given store symbol as used and returns accessor code
+     */
+    useStore(symbol: string): string {
+        this.usedStore.add(symbol);
+        return `${this.host}.store.data${propAccessor(symbol)}`;
     }
 
     /**

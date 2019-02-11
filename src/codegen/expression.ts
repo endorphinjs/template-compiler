@@ -127,6 +127,9 @@ const generators: NodeGeneratorMap = {
     ENDVariableIdentifier(node: Ast.ENDVariableIdentifier, scope, sn) {
         return sn(node, `${scope.scope}${propAccessor(node.name)}`, node.raw);
     },
+    ENDStoreIdentifier(node: Ast.ENDStoreIdentifier, scope, sn) {
+        return sn(node, scope.useStore(node.name), node.raw);
+    },
     ENDFilter(node: Ast.ENDFilter, scope, sn, next) {
         const params = node.filter.params.slice();
 
