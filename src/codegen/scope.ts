@@ -421,7 +421,7 @@ export default class CompileScope {
         return body;
     }
 
-    private markScopeAsUsed() {
+    markScopeAsUsed() {
         if (this.func && !this.func.scopeArg.children.length) {
             this.func.scopeArg.add(`, ${this.options.scope}`);
         }

@@ -275,7 +275,15 @@ const generators: NodeGeneratorMap = {
             // element update
             scope.func.update.length = 0;
             const { scopeArg } = scope.func;
+            const curFunc = scope.func;
             scope.push(scope.exitFunction([body]));
+
+            // If shorthand function requires scope argument, mark scope as used in
+            // outer function as well
+            if (curFunc.scopeArg.children.length) {
+                scope.markScopeAsUsed();
+            }
+
             const ref = scope.updateSymbol('injector', scope.scopeInjector());
             scope.pushUpdate(sn(node, [`${fn}(${scope.host}, ${ref}`, scopeArg, `);`]));
 

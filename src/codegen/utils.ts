@@ -82,7 +82,7 @@ export function format(chunks: ChunkList, prefix: string = '', suffix: string = 
 function isValidChunk(chunk: Chunk): boolean {
     return chunk instanceof SourceNode
         ? chunk.children.length !== 0
-        : chunk.length !== 0;
+        : chunk && chunk.length !== 0;
 }
 
 /**
