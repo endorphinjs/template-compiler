@@ -81,5 +81,9 @@ describe('Expression codegen', () => {
         const helpers = scope.getHelpersMap();
         assert.equal(helpers.size, 1);
         assert.deepEqual(helpers.get('@helper-module'), ['setState']);
+
+        assert.equal(compile('$l10n("foo")', scope), 'host.store.data.l10n("foo")');
+        assert.equal(compile('#l10n("foo")', scope), 'host.state.l10n("foo")');
+        assert.equal(compile('$foo-bar("foo")', scope), 'host.store.data["foo-bar"]("foo")');
     });
 });

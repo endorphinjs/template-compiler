@@ -105,7 +105,7 @@ export const defaultOptions: CompileScopeOptions = {
     module: '@endorphinjs/endorphin',
     component: '',
     helpers: {
-        'endorphin/helpers.js': ['emit', 'setState']
+        'endorphin/helpers.js': ['emit', 'setState', 'setStore']
     }
 }
 
