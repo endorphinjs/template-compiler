@@ -506,24 +506,10 @@ function isSimpleConditionContent(node: Ast.ENDNode): boolean {
 }
 
 function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {
-    if (!node.body.length) {
-        // Slot doesn’t have default content: no need to mount block
-        scope.func.update.push(sn(node, `${scope.use(Symbols.renderSlot)}(${scope.element.scopeSymbol}, ${scope.host}.slots);`));
-        return sn(node, `${scope.use(Symbols.renderSlot)}(${scope.element.localSymbol}, ${scope.host}.slots);`);
-    }
-
-    const indent = scope.indent;
-    const innerIndent = indent.repeat(2);
     const slotName = String(getAttrValue(node, 'name') || '');
-    const blockVar = scope.scopeSymbol('slot');
+    const slotContent: string = node.body.length
+        ? createContentFunction(`slot${tagToJS(slotName || 'default', true)}Content`, scope, node.body, next)
+        : '';
 
-    const renderSlot = `${scope.use(Symbols.renderSlot)}(injector.parentNode, ${scope.host}.slots)`;
-    const blockEntry = scope.enterFunction(`slot${tagToJS(slotName || 'default', true)}`, 'injector');
-    const blockContent = createContentFunction(`slot${tagToJS(slotName || 'default', true)}Content`, scope, node.body, next);
-
-    scope.push(scope.exitFunction([`if(!${renderSlot}) {\n${innerIndent}return ${blockContent};\n${indent}}`]));
-
-    scope.func.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
-
-    return sn(node, `${blockVar} = ${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.localInjector()}, ${blockEntry});`);
+    return sn(node, `${scope.use(Symbols.mountSlot)}(${scope.host}, ${qStr(slotName)}, ${scope.element.localSymbol}${slotContent ? `, ${slotContent}` : ''});`);
 }
