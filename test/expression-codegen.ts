@@ -23,6 +23,7 @@ describe('Expression codegen', () => {
         assert.equal(compile('"foo"'), '"foo"');
         assert.equal(compile('true'), 'true');
         assert.equal(compile('null'), 'null');
+        assert.equal(compile('this'), 'host');
     });
 
     it('should generate props & getters', () => {
@@ -75,9 +76,9 @@ describe('Expression codegen', () => {
             }
         });
 
-        assert.equal(compile('setState()', scope), 'setState()');
-        assert.equal(compile('setState({ enabled: !#enabled })', scope), 'setState({enabled: !host.state.enabled})');
-        assert.equal(compile('setState({ modal: null })', scope), 'setState({modal: null})');
+        assert.equal(compile('setState()', scope), 'setState(host)');
+        assert.equal(compile('setState({ enabled: !#enabled })', scope), 'setState(host, {enabled: !host.state.enabled})');
+        assert.equal(compile('setState({ modal: null })', scope), 'setState(host, {modal: null})');
         const helpers = scope.getHelpersMap();
         assert.equal(helpers.size, 1);
         assert.deepEqual(helpers.get('@helper-module'), ['setState']);

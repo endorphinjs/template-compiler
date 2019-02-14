@@ -91,19 +91,28 @@ const generators: NodeGeneratorMap = {
         throw new Error(`Not implemented ${node.type}`);
     },
     CallExpression(node: Ast.CallExpression, scope, sn, next) {
-        const chunks: ChunkList = commaChunks(node.arguments.map(next), '(', ')');
+        const args: ChunkList = node.arguments.map(next);
+        let callee: SourceNode;
+
         if (node.callee instanceof Ast.Identifier && node.callee.name in scope.helpers) {
             // Calling helper method
+            // The first argument in helper is always a host component
             // TODO handle deep requests like `helper.bar()`
-            chunks.unshift(sn(node.callee, [scope.useHelper(node.callee.name)]));
+            args.unshift(scope.host);
+            callee = sn(node.callee, [scope.useHelper(node.callee.name)]);
         } else {
-            chunks.unshift(next(node.callee));
+            callee = next(node.callee);
         }
 
+        const chunks: ChunkList = commaChunks(args, '(', ')');
+        chunks.unshift(callee);
         return sn(node, chunks);
     },
-    EmptyStatement(node: Ast.EmptyStatement) {
+    EmptyStatement(node: Ast.EmptyStatement, scope, sn) {
         return sn(node, '');
+    },
+    ThisExpression(node: Ast.ThisExpression, scope, sn) {
+        return sn(node, scope.host);
     },
 
     // Endorphin addons
