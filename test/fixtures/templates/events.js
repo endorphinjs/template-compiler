@@ -2,7 +2,7 @@ import { elem, addEvent, updateBlock, mountBlock, finalizeEvents, createInjector
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	const main0 = target0.appendChild(elem("main", host));
+	const main0 = target0.appendChild(elem("main"));
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	function handler0(event) {
 		const method1 = host.method1 || host.componentModel.definition.method1;

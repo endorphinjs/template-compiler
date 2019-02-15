@@ -2,7 +2,7 @@ import { elem, setAttribute, finalizeAttributes, createInjector } from "@endorph
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	const main0 = target0.appendChild(elem("main", host));
+	const main0 = target0.appendChild(elem("main"));
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	setAttribute(injector0, "a1", host.props.id);
 	setAttribute(injector0, "a2", "0");

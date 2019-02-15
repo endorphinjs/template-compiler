@@ -2,7 +2,7 @@ import { elem, setAttribute, addClass, updateBlock, mountBlock, finalizeAttribut
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	const main0 = target0.appendChild(elem("main", host));
+	const main0 = target0.appendChild(elem("main"));
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	finalizeAttributes(injector0);

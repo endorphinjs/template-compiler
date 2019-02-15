@@ -2,8 +2,8 @@ import { elemWithText, elem, text, updateText } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	target0.appendChild(elemWithText("h1", "Hello world", host));
-	const p0 = target0.appendChild(elem("p", host));
+	target0.appendChild(elemWithText("h1", "Hello world"));
+	const p0 = target0.appendChild(elem("p"));
 	p0.setAttribute("title", "test");
 	p0.appendChild(text("foo "));
 	scope.$_text0 = p0.appendChild(text(scope.$_textValue0 = host.props.bar));

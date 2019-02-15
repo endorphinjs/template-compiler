@@ -2,13 +2,13 @@ import { elem, setRef, insert, updateBlock, mountBlock, createInjector, finalize
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	const main0 = scope.$_main0 = target0.appendChild(elem("main", host));
+	const main0 = scope.$_main0 = target0.appendChild(elem("main"));
 	const injector0 = createInjector(main0);
 	setRef(host, "main", main0);
-	const div0 = scope.$_div0 = insert(injector0, elem("div", host));
+	const div0 = scope.$_div0 = insert(injector0, elem("div"));
 	setRef(host, "header", div0);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
-	const footer0 = scope.$_footer0 = insert(injector0, elem("footer", host));
+	const footer0 = scope.$_footer0 = insert(injector0, elem("footer"));
 	setRef(host, host.props.dynRef, footer0);
 	finalizeRefs(host);
 	return $$template0Update;
@@ -23,7 +23,7 @@ function $$template0Update(host, scope) {
 }
 
 function $$conditionContent0(host, injector, scope) {
-	const span0 = scope.$_span0 = insert(injector, elem("span", host));
+	const span0 = scope.$_span0 = insert(injector, elem("span"));
 	setRef(host, "header", span0);
 	return $$conditionContent0Update;
 }

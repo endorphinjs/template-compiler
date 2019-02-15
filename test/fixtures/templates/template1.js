@@ -3,7 +3,7 @@ import { elemWithText, insert, createInjector, elem, text, updateText, updateBlo
 export default function $$mount0(host) {
 	const target = host.componentView;
 	const injector0 = createInjector(target);
-	insert(injector0, elemWithText("h1", "Hello world", host));
+	insert(injector0, elemWithText("h1", "Hello world"));
 	const block0 = mountBlock(host, injector0, $$conditionBlock0);
 	return function $$update0() {
 		updateBlock(block0);
@@ -11,7 +11,7 @@ export default function $$mount0(host) {
 }
 
 function $$conditionContent0(host, injector) {
-	const div0 = insert(injector, elem("div", host));
+	const div0 = insert(injector, elem("div"));
 	div0.setAttribute("class", "sample");
 	div0.appendChild(text("Foo is "));
 	let textValue0 = host.props.foo;

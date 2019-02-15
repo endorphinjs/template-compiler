@@ -78,12 +78,12 @@ const generators: NodeGeneratorMap = {
             elem = sn(node.name, [
                 `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
                 sn(stats.text, qStr(stats.text.value)),
-                `, ${scope.host})`
+                `${cssScopeArg(scope)})`
             ]);
             body = null;
         } else {
             // Create plain DOM element
-            elem = sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}, ${scope.host})`);
+            elem = sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
         }
 
         // Mount element
@@ -512,4 +512,8 @@ function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeF
         : '';
 
     return sn(node, `${scope.use(Symbols.mountSlot)}(${scope.host}, ${qStr(slotName)}, ${scope.element.localSymbol}${slotContent ? `, ${slotContent}` : ''});`);
+}
+
+function cssScopeArg(scope: CompileScope): string {
+    return scope.options.cssScope ? `, ${scope.cssScopeSymbol}` : '';
 }

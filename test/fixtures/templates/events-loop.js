@@ -2,7 +2,7 @@ import { elem, elemWithText, insert, addStaticEvent, updateIterator, mountIterat
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	const ul0 = target0.appendChild(elem("ul", host));
+	const ul0 = target0.appendChild(elem("ul"));
 	const injector0 = createInjector(ul0);
 	scope.foo = 1;
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
@@ -22,7 +22,7 @@ function $$iteratorExpr0(host) {
 
 function $$iteratorBlock0(host, injector, scope) {
 	scope.bar = scope.foo;
-	const li0 = insert(injector, elemWithText("li", "item", host));
+	const li0 = insert(injector, elemWithText("li", "item"));
 	function handler0(event) {
 		const handleClick = host.handleClick || host.componentModel.definition.handleClick;
 		handleClick(scope.index, scope.foo, scope.bar, host, event, this);

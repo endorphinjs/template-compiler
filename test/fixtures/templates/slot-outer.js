@@ -3,11 +3,11 @@ import * as SubComponent from "./slot-inner.html";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	target0.appendChild(elemWithText("h1", "Hello world", host));
+	target0.appendChild(elemWithText("h1", "Hello world"));
 	const subComponent0 = scope.$_subComponent0 = target0.appendChild(createComponent("sub-component", SubComponent, host));
 	const injector0 = scope.$_injector0 = subComponent0.componentModel.input;
 	setAttribute(injector0, "id", host.props.id);
-	insert(injector0, elemWithText("div", "foo", host));
+	insert(injector0, elemWithText("div", "foo"));
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	scope.$_block1 = mountBlock(host, injector0, $$conditionEntry1);
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
@@ -27,7 +27,7 @@ function $$template0Update(host, scope) {
 }
 
 function $$conditionContent0(host, injector) {
-	insert(injector, elemWithText("p", "bar", host));
+	insert(injector, elemWithText("p", "bar"));
 }
 
 function $$conditionEntry0(host) {
@@ -37,7 +37,7 @@ function $$conditionEntry0(host) {
 }
 
 function $$conditionContent1(host, injector) {
-	const p0 = insert(injector, elemWithText("p", "bar", host), "header");
+	const p0 = insert(injector, elemWithText("p", "bar"), "header");
 	p0.setAttribute("slot", "header");
 }
 
@@ -52,13 +52,13 @@ function $$iteratorExpr0(host) {
 }
 
 function $$iteratorBlock0(host, injector) {
-	insert(injector, elemWithText("div", "item", host));
-	const div0 = insert(injector, elemWithText("div", "item footer", host), "footer");
+	insert(injector, elemWithText("div", "item"));
+	const div0 = insert(injector, elemWithText("div", "item footer"), "footer");
 	div0.setAttribute("slot", "footer");
 }
 
 function $$conditionContent2(host, injector) {
-	const div0 = insert(injector, elemWithText("div", "Got error", host), "error");
+	const div0 = insert(injector, elemWithText("div", "Got error"), "error");
 	div0.setAttribute("slot", "error");
 }
 

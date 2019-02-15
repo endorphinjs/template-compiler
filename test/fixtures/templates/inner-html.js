@@ -3,7 +3,7 @@ import { elemWithText, insert, updateBlock, mountBlock, updateInnerHTML, mountIn
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
 	const injector0 = createInjector(target0);
-	insert(injector0, elemWithText("p", "test", host));
+	insert(injector0, elemWithText("p", "test"));
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	scope.$_html0 = mountInnerHTML(host, injector0, $$getHTML0);
 	scope.$_block1 = mountBlock(host, injector0, $$conditionEntry1);
@@ -17,7 +17,7 @@ function $$template0Update(host, scope) {
 }
 
 function $$conditionContent0(host, injector) {
-	insert(injector, elemWithText("div", "foo", host));
+	insert(injector, elemWithText("div", "foo"));
 }
 
 function $$conditionEntry0(host) {
@@ -31,7 +31,7 @@ function $$getHTML0(host) {
 }
 
 function $$conditionContent1(host, injector) {
-	insert(injector, elemWithText("p", "bar", host));
+	insert(injector, elemWithText("p", "bar"));
 }
 
 function $$conditionEntry1(host) {
