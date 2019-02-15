@@ -67,23 +67,41 @@ const generators: NodeGeneratorMap = {
     ENDElement(node: Ast.ENDElement, scope, sn, next) {
         const elemName = node.name.name;
         const stats = getStats(node);
+        const xmlns = getAttrValue(node, 'xmlns');
+
         let elem: SourceNode;
         let { attributes, body } = node;
+
+        if (xmlns) {
+            scope.enterNamespace(String(xmlns));
+        }
 
         if (scope.isComponent(elemName)) {
             // Create component
             elem = sn(node, [`${scope.use(Symbols.createComponent)}(${qStr(elemName)}, ${scope.componentsMap.get(elemName).symbol}, ${scope.host})`]);
         } else if (stats.text) {
             // Create plain DOM element with static text
-            elem = sn(node.name, [
-                `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
-                sn(stats.text, qStr(stats.text.value)),
-                `${cssScopeArg(scope)})`
-            ]);
+            if (scope.namespace) {
+                elem = sn(node.name, [
+                    `${scope.use(Symbols.elemNSWithText)}(${qStr(elemName)}, ${scope.namespace}, `,
+                    sn(stats.text, qStr(stats.text.value)),
+                    `${cssScopeArg(scope)})`
+                ]);
+            } else {
+                elem = sn(node.name, [
+                    `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
+                    sn(stats.text, qStr(stats.text.value)),
+                    `${cssScopeArg(scope)})`
+                ]);
+            }
             body = null;
         } else {
             // Create plain DOM element
-            elem = sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
+            if (scope.namespace) {
+                elem = sn(node.name, `${scope.use(Symbols.elemNS)}(${qStr(elemName)}, ${scope.namespace}${cssScopeArg(scope)})`);
+            } else {
+                elem = sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
+            }
         }
 
         // Mount element
@@ -137,6 +155,10 @@ const generators: NodeGeneratorMap = {
         }
 
         chunks.push(scope.exitElement());
+
+        if (xmlns) {
+            scope.exitNamespace();
+        }
 
         return sn(node, format(chunks, scope.indent));
     },

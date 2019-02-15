@@ -13,7 +13,7 @@ export enum RuntimeSymbols {
     updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, mountSlot, setRef, setStaticRef,
     finalizeRefs, createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
-    mountPartial, updatePartial, elem, elemWithText, text, updateText, filter, insert,
+    mountPartial, updatePartial, elem, elemWithText, elemNS, elemNSWithText, text, updateText, filter, insert,
     subscribeStore
 }
 
@@ -132,13 +132,17 @@ export default class CompileScope {
     /** Contents of compiled template */
     readonly body: SourceNode[] = [];
 
-    readonly partialsMap: Map<string, PartialDeclaration>;
+    readonly partialsMap: Map<string, PartialDeclaration> = new Map();
 
     /** List of child components */
-    readonly componentsMap: Map<string, ComponentImport>;
+    readonly componentsMap: Map<string, ComponentImport> = new Map();
+
+    /** List of used namespaces */
+    readonly namespacesMap: Map<string, string> = new Map();
+    private namespaceStack: string[] = [];
 
     /** List of symbols used for store access */
-    readonly usedStore: Set<string>;
+    readonly usedStore: Set<string> = new Set();
 
     /**
      * List of available helpers. Key is a helper name (name of function) and value
@@ -154,9 +158,6 @@ export default class CompileScope {
 
         this.scopeSymbols = new SymbolGenerator(() => `${this.scope}.$_`);
         this.globalSymbols = new SymbolGenerator(this.options.prefix, num => suffix + num);
-        this.usedStore = new Set();
-        this.partialsMap = new Map();
-        this.componentsMap = new Map();
 
         // Prepare helpers
         this.helpers = {
@@ -199,6 +200,13 @@ export default class CompileScope {
             }
             func = func.parent;
         }
+    }
+
+    /**
+     * Returns current namespace
+     */
+    get namespace(): string {
+        return this.namespaceStack.length ? this.namespaceStack[this.namespaceStack.length - 1] : null;
     }
 
     /**
@@ -333,6 +341,29 @@ export default class CompileScope {
     }
 
     /**
+     * Enters XML namespace with given URI. All elements will be created with given
+     * namespace
+     */
+    enterNamespace(uri: string) {
+        let symbol: string;
+        if (this.namespacesMap.has(uri)) {
+            symbol = this.namespacesMap.get(uri);
+        } else {
+            symbol = this.globalSymbol('ns');
+            this.namespacesMap.set(uri, symbol);
+        }
+
+        this.namespaceStack.push(symbol);
+    }
+
+    /**
+     * Exit current namespace
+     */
+    exitNamespace() {
+        this.namespaceStack.pop();
+    }
+
+    /**
      * Check if content must be inserted via injector at current context
      */
     requiresInjector(): boolean {
@@ -431,6 +462,11 @@ export default class CompileScope {
 
             body.add('\n};\n');
         }
+
+        // Used namespaces
+        this.namespacesMap.forEach((symbol, uri) => {
+            body.add(`const ${symbol} = ${qStr(uri)};\n`);
+        });
 
         this.body.forEach(chunk => body.add(['\n', chunk, '\n']));
 

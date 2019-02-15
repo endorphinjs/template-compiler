@@ -65,4 +65,10 @@ describe('Template generator', () => {
         const fixture = read('./fixtures/imports.js');
         assert.equal(code.trim(), fixture);
     });
+
+    it('should generate namespaced elements', () => {
+        const { code } = compile(read('./samples/svg.html'), 'svg.html');
+        const fixture = read('./fixtures/svg.js');
+        assert.equal(code.trim(), fixture);
+    });
 });
