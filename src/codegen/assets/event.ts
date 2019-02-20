@@ -35,8 +35,8 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
     const output = new SourceNode();
     output.add(`function ${handlerName}(event) {\n`);
     output.add([
-        `${indent}const ${eventSymbol} = ${scope.host}.${eventSymbol} || ${scope.host}.componentModel.definition.${eventSymbol};\n`,
-        `${indent}${eventSymbol}(`
+        `${indent}const ctx = ${scope.host}.${eventSymbol} ? ${scope.host} : ${scope.host}.componentModel.definition;\n`,
+        `${indent}ctx.${eventSymbol}(`
     ]);
 
     if (handler instanceof JSAst.CallExpression) {

@@ -24,8 +24,8 @@ function $$iteratorBlock0(host, injector, scope) {
 	scope.bar = scope.foo;
 	const li0 = insert(injector, elemWithText("li", "item"));
 	function handler0(event) {
-		const handleClick = host.handleClick || host.componentModel.definition.handleClick;
-		handleClick(scope.index, scope.foo, scope.bar, host, event, this);
+		const ctx = host.handleClick ? host : host.componentModel.definition;
+		ctx.handleClick(scope.index, scope.foo, scope.bar, host, event, this);
 	}
 	addStaticEvent(li0, "click", handler0);
 	return $$iteratorBlock0Update;

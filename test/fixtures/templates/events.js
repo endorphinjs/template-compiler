@@ -5,8 +5,8 @@ export default function $$template0(host, scope) {
 	const main0 = target0.appendChild(elem("main"));
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	function handler0(event) {
-		const method1 = host.method1 || host.componentModel.definition.method1;
-		method1(host.props.foo, host.props.bar, host, event, this);
+		const ctx = host.method1 ? host : host.componentModel.definition;
+		ctx.method1(host.props.foo, host.props.bar, host, event, this);
 	}
 	addEvent(injector0, "click", scope.$_handler0 = handler0);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
@@ -23,8 +23,8 @@ function $$template0Update(host, scope) {
 
 function $$conditionContent0(host, injector, scope) {
 	function handler0(event) {
-		const method2 = host.method2 || host.componentModel.definition.method2;
-		method2(host.props.foo, host.props.bar, host, event, this);
+		const ctx = host.method2 ? host : host.componentModel.definition;
+		ctx.method2(host.props.foo, host.props.bar, host, event, this);
 	}
 	addEvent(injector, "click", scope.$_handler1 = handler0);
 	return $$conditionContent0Update;
