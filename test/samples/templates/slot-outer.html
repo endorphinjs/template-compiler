@@ -5,18 +5,18 @@
 
     <sub-component id={id}>
         <div>foo</div>
-        <end:if test={c1}>
+        <e:if test={c1}>
             <p>bar</p>
-        </end:if>
-        <end:if test={c2}>
+        </e:if>
+        <e:if test={c2}>
             <p slot="header">bar</p>
-        </end:if>
-        <end:for-each select={items}>
+        </e:if>
+        <e:for-each select={items}>
             <div>item</div>
             <div slot="footer">item footer</div>
-        </end:for-each>
-        <end:if test={error}>
+        </e:for-each>
+        <e:if test={error}>
             <div slot="error">Got error</div>
-        </end:if>
+        </e:if>
     </sub-component>
 </template>

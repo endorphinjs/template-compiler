@@ -19,7 +19,8 @@ const piClose = toCharCodes('?>');
 /**
  * A prefix for Endorphin element and attribute names
  */
-export const prefix = 'end';
+export const prefix = 'e';
+const nsPrefix = prefix + ':';
 
 export interface InnerStatement {
     (scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): ENDStatement
@@ -148,8 +149,8 @@ export function ignored(scanner: Scanner, space?: boolean): boolean {
  * @param name Tag name
  */
 export function getControlName(name: string): string {
-    if (name.startsWith(prefix + ':')) {
-        return name.slice(prefix.length + 1);
+    if (name.startsWith(nsPrefix)) {
+        return name.slice(nsPrefix.length);
     }
 
     if (name.startsWith('partial:')) {
@@ -202,7 +203,7 @@ export function getDirective(openTag: ParsedTag, prefix: string, name?: string):
  * except ones that have special meaning to Endorphin compiler
  */
 export function getAttributes(tag: ParsedTag): ENDAttribute[] {
-    return tag.attributes.filter(attr => attr.name instanceof Identifier ? !attr.name.name.startsWith(prefix) : true);
+    return tag.attributes.filter(attr => attr.name instanceof Identifier ? !attr.name.name.startsWith(nsPrefix) : true);
 }
 
 /**

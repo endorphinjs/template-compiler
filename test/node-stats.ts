@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import { parse } from '../index';
 import { ENDElement, ENDText } from '../src/ast/template';
 import collectStats, { ElementStats } from '../src/codegen/node-stats';
+import { prefix } from '../src/parser/elements/utils';
 
 describe('Node stats', () => {
     const getElem = (code: string): ENDElement =>
@@ -36,7 +37,7 @@ describe('Node stats', () => {
         stats = getStats('<div foo="bar"><div foo={bar}></div></div>');
         assert(isStatic(stats));
 
-        stats = getStats('<div foo="bar"><div><end:if test={foo}>test</end:if></div></div>');
+        stats = getStats(`<div foo="bar"><div><${prefix}:if test={foo}>test</${prefix}:if></div></div>`);
         assert(isStatic(stats));
     });
 
@@ -59,7 +60,7 @@ describe('Node stats', () => {
         stats = getStats('<div>foo {bar}</div>');
         assert(isStatic(stats));
 
-        stats = getStats('<div><end:if test={foo}>bar</end:if></div>');
+        stats = getStats(`<div><${prefix}:if test={foo}>bar</${prefix}:if></div>`);
         assert(!isStatic(stats));
 
         stats = getStats('<div {foo}="bar"></div>');

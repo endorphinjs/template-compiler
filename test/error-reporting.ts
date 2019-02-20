@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import compile from '../index';
+import { prefix } from '../src/parser/elements/utils';
 
 describe('Error reporting', () => {
     it('XML errors', () => {
@@ -15,18 +16,18 @@ describe('Error reporting', () => {
             snippet: '<div>\n  <foo a="b></foo>\n---------^\n</div>'
         });
 
-        assert.throws(() => compile('<template>\n\t<end:choose>\n\t\t<end:when test={foo}></end:when>\n\t\t<div></div>\n\t</end:choose>\n</template>'), {
+        assert.throws(() => compile(`<template>\n\t<${prefix}:choose>\n\t\t<${prefix}:when test={foo}></${prefix}:when>\n\t\t<div></div>\n\t</${prefix}:choose>\n</template>`), {
             name: 'SyntaxError',
-            rawMessage: 'Unexpected <div> tag, expecting <end:when> or <end:otherwise>'
+            rawMessage: `Unexpected <div> tag, expecting <${prefix}:when> or <${prefix}:otherwise>`
         });
     });
 
     it('expression errors', () => {
-        assert.throws(() => compile('<template>\n\t<end:variable foo={a +} />\n</template>'), {
+        assert.throws(() => compile(`<template>\n\t<${prefix}:variable foo={a +} />\n</template>`), {
             name: 'SyntaxError',
             rawMessage: 'Unexpected token',
             lineNumber: 2,
-            columnNumber: 22
+            columnNumber: 20
         });
         assert.throws(() => compile('<template>\n\t<div on:click="foo" />\n</template>'), {
             name: 'SyntaxError',

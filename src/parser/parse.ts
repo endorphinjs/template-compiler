@@ -82,7 +82,7 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     let result: ENDStatement;
     let parents: ENDIfStatement[] = [];
 
-    // Check if open tag contains `end:if` directive. If so, wrap output into
+    // Check if open tag contains `if` directive. If so, wrap output into
     // `<if>` statement and remove directives
     for (let i = open.directives.length - 1; i >= 0; i--) {
         const dir = open.directives[i];

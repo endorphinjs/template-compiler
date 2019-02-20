@@ -5,13 +5,13 @@
         </slot>
         <p>content</p>
         <slot></slot>
-        <end:if test={showError}>
+        <e:if test={showError}>
             <slot name="error"></slot>
-        </end:if>
-        <end:if test={showFooter}>
+        </e:if>
+        <e:if test={showFooter}>
             <slot name="footer">
                 <footer>Default footer</footer>
             </slot>
-        </end:if>
+        </e:if>
     </div>
 </template>

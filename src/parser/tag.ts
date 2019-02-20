@@ -2,6 +2,7 @@ import expression, { EXPRESSION_START } from './expression';
 import { Identifier, Literal, Program, ExpressionStatement } from '../ast/expression';
 import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue, ENDDirective } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
+import { prefix } from './elements/utils';
 import Scanner from './scanner';
 
 export const TAG_START = 60; // <
@@ -14,7 +15,7 @@ export const DOT = 46; // .
 export const UNDERSCORE = 95; // _
 
 const exprStart = String.fromCharCode(EXPRESSION_START);
-const directives = ['on', 'ref', 'end', 'class', 'partial'];
+const directives = [prefix, 'on', 'ref', 'class', 'partial'];
 
 /**
  * Consumes tag from current stream location, if possible

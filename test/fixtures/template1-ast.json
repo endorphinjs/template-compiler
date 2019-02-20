@@ -25,8 +25,8 @@
           "directives": [],
           "body": [
             {
-              "value": "Hello world",
               "type": "ENDText",
+              "value": "Hello world",
               "loc": {
                 "source": "samples/template1.html",
                 "start": {
@@ -69,14 +69,14 @@
                     "raw": "foo",
                     "loc": {
                       "start": {
-                        "pos": 54,
+                        "pos": 52,
                         "line": 3,
-                        "column": 18
+                        "column": 16
                       },
                       "end": {
-                        "pos": 57,
+                        "pos": 55,
                         "line": 3,
-                        "column": 21
+                        "column": 19
                       },
                       "source": "samples/template1.html"
                     }
@@ -87,14 +87,14 @@
                     "type": "Literal",
                     "loc": {
                       "start": {
-                        "pos": 61,
+                        "pos": 59,
                         "line": 3,
-                        "column": 25
+                        "column": 23
                       },
                       "end": {
-                        "pos": 62,
+                        "pos": 60,
                         "line": 3,
-                        "column": 26
+                        "column": 24
                       },
                       "source": "samples/template1.html"
                     }
@@ -102,14 +102,14 @@
                   "type": "BinaryExpression",
                   "loc": {
                     "start": {
-                      "pos": 54,
+                      "pos": 52,
                       "line": 3,
-                      "column": 18
+                      "column": 16
                     },
                     "end": {
-                      "pos": 62,
+                      "pos": 60,
                       "line": 3,
-                      "column": 26
+                      "column": 24
                     },
                     "source": "samples/template1.html"
                   }
@@ -117,14 +117,14 @@
                 "type": "ExpressionStatement",
                 "loc": {
                   "start": {
-                    "pos": 54,
+                    "pos": 52,
                     "line": 3,
-                    "column": 18
+                    "column": 16
                   },
                   "end": {
-                    "pos": 62,
+                    "pos": 60,
                     "line": 3,
-                    "column": 26
+                    "column": 24
                   },
                   "source": "samples/template1.html"
                 }
@@ -134,14 +134,14 @@
             "loc": {
               "source": "samples/template1.html",
               "start": {
-                "pos": 54,
+                "pos": 52,
                 "line": 3,
-                "column": 18
+                "column": 16
               },
               "end": {
-                "pos": 62,
+                "pos": 60,
                 "line": 3,
-                "column": 26
+                "column": 24
               }
             },
             "raw": "foo == 1"
@@ -155,12 +155,12 @@
                 "loc": {
                   "source": "samples/template1.html",
                   "start": {
-                    "pos": 74,
+                    "pos": 72,
                     "line": 4,
                     "column": 9
                   },
                   "end": {
-                    "pos": 77,
+                    "pos": 75,
                     "line": 4,
                     "column": 12
                   }
@@ -174,12 +174,12 @@
                     "loc": {
                       "source": "samples/template1.html",
                       "start": {
-                        "pos": 78,
+                        "pos": 76,
                         "line": 4,
                         "column": 13
                       },
                       "end": {
-                        "pos": 83,
+                        "pos": 81,
                         "line": 4,
                         "column": 18
                       }
@@ -192,12 +192,12 @@
                     "loc": {
                       "source": "samples/template1.html",
                       "start": {
-                        "pos": 84,
+                        "pos": 82,
                         "line": 4,
                         "column": 19
                       },
                       "end": {
-                        "pos": 92,
+                        "pos": 90,
                         "line": 4,
                         "column": 27
                       }
@@ -207,12 +207,12 @@
                   "loc": {
                     "source": "samples/template1.html",
                     "start": {
-                      "pos": 83,
+                      "pos": 81,
                       "line": 4,
                       "column": 18
                     },
                     "end": {
-                      "pos": 92,
+                      "pos": 90,
                       "line": 4,
                       "column": 27
                     }
@@ -222,17 +222,17 @@
               "directives": [],
               "body": [
                 {
-                  "value": "Foo is ",
                   "type": "ENDText",
+                  "value": "Foo is ",
                   "loc": {
                     "source": "samples/template1.html",
                     "start": {
-                      "pos": 93,
+                      "pos": 91,
                       "line": 4,
                       "column": 28
                     },
                     "end": {
-                      "pos": 100,
+                      "pos": 98,
                       "line": 4,
                       "column": 35
                     }
@@ -247,12 +247,12 @@
                         "raw": "foo",
                         "loc": {
                           "start": {
-                            "pos": 102,
+                            "pos": 100,
                             "line": 4,
                             "column": 37
                           },
                           "end": {
-                            "pos": 105,
+                            "pos": 103,
                             "line": 4,
                             "column": 40
                           },
@@ -262,12 +262,12 @@
                       "type": "ExpressionStatement",
                       "loc": {
                         "start": {
-                          "pos": 102,
+                          "pos": 100,
                           "line": 4,
                           "column": 37
                         },
                         "end": {
-                          "pos": 105,
+                          "pos": 103,
                           "line": 4,
                           "column": 40
                         },
@@ -279,12 +279,12 @@
                   "loc": {
                     "source": "samples/template1.html",
                     "start": {
-                      "pos": 101,
+                      "pos": 99,
                       "line": 4,
                       "column": 36
                     },
                     "end": {
-                      "pos": 106,
+                      "pos": 104,
                       "line": 4,
                       "column": 41
                     }
@@ -296,12 +296,12 @@
               "loc": {
                 "source": "samples/template1.html",
                 "start": {
-                  "pos": 73,
+                  "pos": 71,
                   "line": 4,
                   "column": 8
                 },
                 "end": {
-                  "pos": 93,
+                  "pos": 91,
                   "line": 4,
                   "column": 28
                 }
@@ -316,9 +316,9 @@
               "column": 4
             },
             "end": {
-              "pos": 64,
+              "pos": 62,
               "line": 3,
-              "column": 28
+              "column": 26
             }
           }
         }

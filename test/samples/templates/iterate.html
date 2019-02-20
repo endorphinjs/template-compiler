@@ -2,17 +2,17 @@
 <template>
     <h1>Hello world</h1>
 
-    <end:if test={items}>
+    <e:if test={items}>
         <p>will iterate</p>
         <ul>
-            <end:for-each select={items}>
+            <e:for-each select={items}>
                 <li>
                     item
-                    <end:if test={@value.marked}>
+                    <e:if test={@value.marked}>
                         <strong>*</strong>
-                    </end:if>
+                    </e:if>
                 </li>
-            </end:for-each>
+            </e:for-each>
         </ul>
-    </end:if>
+    </e:if>
 </template>
