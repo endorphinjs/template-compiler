@@ -24,11 +24,11 @@ export default function chooseStatement(scanner: Scanner, open: ParsedTag, next:
         if (tagEntry = openTag(scanner)) {
             const name = getControlName(tagEntry.getName());
             if (name !== 'when' && name !== 'otherwise') {
-                throw scanner.error(`Unexpected <${tagEntry.getName()}> tag, expecting <${prefix}when> or <${prefix}otherwise>`, tagEntry);
+                throw scanner.error(`Unexpected <${tagEntry.getName()}> tag, expecting <${prefix}:when> or <${prefix}:otherwise>`, tagEntry);
             }
 
             if (finished) {
-                throw scanner.error(`Unexpected <${tagEntry.getName()}> after <${prefix}otherwise>`, tagEntry);
+                throw scanner.error(`Unexpected <${tagEntry.getName()}> after <${prefix}:otherwise>`, tagEntry);
             }
 
             let test: ENDAttribute;

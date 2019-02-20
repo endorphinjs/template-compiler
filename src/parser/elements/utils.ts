@@ -19,7 +19,7 @@ const piClose = toCharCodes('?>');
 /**
  * A prefix for Endorphin element and attribute names
  */
-export const prefix = 'end:';
+export const prefix = 'end';
 
 export interface InnerStatement {
     (scanner: Scanner, openTag: ParsedTag, next?: InnerStatement): ENDStatement
@@ -148,8 +148,8 @@ export function ignored(scanner: Scanner, space?: boolean): boolean {
  * @param name Tag name
  */
 export function getControlName(name: string): string {
-    if (name.startsWith(prefix)) {
-        return name.slice(prefix.length);
+    if (name.startsWith(prefix + ':')) {
+        return name.slice(prefix.length + 1);
     }
 
     if (name.startsWith('partial:')) {

@@ -13,7 +13,7 @@ import variableStatement from './elements/variable';
 import importStatement from './elements/import';
 import stylesheetStatement from './elements/stylesheet';
 import scriptStatement from './elements/script';
-import { ignored, getControlName, InnerStatement, assertExpression, getAttrValueIfLiteral, tagText } from './elements/utils';
+import { prefix, ignored, getControlName, InnerStatement, assertExpression, getAttrValueIfLiteral, tagText } from './elements/utils';
 import { Program } from '../ast/expression';
 
 interface StatementMap {
@@ -86,7 +86,7 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
     // `<if>` statement and remove directives
     for (let i = open.directives.length - 1; i >= 0; i--) {
         const dir = open.directives[i];
-        if (dir.prefix === 'end' && dir.name.name === 'if') {
+        if (dir.prefix === prefix && dir.name.name === 'if') {
             assertExpression(scanner, dir);
             parents.push(new ENDIfStatement(dir.value as Program));
         }
