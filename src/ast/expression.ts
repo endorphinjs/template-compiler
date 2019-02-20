@@ -253,7 +253,7 @@ export class ENDFilter extends JSNode {
 
 export class ENDGetter extends JSNode {
     type = 'ENDGetter';
-    constructor(readonly root: ENDIdentifier | ENDFilter, readonly path: Expression[] = []) {
+    constructor(readonly root: ENDIdentifier | ENDFilter | CallExpression, readonly path: Expression[] = []) {
         super();
     }
 }

@@ -168,7 +168,7 @@ const converters: AstConverterMap = {
     MemberExpression(aNode, scope, scanner, next) {
         // Collect getter path
         const path: Ast.Expression[] = [];
-        let root: Ast.ENDIdentifier | Ast.ENDFilter;
+        let root: Ast.ENDIdentifier | Ast.ENDFilter | Ast.CallExpression;
         let ctx = aNode;
 
         while (ctx) {
@@ -189,6 +189,9 @@ const converters: AstConverterMap = {
 
             if (ctx.object.type === 'MemberExpression') {
                 ctx = ctx.object;
+            } else if (ctx.object.type === 'CallExpression') {
+                root = next(ctx.object) as Ast.CallExpression
+                break;
             } else {
                 if (ctx.object.type === 'Identifier') {
                     root = next(ctx.object) as Ast.ENDIdentifier;
@@ -198,7 +201,7 @@ const converters: AstConverterMap = {
         }
 
         if (!root) {
-            throw scanner.error(`Unexpected "${aNode.object.type}" in object expression`, aNode.object.start);
+            throw scanner.error(`Unexpected "${aNode.object.type}" in object expression`, scanner.start + aNode.object.start);
         }
 
         return new Ast.ENDGetter(root, path);
@@ -275,7 +278,8 @@ function parseScript(code: string, scanner: Scanner): Ast.Program {
     try {
         ast = JSParser.parse(code, {
             sourceType: 'module',
-            sourceFile: scanner.url
+            sourceFile: scanner.url,
+            locations: true
         });
     } catch (err) {
         throw scanner.error(err.message.replace(/\s*\(\d+:\d+\)$/, ''), scanner.start + err.pos - 1);

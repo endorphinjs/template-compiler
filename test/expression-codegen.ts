@@ -69,6 +69,9 @@ describe('Expression codegen', () => {
         assert.equal(compile('foo()'), 'host.props.foo()');
         assert.equal(compile('foo(1, 2)'), 'host.props.foo(1, 2)');
         assert.equal(compile('foo([bar])'), 'host.props.foo([host.props.bar])');
+        assert.equal(compile('foo().bar()'), 'get(host.props.foo(), "bar")()');
+        assert.equal(compile('foo().bar().baz()'), 'get(get(host.props.foo(), "bar")(), "baz")()');
+
 
         const scope = new CompileScope({
             helpers: {
