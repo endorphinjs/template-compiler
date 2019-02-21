@@ -35,6 +35,8 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
     const output = new SourceNode();
     output.add(`function ${handlerName}(event) {\n`);
     output.add([
+        // Check if component is still mounted
+        `${indent}if (!${scope.host}.componentModel) { return; }\n`,
         `${indent}const ctx = ${scope.host}.${eventSymbol} ? ${scope.host} : ${scope.host}.componentModel.definition;\n`,
         `${indent}ctx.${eventSymbol}(`
     ]);

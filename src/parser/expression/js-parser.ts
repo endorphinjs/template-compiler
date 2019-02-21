@@ -4,6 +4,8 @@ import { Node } from '../../ast/base';
 import * as Ast from '../../ast/expression';
 import Scanner from '../scanner';
 
+export const jsGlobals = new Set(['Math', 'String', 'Boolean', 'Object']);
+
 // @ts-ignore
 const JSParser = Parser.extend(endorphinParser);
 
@@ -26,6 +28,10 @@ class Scope {
 
     isReserved(name: string): boolean {
         return this.reserved.has(name);
+    }
+
+    isGlobal(name: string): boolean {
+        return jsGlobals.has(name);
     }
 }
 
@@ -60,7 +66,7 @@ const converters: AstConverterMap = {
         const name: string = aNode.name;
 
         // Identifier is reserved, most likely by outer function argument
-        if (scope.isReserved(name)) {
+        if (scope.isReserved(name) || scope.isGlobal(name)) {
             return new Ast.Identifier(name);
         }
 

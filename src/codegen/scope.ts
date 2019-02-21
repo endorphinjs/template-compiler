@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import { ChunkList, tagToJS, format, Chunk, qStr, isIdentifier, reverseObject, propAccessor } from './utils';
 import { ElementStats } from './node-stats';
 import ElementContext from './element-context';
-import { ENDImport } from '../ast/template';
+import { ENDImport, ENDElement } from '../ast/template';
 
 /**
  * Template compiler scope
@@ -52,6 +52,9 @@ export interface CompileScopeOptions {
 
     /** Suffix for generated top-level module symbols */
     suffix?: string;
+
+    /** Called with warning messages */
+    warn?(msg: string, pos?: number): void;
 }
 
 interface FunctionContext {
@@ -92,7 +95,10 @@ interface ComponentImport {
     href: string;
 
     /** Source node */
-    node: ENDImport
+    node: ENDImport;
+
+    /** Indicates given component was used */
+    used?: boolean;
 }
 
 export const defaultOptions: CompileScopeOptions = {
@@ -106,6 +112,9 @@ export const defaultOptions: CompileScopeOptions = {
     component: '',
     helpers: {
         'endorphin/helpers.js': ['emit', 'setState', 'setStore']
+    },
+    warn(msg) {
+        console.warn(msg);
     }
 }
 
@@ -151,6 +160,8 @@ export default class CompileScope {
     readonly helpers: {
         [name: string]: string;
     }
+
+    readonly _warned: Set<string> = new Set();
 
     constructor(options?: CompileScopeOptions) {
         this.options = Object.assign({}, defaultOptions, options);
@@ -405,6 +416,18 @@ export default class CompileScope {
         return this.componentsMap.has(tagName);
     }
 
+    checkComponent(node: ENDElement): void {
+        const tagName = node.name.name;
+
+        const data = this.componentsMap.get(tagName);
+        if (data) {
+            data.used = true;
+        } else if (tagName.includes('-') && !this._warned.has(tagName)) {
+            this._warned.add(tagName);
+            this.warn(`Missing component definition for <${tagName}>, did you forgot to <link rel="import"> it?`, node.loc.start.pos);
+        }
+    }
+
     /**
      * Check if scope is currently in component
      */
@@ -428,7 +451,11 @@ export default class CompileScope {
         // Import child components
         if (this.componentsMap.size) {
             this.componentsMap.forEach(item => {
-                body.add(`import * as ${item.symbol} from ${qStr(item.href)};\n`);
+                if (item.used) {
+                    body.add(`import * as ${item.symbol} from ${qStr(item.href)};\n`);
+                } else {
+                    this.warn(`Unused import, skipping`, item.node.loc.start.pos);
+                }
             });
         }
 
@@ -495,6 +522,13 @@ export default class CompileScope {
         });
 
         return result;
+    }
+
+    /** Displays warning with given message  */
+    warn(msg: string, pos?: number) {
+        if (this.options.warn) {
+            this.options.warn(msg, pos);
+        }
     }
 }
 

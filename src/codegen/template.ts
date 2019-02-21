@@ -69,6 +69,8 @@ const generators: NodeGeneratorMap = {
         const stats = getStats(node);
         const xmlns = getAttrValue(node, 'xmlns');
 
+        scope.checkComponent(node);
+
         let elem: SourceNode;
         let { attributes, body } = node;
 
@@ -79,7 +81,7 @@ const generators: NodeGeneratorMap = {
         if (scope.isComponent(elemName)) {
             // Create component
             elem = sn(node, [`${scope.use(Symbols.createComponent)}(${qStr(elemName)}, ${scope.componentsMap.get(elemName).symbol}, ${scope.host})`]);
-        } else if (stats.text) {
+        } else if (stats.text && elemName !== 'slot') {
             // Create plain DOM element with static text
             if (scope.namespace) {
                 elem = sn(node.name, [
@@ -449,7 +451,7 @@ function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope
         // List of static and dynamic tokens, must be compiled to function
         const fnName = createConcatFunction('attrValue', scope,
             value.elements.map(elem => elem instanceof JSAst.Literal ? String(elem.value) : elem))
-        return `${fnName}(${scope.host})`;
+        return `${fnName}(${scope.host}, ${scope.scope})`;
     }
 }
 

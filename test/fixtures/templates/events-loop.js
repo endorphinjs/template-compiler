@@ -24,6 +24,7 @@ function $$iteratorBlock0(host, injector, scope) {
 	scope.bar = scope.foo;
 	const li0 = insert(injector, elemWithText("li", "item"));
 	function handler0(event) {
+		if (!host.componentModel) { return; }
 		const ctx = host.handleClick ? host : host.componentModel.definition;
 		ctx.handleClick(scope.index, scope.foo, scope.bar, host, event, this);
 	}

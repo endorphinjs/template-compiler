@@ -65,6 +65,10 @@ describe('Expression codegen', () => {
         assert.equal(toString(scope), read('fixtures/filters/filter3.txt'));
     });
 
+    it('should resolve globals', () => {
+        assert.equal(compile('Math.min(foo, bar)'), 'get(Math, "min")(host.props.foo, host.props.bar)');
+    });
+
     it('should generate call expressions', () => {
         assert.equal(compile('foo()'), 'host.props.foo()');
         assert.equal(compile('foo(1, 2)'), 'host.props.foo(1, 2)');

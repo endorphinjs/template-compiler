@@ -5,6 +5,7 @@ export default function $$template0(host, scope) {
 	const main0 = target0.appendChild(elem("main"));
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	function handler0(event) {
+		if (!host.componentModel) { return; }
 		const ctx = host.method1 ? host : host.componentModel.definition;
 		ctx.method1(host.props.foo, host.props.bar, host, event, this);
 	}
@@ -23,6 +24,7 @@ function $$template0Update(host, scope) {
 
 function $$conditionContent0(host, injector, scope) {
 	function handler0(event) {
+		if (!host.componentModel) { return; }
 		const ctx = host.method2 ? host : host.componentModel.definition;
 		ctx.method2(host.props.foo, host.props.bar, host, event, this);
 	}
