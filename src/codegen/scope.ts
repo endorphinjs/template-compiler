@@ -53,6 +53,9 @@ export interface CompileScopeOptions {
     /** Suffix for generated top-level module symbols */
     suffix?: string;
 
+    /** Do not import components which were detected as unused */
+    removeUnusedImports?: boolean;
+
     /** Called with warning messages */
     warn?(msg: string, pos?: number): void;
 }
@@ -112,9 +115,6 @@ export const defaultOptions: CompileScopeOptions = {
     component: '',
     helpers: {
         'endorphin/helpers.js': ['emit', 'setState', 'setStore']
-    },
-    warn(msg) {
-        console.warn(msg);
     }
 }
 
@@ -450,12 +450,17 @@ export default class CompileScope {
 
         // Import child components
         if (this.componentsMap.size) {
-            this.componentsMap.forEach(item => {
-                if (item.used) {
-                    body.add(`import * as ${item.symbol} from ${qStr(item.href)};\n`);
-                } else {
-                    this.warn(`Unused import, skipping`, item.node.loc.start.pos);
+            const removeUnused = this.options.removeUnusedImports;
+
+            this.componentsMap.forEach((item, name) => {
+                if (!item.used) {
+                    this.warn(`Unused import "${name}"${removeUnused ? ', skipping' : ''}`, item.node.loc.start.pos);
+                    if (removeUnused) {
+                        return;
+                    }
                 }
+
+                body.add(`import * as ${item.symbol} from ${qStr(item.href)};\n`);
             });
         }
 
