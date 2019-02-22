@@ -1,6 +1,6 @@
 import {
     ENDElement, ENDText, ENDStatement, ENDIfStatement, ENDChooseStatement,
-    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate, ENDPartialStatement, ENDAttribute, ENDPartial
+    ENDForEachStatement, ENDAttributeStatement, ENDAddClassStatement, ENDAttributeValueExpression, ENDTemplate, ENDPartialStatement, ENDAttribute
 } from '../ast/template';
 import { Identifier, Program, Literal } from '../ast/expression';
 
@@ -88,23 +88,6 @@ export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: Eleme
     });
 
     return stats;
-}
-
-/**
- * Check if given template contains element references
- */
-export function hasRefs(template: ENDTemplate): boolean {
-    let result = false;
-    walk(template, node => {
-        // Since partials can be overridden in runtime, we don’t know if they
-        // contain any refs for sure so assume they does.
-        result = node instanceof ENDPartial
-            || ((node instanceof ENDElement || node instanceof ENDAttributeStatement) && node.attributes.some(isRef));
-
-        return !result;
-    });
-
-    return result;
 }
 
 function collectStatsInBlock(node: ENDStatement, stats: ElementStats) {

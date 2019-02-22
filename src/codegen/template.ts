@@ -4,7 +4,7 @@ import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
-import getStats, { collectDynamicStats, hasRefs } from './node-stats';
+import getStats, { collectDynamicStats } from './node-stats';
 import compileExpression from './expression';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
@@ -45,7 +45,7 @@ const generators: NodeGeneratorMap = {
             scope.exitElement(),
         );
 
-        if (hasRefs(node)) {
+        if (hasRefs(scope)) {
             const refs = `${scope.use(Symbols.finalizeRefs)}(${scope.host});`;
             scope.pushUpdate(refs);
             body.push(refs);
@@ -540,4 +540,12 @@ function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeF
 
 function cssScopeArg(scope: CompileScope): string {
     return scope.options.cssScope ? `, ${scope.cssScopeSymbol}` : '';
+}
+
+/**
+ * Check if given template contains element references
+ */
+export function hasRefs(scope: CompileScope): boolean {
+    return scope.runtimeSymbols.has(Symbols.setRef)
+        || scope.runtimeSymbols.has(Symbols.mountPartial);
 }

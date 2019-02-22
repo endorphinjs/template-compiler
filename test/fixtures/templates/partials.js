@@ -1,4 +1,4 @@
-import { elem, updatePartial, mountPartial, updateIterator, mountIterator, createInjector, insert, addClass, text, updateText, finalizeAttributes } from "@endorphinjs/endorphin";
+import { elem, updatePartial, mountPartial, updateIterator, mountIterator, createInjector, finalizeRefs, insert, addClass, text, updateText, finalizeAttributes } from "@endorphinjs/endorphin";
 
 export const partials = {
 	button: {
@@ -32,11 +32,13 @@ export default function $$template0(host, scope) {
 	const ul0 = target0.appendChild(elem("ul"));
 	const injector0 = createInjector(ul0);
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
+	finalizeRefs(host);
 	return $$template0Update;
 }
 
 function $$template0Update(host, scope) {
 	updateIterator(scope.$_iter0);
+	finalizeRefs(host);
 }
 
 function $$iteratorExpr0(host) {
