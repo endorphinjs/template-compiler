@@ -5,11 +5,11 @@ export default function $$template0(host, scope) {
 	const div0 = target0.appendChild(elem("div"));
 	const p0 = div0.appendChild(elem("p"));
 	p0.appendChild(text("Store value is "));
-	scope.$_text0 = p0.appendChild(text(scope.$_textValue0 = host.store.data.foo));
+	scope.$_text0 = p0.appendChild(text(host.store.data.foo));
 	subscribeStore(host, ["foo"]);
 	return $$template0Update;
 }
 
 function $$template0Update(host, scope) {
-	scope.$_textValue0 = updateText(scope.$_text0, host.store.data.foo, scope.$_textValue0);
+	updateText(scope.$_text0, host.store.data.foo);
 }

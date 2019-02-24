@@ -15,7 +15,7 @@ function $$partialButton0(host, injector, scope) {
 	const li0 = insert(injector, elem("li"));
 	const injector0 = scope.$_injector0 = createInjector(li0);
 	$$ifAttr0(host, injector0, scope);
-	scope.$_text0 = insert(injector0, text(scope.$_textValue0 = scope.item));
+	scope.$_text0 = insert(injector0, text(scope.item));
 	finalizeAttributes(injector0);
 	return $$partialButton0Update;
 }
@@ -23,7 +23,7 @@ function $$partialButton0(host, injector, scope) {
 function $$partialButton0Update(host, injector, scope) {
 	const injector0 = scope.$_injector0;
 	$$ifAttr0(host, injector0, scope);
-	scope.$_textValue0 = updateText(scope.$_text0, scope.item, scope.$_textValue0);
+	updateText(scope.$_text0, scope.item);
 	finalizeAttributes(injector0);
 }
 

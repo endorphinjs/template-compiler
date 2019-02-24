@@ -141,7 +141,6 @@ const generators: NodeGeneratorMap = {
         // NB `Program` is used as expression for text node
         const expr = compileExpression(node, scope);
         const nodeVar = scope.scopeSymbol('text');
-        const valueVar = scope.scopeSymbol('textValue');
 
         const mount = new SourceNode();
         const update = new SourceNode();
@@ -149,12 +148,12 @@ const generators: NodeGeneratorMap = {
         mount.add(`${nodeVar} = `);
 
         if (scope.requiresInjector()) {
-            mount.add([`${scope.use(Symbols.insert)}(${scope.localInjector()}, ${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
+            mount.add([`${scope.use(Symbols.insert)}(${scope.localInjector()}, ${scope.use(Symbols.text)}(`, expr, `));`]);
         } else {
-            mount.add([`${scope.element.localSymbol}.appendChild(${scope.use(Symbols.text)}(${valueVar} = `, expr, `));`]);
+            mount.add([`${scope.element.localSymbol}.appendChild(${scope.use(Symbols.text)}(`, expr, `));`]);
         }
 
-        update.add([`${valueVar} = ${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `, ${valueVar});`]);
+        update.add([`${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `);`]);
         scope.func.update.push(update);
         return mount;
     },
