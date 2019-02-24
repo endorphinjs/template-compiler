@@ -4,7 +4,7 @@ import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
 import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
-import getStats, { collectDynamicStats } from './node-stats';
+import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
@@ -70,40 +70,13 @@ const generators: NodeGeneratorMap = {
         const xmlns = getAttrValue(node, 'xmlns');
 
         scope.checkComponent(node);
+        scope.enterNamespace(xmlns);
 
-        let elem: SourceNode;
+        const elem = createElement(node, scope, stats);
         let { attributes, body } = node;
 
-        if (xmlns) {
-            scope.enterNamespace(String(xmlns));
-        }
-
-        if (scope.isComponent(elemName)) {
-            // Create component
-            elem = sn(node, [`${scope.use(Symbols.createComponent)}(${qStr(elemName)}, ${scope.componentsMap.get(elemName).symbol}, ${scope.host})`]);
-        } else if (stats.text && elemName !== 'slot') {
-            // Create plain DOM element with static text
-            if (scope.namespace) {
-                elem = sn(node.name, [
-                    `${scope.use(Symbols.elemNSWithText)}(${qStr(elemName)}, ${scope.namespace}, `,
-                    sn(stats.text, qStr(stats.text.value)),
-                    `${cssScopeArg(scope)})`
-                ]);
-            } else {
-                elem = sn(node.name, [
-                    `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
-                    sn(stats.text, qStr(stats.text.value)),
-                    `${cssScopeArg(scope)})`
-                ]);
-            }
+        if (elemName === 'slot' || stats.text) {
             body = null;
-        } else {
-            // Create plain DOM element
-            if (scope.namespace) {
-                elem = sn(node.name, `${scope.use(Symbols.elemNS)}(${qStr(elemName)}, ${scope.namespace}${cssScopeArg(scope)})`);
-            } else {
-                elem = sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
-            }
         }
 
         // Mount element
@@ -127,10 +100,6 @@ const generators: NodeGeneratorMap = {
             // in runtime) must be added during component mount. Thus, we should
             // process dynamic attributes only
             attributes = attributes.filter(attr => isDynamicAttribute(attr, scope));
-        }
-
-        if (elemName === 'slot') {
-            body = null;
         }
 
         chunks = chunks.concat(
@@ -157,10 +126,7 @@ const generators: NodeGeneratorMap = {
         }
 
         chunks.push(scope.exitElement());
-
-        if (xmlns) {
-            scope.exitNamespace();
-        }
+        scope.exitNamespace(xmlns);
 
         return sn(node, format(chunks, scope.indent));
     },
@@ -545,7 +511,40 @@ function cssScopeArg(scope: CompileScope): string {
 /**
  * Check if given template contains element references
  */
-export function hasRefs(scope: CompileScope): boolean {
+function hasRefs(scope: CompileScope): boolean {
     return scope.runtimeSymbols.has(Symbols.setRef)
         || scope.runtimeSymbols.has(Symbols.mountPartial);
+}
+
+function createElement(node: Ast.ENDElement, scope: CompileScope, stats: ElementStats): SourceNode {
+    const elemName = node.name.name;
+
+    if (scope.isComponent(elemName)) {
+        // Create component
+        return sn(node, [`${scope.use(Symbols.createComponent)}(${qStr(elemName)}, ${scope.componentsMap.get(elemName).symbol}, ${scope.host})`]);
+    }
+
+    if (stats.text && elemName !== 'slot') {
+        // Create plain DOM element with static text
+        if (scope.namespace) {
+            return sn(node.name, [
+                `${scope.use(Symbols.elemNSWithText)}(${qStr(elemName)}, ${scope.namespace}, `,
+                sn(stats.text, qStr(stats.text.value)),
+                `${cssScopeArg(scope)})`
+            ]);
+        }
+
+        return sn(node.name, [
+            `${scope.use(Symbols.elemWithText)}(${qStr(elemName)}, `,
+            sn(stats.text, qStr(stats.text.value)),
+            `${cssScopeArg(scope)})`
+        ]);
+    }
+
+    // Create plain DOM element
+    if (scope.namespace) {
+        return sn(node.name, `${scope.use(Symbols.elemNS)}(${qStr(elemName)}, ${scope.namespace}${cssScopeArg(scope)})`);
+    }
+
+    return sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
 }

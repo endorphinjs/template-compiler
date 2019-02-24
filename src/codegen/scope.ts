@@ -3,18 +3,19 @@ import { ChunkList, tagToJS, format, Chunk, qStr, isIdentifier, reverseObject, p
 import { ElementStats } from './node-stats';
 import ElementContext from './element-context';
 import { ENDImport, ENDElement } from '../ast/template';
+import { LiteralValue } from '../ast/expression';
 
 /**
  * Template compiler scope
  */
 
 export enum RuntimeSymbols {
-    get, mountBlock, updateBlock, mountIterator, updateIterator, mountKeyIterator,
+    mountBlock, updateBlock, mountIterator, updateIterator, mountKeyIterator,
     updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
-    addEvent, addStaticEvent, finalizeEvents, mountSlot, setRef, setStaticRef,
-    finalizeRefs, createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
-    mountPartial, updatePartial, elem, elemWithText, elemNS, elemNSWithText, text, updateText, filter, insert,
-    subscribeStore
+    addEvent, addStaticEvent, finalizeEvents, mountSlot, setRef, finalizeRefs,
+    createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
+    mountPartial, updatePartial, updateText, insert, get,
+    elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore
 }
 
 export interface CompileScopeOptions {
@@ -355,7 +356,12 @@ export default class CompileScope {
      * Enters XML namespace with given URI. All elements will be created with given
      * namespace
      */
-    enterNamespace(uri: string) {
+    enterNamespace(ns?: LiteralValue) {
+        if (ns == null) {
+            return;
+        }
+
+        const uri = String(ns);
         let symbol: string;
         if (this.namespacesMap.has(uri)) {
             symbol = this.namespacesMap.get(uri);
@@ -370,8 +376,14 @@ export default class CompileScope {
     /**
      * Exit current namespace
      */
-    exitNamespace() {
-        this.namespaceStack.pop();
+    exitNamespace(ns?: LiteralValue) {
+        if (ns != null) {
+            this.namespaceStack.pop();
+        }
+    }
+
+    enterSlotContext(slotName: string) {
+
     }
 
     /**

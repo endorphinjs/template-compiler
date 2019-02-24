@@ -18,6 +18,7 @@ export type ObjectPatternProperty = Property | RestElement;
 export type Statement = ReturnStatement | EmptyStatement | ExpressionStatement;
 export type PropertyKey = Identifier | Literal;
 export type PropertyValue = BindingPattern | Literal;
+export type LiteralValue = boolean | number | string | null;
 
 export class JSNode extends Node {}
 
@@ -31,7 +32,7 @@ export class Program extends JSNode {
 
 export class Literal extends JSNode {
     type = 'Literal';
-    constructor(readonly value: boolean | number | string | null, readonly raw: string) {
+    constructor(readonly value: LiteralValue, readonly raw: string) {
         super();
     }
 }

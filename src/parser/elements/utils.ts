@@ -1,6 +1,6 @@
 import Scanner from '../scanner';
 import { toCharCodes, eatSection, isSpace } from '../utils';
-import { Identifier, Program, Literal } from '../../ast/expression';
+import { Identifier, Program, Literal, LiteralValue } from '../../ast/expression';
 import { ENDStatement, ENDAttribute, ParsedTag, ENDText, ENDElement, ENDAttributeStatement } from '../../ast/template';
 import { Node } from '../../ast/base';
 import { closeTag, openTag } from '../tag';
@@ -170,7 +170,7 @@ export function getAttr(elem: ParsedTag | ENDElement | ENDAttributeStatement, na
 /**
  * Returns value of attribute with given name from tag name definition, if any
  */
-export function getAttrValue(openTag: ParsedTag | ENDElement | ENDAttributeStatement, name: string): string | number | boolean {
+export function getAttrValue(openTag: ParsedTag | ENDElement | ENDAttributeStatement, name: string): LiteralValue {
     const attr = getAttr(openTag, name);
     if (attr && attr.value instanceof Literal) {
         return attr.value.value;
