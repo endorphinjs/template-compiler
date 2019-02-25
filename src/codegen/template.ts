@@ -68,19 +68,13 @@ const generators: NodeGeneratorMap = {
         const elemName = node.name.name;
         const stats = getStats(node);
         const xmlns = getAttrValue(node, 'xmlns');
+        const mount = new SourceNode();
 
         scope.checkComponent(node);
         scope.enterNamespace(xmlns);
 
         const elem = createElement(node, scope, stats);
         let { attributes, body } = node;
-
-        if (elemName === 'slot' || stats.text) {
-            body = null;
-        }
-
-        // Mount element
-        const mount = new SourceNode();
 
         if (scope.requiresInjector()) {
             const slotName = getAttrValue(node, 'slot');
@@ -105,7 +99,8 @@ const generators: NodeGeneratorMap = {
         chunks = chunks.concat(
             attributes.map(next),
             node.directives.map(next),
-            body ? body.map(next) : []
+            // Do not create plain body content for slots and elements with static text
+            body && elemName !== 'slot' && !stats.text ? body.map(next) : []
         );
 
         if (scope.inComponent()) {
@@ -259,7 +254,8 @@ const generators: NodeGeneratorMap = {
     },
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
         // Edge case: if statement contains attributes only, we can create much simpler
-        // function
+        // function. Since attributes must be explicitly finalized, always return `0`
+        // from function as if nothing has been changed.
         if (node.consequent.every(isSimpleConditionContent)) {
             const fn = scope.enterFunction('ifAttr', 'injector');
             const body = new SourceNode();
@@ -271,17 +267,17 @@ const generators: NodeGeneratorMap = {
                 body.add(['\n', indent, next(node)]);
             });
             body.add(`\n${scope.indent}}`);
+            body.add(`\n${scope.indent}return 0;`)
 
             // Reset update code since the very save function will be used for
             // element update
             scope.func.update.length = 0;
             const { scopeArg } = scope.func;
-            const curFunc = scope.func;
             scope.push(scope.exitFunction([body]));
 
             // If shorthand function requires scope argument, mark scope as used in
             // outer function as well
-            if (curFunc.scopeArg.children.length) {
+            if (scopeArg.children.length) {
                 scope.markScopeAsUsed();
             }
 

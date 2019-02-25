@@ -64,4 +64,5 @@ function $$ifAttr0(host, injector, scope) {
 	if (scope.enabled) {
 		addClass(injector, "enabled");
 	}
+	return 0;
 }

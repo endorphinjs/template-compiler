@@ -23,6 +23,7 @@ function $$ifAttr0(host, injector, scope) {
 	if (((host.state.customBg && (host.state.customBg !== "default")) && !scope["pro-mode"])) {
 		addClass(injector, $$class0(host));
 	}
+	return 0;
 }
 
 function $$conditionContent0(host, injector, scope) {

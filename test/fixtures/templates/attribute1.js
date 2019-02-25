@@ -29,16 +29,19 @@ function $$ifAttr0(host, injector) {
 	if (host.props.c1) {
 		setAttribute(injector, "a2", "1");
 	}
+	return 0;
 }
 
 function $$ifAttr1(host, injector) {
 	if (host.props.c2) {
 		setAttribute(injector, "a2", "2");
 	}
+	return 0;
 }
 
 function $$ifAttr2(host, injector) {
 	if (host.props.c3) {
 		setAttribute(injector, "a2", "3");setAttribute(injector, "a1", "3");setAttribute(injector, "a3", "3");
 	}
+	return 0;
 }

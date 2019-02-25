@@ -26,4 +26,5 @@ function $$ifAttr0(host, injector) {
 	if (host.props.c1) {
 		setAttribute(injector, "p2", "2");
 	}
+	return 0;
 }
