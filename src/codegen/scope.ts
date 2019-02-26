@@ -4,6 +4,7 @@ import { ElementStats } from './node-stats';
 import ElementContext from './element-context';
 import { ENDImport, ENDElement } from '../ast/template';
 import { LiteralValue } from '../ast/expression';
+import { getControlName } from '../parser/elements/utils';
 
 /**
  * Template compiler scope
@@ -443,7 +444,7 @@ export default class CompileScope {
      * Check if given tag name is a component in current scope
      */
     isComponent(tagName: string): boolean {
-        return this.componentsMap.has(tagName);
+        return this.componentsMap.has(tagName) || getControlName(tagName) === 'self';
     }
 
     checkComponent(node: ENDElement): void {

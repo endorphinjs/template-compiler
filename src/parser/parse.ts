@@ -92,12 +92,8 @@ function statement(scanner: Scanner, open: ParsedTag): ENDStatement {
         }
     }
 
-    if (controlName) {
-        if (controlName in statements) {
-            result = statements[controlName](scanner, open, statement);
-        } else {
-            throw scanner.error(`Unknown control statement <${open.getName()}>`, open);
-        }
+    if (controlName && controlName in statements) {
+        result = statements[controlName](scanner, open, statement);
     } else if (open.getName() === 'script' || open.getName() === 'style') {
         result = tagText(scanner, open);
     } else {

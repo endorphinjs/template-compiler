@@ -8,7 +8,7 @@ import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
-import { getAttrValue } from '../parser/elements/utils';
+import { getAttrValue, getControlName } from '../parser/elements/utils';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -529,6 +529,11 @@ function hasRefs(scope: CompileScope): boolean {
 
 function createElement(node: Ast.ENDElement, scope: CompileScope, stats: ElementStats): SourceNode {
     const elemName = node.name.name;
+
+    if (getControlName(elemName) === 'self') {
+        // Create component which points to itself
+        return sn(node, [`${scope.use(Symbols.createComponent)}(${scope.host}.nodeName, ${scope.host}.componentModel.definition, ${scope.host})`]);
+    }
 
     if (scope.isComponent(elemName)) {
         // Create component
