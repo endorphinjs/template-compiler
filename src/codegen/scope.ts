@@ -12,7 +12,7 @@ import { LiteralValue } from '../ast/expression';
 export enum RuntimeSymbols {
     mountBlock, updateBlock, mountIterator, updateIterator, mountKeyIterator,
     updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
-    addEvent, addStaticEvent, finalizeEvents, mountSlot, setRef, finalizeRefs,
+    addEvent, addStaticEvent, finalizeEvents, mountSlot, markSlotUpdate, setRef, finalizeRefs,
     createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
     mountPartial, updatePartial, updateText, insert, get,
     elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore
@@ -62,7 +62,7 @@ export interface CompileScopeOptions {
 }
 
 interface FunctionContext {
-    update: ChunkList;
+    update: Array<Chunk | SlotMarker>;
     parent?: FunctionContext;
     localSymbols: SymbolGenerator;
     updateSymbols: SymbolGenerator;
@@ -104,6 +104,14 @@ interface ComponentImport {
     /** Indicates given component was used */
     used?: boolean;
 }
+
+type SlotStats = {
+    count: number;
+    mount: SourceNode;
+    use: SourceNode;
+    varName: string;
+    component: string;
+};
 
 export const defaultOptions: CompileScopeOptions = {
     host: 'host',
@@ -279,7 +287,7 @@ export default class CompileScope {
     /**
      * Adds given chunk as update item for current function
      */
-    pushUpdate(chunk: Chunk): void {
+    pushUpdate(chunk: Chunk | SlotMarker): void {
         this.func.update.push(chunk);
     }
 
@@ -329,7 +337,7 @@ export default class CompileScope {
             output.add(`function ${updateSymbol}(`);
             output.add(args);
             output.add(`) {\n${indent}`);
-            output.add(format(func.update, indent));
+            output.add(this.generateUpdateCode(func, indent));
             output.add(`\n}`);
         } else {
             output.add(`\n}`);
@@ -383,7 +391,17 @@ export default class CompileScope {
     }
 
     enterSlotContext(slotName: string) {
+        const component = this.closestComponent();
+        if (component) {
+            this.pushUpdate(new SlotMarker(component.scopeSymbol, slotName, 'start'));
+        }
+    }
 
+    exitSlotContext(slotName: string) {
+        const component = this.closestComponent();
+        if (component) {
+            this.pushUpdate(new SlotMarker(component.scopeSymbol, slotName, 'end'));
+        }
     }
 
     /**
@@ -446,6 +464,20 @@ export default class CompileScope {
     inComponent(): boolean {
         const elem = this.element;
         return !!elem && this.isComponent(elem.name);
+    }
+
+    /**
+     * Returns closest parent component, if available
+     */
+    closestComponent(): ElementContext {
+        let elem = this.element;
+        while (elem) {
+            if (this.isComponent(elem.name)) {
+                return elem;
+            }
+
+            elem = elem.parent;
+        }
     }
 
     /**
@@ -547,6 +579,60 @@ export default class CompileScope {
             this.options.warn(msg, pos);
         }
     }
+
+    /**
+     * Generates function update code for current context
+     */
+    generateUpdateCode(func: FunctionContext, indent: string) {
+        const usedSlots: Map<string | null, SlotStats> = new Map();
+        const chunks: ChunkList = [];
+        const stack: string[] = [];
+        let currentSlot: string | null = undefined;
+
+        func.update.forEach(item => {
+            if (item instanceof SlotMarker) {
+                let { slotName } = item;
+
+                if (slotName === null && usedSlots.has('')) {
+                    slotName = '';
+                }
+
+                if (item.type === 'start') {
+                    if (!usedSlots.has(slotName)) {
+                        chunks.push(enterSlotContext(slotName, item.component, usedSlots));
+                    }
+                    stack.push(currentSlot = slotName);
+                } else {
+                    stack.pop();
+                    if (!stack.includes(currentSlot)) {
+                        chunks.push(exitSlotContext(currentSlot, usedSlots, this));
+                    }
+
+                    currentSlot = stack[stack.length - 1];
+                }
+            } else {
+                const slotData = usedSlots.get(currentSlot);
+                if (slotData) {
+                    slotData.count++;
+
+                    if (item instanceof SourceNode) {
+                        item.prepend(slotData.use);
+                        chunks.push(item);
+                    } else if (typeof item === 'string') {
+                        const node = new SourceNode();
+                        node.add([slotData.use, item]);
+                        chunks.push(node);
+                    }
+                } else {
+                    chunks.push(item);
+                }
+            }
+        });
+
+        chunks.push(finalizeSlotStatus(usedSlots));
+
+        return format(chunks, indent);
+    }
 }
 
 interface SymbolPartGenerator {
@@ -588,4 +674,49 @@ class SymbolGenerator {
 
         return '';
     }
+}
+
+class SlotMarker {
+    constructor(readonly component: string, readonly slotName: string | null, readonly type: 'start' | 'end') {
+
+    }
+}
+
+function enterSlotContext(slotName: string | null, component: string, usedSlots: Map<string | null, SlotStats>): Chunk {
+    const mount = new SourceNode();
+    usedSlots.set(slotName, {
+        count: 0,
+        mount,
+        use: new SourceNode(),
+        varName: `updated${tagToJS(slotName || '', true)}`,
+        component
+    });
+    return mount;
+}
+
+function exitSlotContext(slotName: string | null, usedSlots: Map<string | null, SlotStats>, scope: CompileScope): Chunk {
+    const slotData = usedSlots.get(slotName);
+    if (slotData.count && !slotData.mount.children.length) {
+        slotData.mount.add(`let ${slotData.varName} = 0;`);
+        slotData.use.add(`${slotData.varName} |= `);
+        return `${scope.use(RuntimeSymbols.markSlotUpdate)}(${slotData.component}, ${qStr(slotName || '')}, ${slotData.varName});`;
+    }
+}
+
+function finalizeSlotStatus(usedSlots: Map<string | null, SlotStats>): Chunk {
+    const result = new SourceNode();
+
+    if (usedSlots.size === 1 && usedSlots.has(null)) {
+        // We have implicit default slot only: in makes sense only if we’re
+        // somewhere inside component
+        const slotData = usedSlots.get(null);
+        return slotData.count ? `return ${slotData.component};` : null;
+    }
+
+    const defaultSlot = usedSlots.get('') || usedSlots.get(null);
+    if (defaultSlot) {
+        result.add(`return ${defaultSlot.varName};`);
+    }
+
+    return result;
 }

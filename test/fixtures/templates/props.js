@@ -1,4 +1,4 @@
-import { createComponent, setAttribute, mountComponent, updateComponent } from "@endorphinjs/endorphin";
+import { createComponent, setAttribute, mountComponent, updateComponent, markSlotUpdate } from "@endorphinjs/endorphin";
 import * as SubComponent from "./sub-component.html";
 
 export default function $$template0(host, scope) {
@@ -16,10 +16,13 @@ export default function $$template0(host, scope) {
 
 function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
-	setAttribute(injector0, "id", host.props.id);
-	$$ifAttr0(host, injector0);
-	setAttribute(injector0, "p3", "3");
+	let updated = 0;
+	updated |= setAttribute(injector0, "id", host.props.id);
+	updated |= $$ifAttr0(host, injector0);
+	updated |= setAttribute(injector0, "p3", "3");
+	markSlotUpdate(scope.$_subComponent0, "", updated);
 	updateComponent(scope.$_subComponent0);
+	return updated;
 }
 
 function $$ifAttr0(host, injector) {

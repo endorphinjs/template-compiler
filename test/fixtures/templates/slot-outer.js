@@ -1,4 +1,4 @@
-import { elemWithText, createComponent, setAttribute, insert, updateBlock, mountBlock, updateIterator, mountIterator, mountComponent, updateComponent } from "@endorphinjs/endorphin";
+import { elemWithText, createComponent, setAttribute, insert, updateBlock, mountBlock, updateIterator, mountIterator, mountComponent, updateComponent, markSlotUpdate } from "@endorphinjs/endorphin";
 import * as SubComponent from "./slot-inner.html";
 
 export default function $$template0(host, scope) {
@@ -18,12 +18,15 @@ export default function $$template0(host, scope) {
 
 function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
-	setAttribute(injector0, "id", host.props.id);
-	updateBlock(scope.$_block0);
-	updateBlock(scope.$_block1);
-	updateIterator(scope.$_iter0);
-	updateBlock(scope.$_block2);
+	let updated = 0;
+	updated |= setAttribute(injector0, "id", host.props.id);
+	updated |= updateBlock(scope.$_block0);
+	updated |= updateBlock(scope.$_block1);
+	updated |= updateIterator(scope.$_iter0);
+	updated |= updateBlock(scope.$_block2);
+	markSlotUpdate(scope.$_subComponent0, "", updated);
 	updateComponent(scope.$_subComponent0);
+	return updated;
 }
 
 function $$conditionContent0(host, injector) {

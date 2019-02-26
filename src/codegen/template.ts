@@ -86,6 +86,9 @@ const generators: NodeGeneratorMap = {
         // Output content
         let chunks: ChunkList = [scope.enterElement(elemName, mount, stats)];
 
+        // NB: `null` is valid value and means “implicit default slot”
+        let slotName: string = null;
+
         if (scope.inComponent()) {
             // Redirect input into component injector
             scope.element.injector = `${scope.element.localSymbol}.componentModel.input`;
@@ -94,7 +97,15 @@ const generators: NodeGeneratorMap = {
             // in runtime) must be added during component mount. Thus, we should
             // process dynamic attributes only
             attributes = attributes.filter(attr => isDynamicAttribute(attr, scope));
+            slotName = '';
+        } else {
+            const slotAttr = getAttrValue(node, 'slot');
+            if (slotAttr) {
+                slotName = String(slotAttr);
+            }
         }
+
+        scope.enterSlotContext(slotName);
 
         chunks = chunks.concat(
             attributes.map(next),
@@ -102,6 +113,8 @@ const generators: NodeGeneratorMap = {
             // Do not create plain body content for slots and elements with static text
             body && elemName !== 'slot' && !stats.text ? body.map(next) : []
         );
+
+        scope.exitSlotContext(slotName);
 
         if (scope.inComponent()) {
             const staticAttrs = node.attributes.filter(attr => !isDynamicAttribute(attr, scope));
