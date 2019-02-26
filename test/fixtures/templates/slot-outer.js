@@ -7,6 +7,7 @@ export default function $$template0(host, scope) {
 	const subComponent0 = scope.$_subComponent0 = target0.appendChild(createComponent("sub-component", SubComponent, host));
 	const injector0 = scope.$_injector0 = subComponent0.componentModel.input;
 	setAttribute(injector0, "id", host.props.id);
+	scope.foo = host.props.bar;
 	insert(injector0, elemWithText("div", "foo"));
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	scope.$_block1 = mountBlock(host, injector0, $$conditionEntry1);
@@ -20,6 +21,7 @@ function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
 	let updated = 0;
 	updated |= setAttribute(injector0, "id", host.props.id);
+	scope.foo = host.props.bar;
 	updated |= updateBlock(scope.$_block0);
 	updated |= updateBlock(scope.$_block1);
 	updated |= updateIterator(scope.$_iter0);

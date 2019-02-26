@@ -616,7 +616,9 @@ export default class CompileScope {
                     slotData.count++;
 
                     if (item instanceof SourceNode) {
-                        item.prepend(slotData.use);
+                        if (!item['$$noUpdate']) {
+                            item.prepend(slotData.use);
+                        }
                         chunks.push(item);
                     } else if (typeof item === 'string') {
                         const node = new SourceNode();
@@ -710,12 +712,12 @@ function finalizeSlotStatus(usedSlots: Map<string | null, SlotStats>): Chunk {
         // We have implicit default slot only: in makes sense only if we’re
         // somewhere inside component
         const slotData = usedSlots.get(null);
-        return slotData.count ? `return ${slotData.component};` : null;
+        return slotData.count ? `return ${slotData.varName};` : null;
     }
 
     const defaultSlot = usedSlots.get('') || usedSlots.get(null);
     if (defaultSlot) {
-        result.add(`return ${defaultSlot.varName};`);
+        result.add(`return ${defaultSlot.count ? defaultSlot.varName : 0};`);
     }
 
     return result;

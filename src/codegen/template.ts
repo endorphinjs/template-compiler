@@ -261,6 +261,9 @@ const generators: NodeGeneratorMap = {
         }
 
         const output = new SourceNode();
+        // FIXME this hack will skip slot update accumulation in update code
+        // need to think about better solution
+        output['$$noUpdate'] = true;
         output.add([name, ` = `, value, ';']);
         scope.func.update.push(output);
         return output;
