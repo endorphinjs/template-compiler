@@ -111,7 +111,8 @@ type SlotStats = {
     mount: SourceNode;
     use: SourceNode;
     varName: string;
-    component: string;
+    slotName: string;
+    component: ElementContext;
 };
 
 export const defaultOptions: CompileScopeOptions = {
@@ -394,14 +395,14 @@ export default class CompileScope {
     enterSlotContext(slotName: string) {
         const component = this.closestComponent();
         if (component) {
-            this.pushUpdate(new SlotMarker(component.scopeSymbol, slotName, 'start'));
+            this.pushUpdate(new SlotMarker(component, slotName, 'start'));
         }
     }
 
     exitSlotContext(slotName: string) {
         const component = this.closestComponent();
         if (component) {
-            this.pushUpdate(new SlotMarker(component.scopeSymbol, slotName, 'end'));
+            this.pushUpdate(new SlotMarker(component, slotName, 'end'));
         }
     }
 
@@ -592,17 +593,19 @@ export default class CompileScope {
 
         func.update.forEach(item => {
             if (item instanceof SlotMarker) {
-                let { slotName } = item;
+                let { slotName, component } = item;
 
-                if (slotName === null && usedSlots.has('')) {
+                if (slotName === null && usedSlots.has(getSlotKey('', component))) {
                     slotName = '';
                 }
 
+                const slotKey = getSlotKey(slotName, component);
+
                 if (item.type === 'start') {
-                    if (!usedSlots.has(slotName)) {
-                        chunks.push(enterSlotContext(slotName, item.component, usedSlots));
+                    if (!usedSlots.has(slotKey)) {
+                        chunks.push(enterSlotContext(slotKey, slotName, item.component, usedSlots));
                     }
-                    stack.push(currentSlot = slotName);
+                    stack.push(currentSlot = slotKey);
                 } else {
                     stack.pop();
                     if (!stack.includes(currentSlot)) {
@@ -680,43 +683,51 @@ class SymbolGenerator {
 }
 
 class SlotMarker {
-    constructor(readonly component: string, readonly slotName: string | null, readonly type: 'start' | 'end') {
+    constructor(readonly component: ElementContext, readonly slotName: string | null, readonly type: 'start' | 'end') {
 
     }
 }
 
-function enterSlotContext(slotName: string | null, component: string, usedSlots: Map<string | null, SlotStats>): Chunk {
+function getSlotKey(slotName: string | null, component: ElementContext): string {
+    const prefix = slotName === null ? 'd_' : `s_${slotName}`;
+    return `${prefix}:${component.localSymbol}`;
+}
+
+function enterSlotContext(slotKey: string, slotName: string | null, component: ElementContext, usedSlots: Map<string | null, SlotStats>): Chunk {
     const mount = new SourceNode();
-    usedSlots.set(slotName, {
+    usedSlots.set(slotKey, {
         count: 0,
         mount,
         use: new SourceNode(),
-        varName: `updated${tagToJS(slotName || '', true)}`,
+        varName: tagToJS(slotKey),
+        slotName,
         component
     });
     return mount;
 }
 
-function exitSlotContext(slotName: string | null, usedSlots: Map<string | null, SlotStats>, scope: CompileScope): Chunk {
-    const slotData = usedSlots.get(slotName);
+function exitSlotContext(slotKey: string, usedSlots: Map<string | null, SlotStats>, scope: CompileScope): Chunk {
+    const slotData = usedSlots.get(slotKey);
     if (slotData.count && !slotData.mount.children.length) {
         slotData.mount.add(`let ${slotData.varName} = 0;`);
         slotData.use.add(`${slotData.varName} |= `);
-        return `${scope.use(RuntimeSymbols.markSlotUpdate)}(${slotData.component}, ${qStr(slotName || '')}, ${slotData.varName});`;
+        return `${scope.use(RuntimeSymbols.markSlotUpdate)}(${slotData.component.scopeSymbol}, ${qStr(slotData.slotName || '')}, ${slotData.varName});`;
     }
 }
 
 function finalizeSlotStatus(usedSlots: Map<string | null, SlotStats>): Chunk {
     const result = new SourceNode();
+    const slots = Array.from(usedSlots.values());
 
-    if (usedSlots.size === 1 && usedSlots.has(null)) {
+    if (slots.length === 1 && slots[0].slotName === null) {
         // We have implicit default slot only: in makes sense only if we’re
         // somewhere inside component
-        const slotData = usedSlots.get(null);
+        const slotData = slots[0];
         return slotData.count ? `return ${slotData.varName};` : null;
     }
 
-    const defaultSlot = usedSlots.get('') || usedSlots.get(null);
+    const defaultSlot = slots.find(data => data.slotName === '')
+        || slots.find(data => data.slotName === null);
     if (defaultSlot) {
         result.add(`return ${defaultSlot.count ? defaultSlot.varName : 0};`);
     }

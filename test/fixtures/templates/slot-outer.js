@@ -19,16 +19,16 @@ export default function $$template0(host, scope) {
 
 function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
-	let updated = 0;
-	updated |= setAttribute(injector0, "id", host.props.id);
+	let s__subComponent0 = 0;
+	s__subComponent0 |= setAttribute(injector0, "id", host.props.id);
 	scope.foo = host.props.bar;
-	updated |= updateBlock(scope.$_block0);
-	updated |= updateBlock(scope.$_block1);
-	updated |= updateIterator(scope.$_iter0);
-	updated |= updateBlock(scope.$_block2);
-	markSlotUpdate(scope.$_subComponent0, "", updated);
+	s__subComponent0 |= updateBlock(scope.$_block0);
+	s__subComponent0 |= updateBlock(scope.$_block1);
+	s__subComponent0 |= updateIterator(scope.$_iter0);
+	s__subComponent0 |= updateBlock(scope.$_block2);
+	markSlotUpdate(scope.$_subComponent0, "", s__subComponent0);
 	updateComponent(scope.$_subComponent0);
-	return updated;
+	return s__subComponent0;
 }
 
 function $$conditionContent0(host, injector) {

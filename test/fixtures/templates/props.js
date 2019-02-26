@@ -16,13 +16,13 @@ export default function $$template0(host, scope) {
 
 function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
-	let updated = 0;
-	updated |= setAttribute(injector0, "id", host.props.id);
-	updated |= $$ifAttr0(host, injector0);
-	updated |= setAttribute(injector0, "p3", "3");
-	markSlotUpdate(scope.$_subComponent0, "", updated);
+	let s__subComponent0 = 0;
+	s__subComponent0 |= setAttribute(injector0, "id", host.props.id);
+	s__subComponent0 |= $$ifAttr0(host, injector0);
+	s__subComponent0 |= setAttribute(injector0, "p3", "3");
+	markSlotUpdate(scope.$_subComponent0, "", s__subComponent0);
 	updateComponent(scope.$_subComponent0);
-	return updated;
+	return s__subComponent0;
 }
 
 function $$ifAttr0(host, injector) {

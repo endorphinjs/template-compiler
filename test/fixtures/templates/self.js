@@ -22,11 +22,11 @@ function $$conditionContent0(host, injector, scope) {
 
 function $$conditionContent0Update(host, injector, scope) {
 	const injector0 = scope.$_injector0;
-	let updated = 0;
-	updated |= setAttribute(injector0, "item", host.props.link);
-	markSlotUpdate(scope.$_e_self0, "", updated);
+	let s__e_self0 = 0;
+	s__e_self0 |= setAttribute(injector0, "item", host.props.link);
+	markSlotUpdate(scope.$_e_self0, "", s__e_self0);
 	updateComponent(scope.$_e_self0);
-	return updated;
+	return s__e_self0;
 }
 
 function $$conditionContent1(host, injector) {
