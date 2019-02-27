@@ -15,7 +15,7 @@ export enum RuntimeSymbols {
     updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, mountSlot, markSlotUpdate, setRef, finalizeRefs,
     createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
-    mountPartial, updatePartial, updateText, insert, get,
+    mountPartial, updatePartial, updateText, addDisposable, insert, get,
     elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore
 }
 
@@ -480,6 +480,27 @@ export default class CompileScope {
 
             elem = elem.parent;
         }
+    }
+
+    /**
+     * Generates code to make given symbol a disposable (e.g. requires explicit dispose)
+     * @param symbol
+     */
+    makeDisposable(symbol: string): Chunk {
+        const host: string = this.func && this.func.injector
+            ? this.func.injector
+            : this.host;
+
+        return `${this.use(RuntimeSymbols.addDisposable)}(${host}, ${symbol});`;
+    }
+
+    /**
+     * Generates code for auto-disposable block
+     */
+    disposableBlock(blockSymbol: string, mount: SourceNode): SourceNode {
+        const result = new SourceNode();
+        result.add([`${blockSymbol} = `, mount, `\n${this.indent}`, this.makeDisposable(`${blockSymbol}.block`)]);
+        return result;
     }
 
     /**
