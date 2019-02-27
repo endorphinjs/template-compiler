@@ -1,6 +1,6 @@
 <!-- Template with dynamic attributes -->
 <template>
-    <main on:click={method1(foo, bar)}>
+    <main on:click={method1(foo, bar)} on:mouseenter={emit('hover')}>
         <e:attribute on:click={method2(foo, bar)} e:if={c1} />
     </main>
 </template>

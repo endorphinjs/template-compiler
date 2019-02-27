@@ -34,12 +34,19 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
 
     const output = new SourceNode();
     output.add(`function ${handlerName}(event) {\n`);
-    output.add([
-        // Check if component is still mounted
-        `${indent}if (!${scope.host}.componentModel) { return; }\n`,
-        `${indent}const ctx = ${scope.host}.${eventSymbol} ? ${scope.host} : ${scope.host}.componentModel.definition;\n`,
-        `${indent}ctx.${eventSymbol}(`
-    ]);
+
+    // Check if component is still mounted
+    output.add(`${indent}if (!${scope.host}.componentModel) { return; }\n`);
+
+    if (eventSymbol in scope.helpers) {
+        // Calling helper function
+        output.add([indent, scope.useHelper(eventSymbol), `(${scope.host}, `]);
+    } else {
+        output.add([
+            `${indent}const ctx = ${scope.host}.${eventSymbol} ? ${scope.host} : ${scope.host}.componentModel.definition;\n`,
+            `${indent}ctx.${eventSymbol}(`
+        ]);
+    }
 
     if (handler instanceof JSAst.CallExpression) {
         // on:click={handler(foo, bar)}

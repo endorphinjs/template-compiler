@@ -1,4 +1,5 @@
-import { elem, addEvent, updateBlock, mountBlock, finalizeEvents, createInjector } from "@endorphinjs/endorphin";
+import { elem, addEvent, addStaticEvent, updateBlock, mountBlock, finalizeEvents, createInjector } from "@endorphinjs/endorphin";
+import { emit } from "endorphin/helpers.js";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -10,6 +11,11 @@ export default function $$template0(host, scope) {
 		ctx.method1(host.props.foo, host.props.bar, host, event, this);
 	}
 	addEvent(injector0, "click", scope.$_handler0 = handler0);
+	function handler1(event) {
+		if (!host.componentModel) { return; }
+		emit(host, "hover", host, event, this);
+	}
+	addStaticEvent(main0, "mouseenter", handler1);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	finalizeEvents(injector0);
 	return $$template0Update;
