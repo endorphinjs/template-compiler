@@ -13,7 +13,7 @@ export default function $$template0(host, scope) {
 	addEvent(injector0, "click", scope.$_handler0 = handler0);
 	function handler1(event) {
 		if (!host.componentModel) { return; }
-		emit(host, "hover", host, event, this);
+		emit(host, "hover");
 	}
 	addStaticEvent(main0, "mouseenter", handler1);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);

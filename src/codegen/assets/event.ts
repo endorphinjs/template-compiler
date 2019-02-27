@@ -40,24 +40,35 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
 
     if (eventSymbol in scope.helpers) {
         // Calling helper function
-        output.add([indent, scope.useHelper(eventSymbol), `(${scope.host}, `]);
+        output.add([indent, scope.useHelper(eventSymbol), `(${scope.host}`]);
+
+        if (handler instanceof JSAst.CallExpression) {
+            // on:click={handler(foo, bar)}
+            // Add arguments to function handler but ensure that variables are fetched
+            // from local JS variable: it is required for proper variable scoping in loops
+            handler.arguments.forEach(arg => {
+                output.add([', ', compileExpression(arg, scope, eventGenerators)]);
+            });
+        }
+        output.add(`);`);
     } else {
         output.add([
             `${indent}const ctx = ${scope.host}.${eventSymbol} ? ${scope.host} : ${scope.host}.componentModel.definition;\n`,
             `${indent}ctx.${eventSymbol}(`
         ]);
+
+        if (handler instanceof JSAst.CallExpression) {
+            // on:click={handler(foo, bar)}
+            // Add arguments to function handler but ensure that variables are fetched
+            // from local JS variable: it is required for proper variable scoping in loops
+            handler.arguments.forEach(arg => {
+                output.add([compileExpression(arg, scope, eventGenerators), ', ']);
+            });
+        }
+
+        output.add(`${scope.host}, event, this);`);
     }
 
-    if (handler instanceof JSAst.CallExpression) {
-        // on:click={handler(foo, bar)}
-        // Add arguments to function handler but ensure that variables are fetched
-        // from local variable: it is required for proper variable scoping in loops
-        handler.arguments.forEach(arg => {
-            output.add([compileExpression(arg, scope, eventGenerators), ', ']);
-        });
-    }
-
-    output.add(`${scope.host}, event, this);`);
     output.add(`\n${scope.indent}}\n`);
 
     const eventType = node.name.name;
