@@ -222,7 +222,7 @@ const generators: NodeGeneratorMap = {
             // A combination of text and expression tokens
             const fnName = createConcatFunction('class', scope,
                 node.tokens.map(token => token instanceof Ast.ENDText ? token.value : token));
-            value = `${fnName}(${scope.host})`;
+            value = `${fnName}(${scope.host}, ${scope.scope})`;
         }
 
         if (value) {
