@@ -96,7 +96,7 @@ const generators: NodeGeneratorMap = {
             // In component, static attributes/props (e.g. ones which won’t change
             // in runtime) must be added during component mount. Thus, we should
             // process dynamic attributes only
-            attributes = attributes.filter(attr => isDynamicAttribute(attr, scope));
+            attributes = attributes.filter(attr => isDynamicAttribute(attr, scope) || isRef(attr));
             slotName = '';
         } else {
             const slotAttr = getAttrValue(node, 'slot');
@@ -117,7 +117,7 @@ const generators: NodeGeneratorMap = {
         scope.exitSlotContext(slotName);
 
         if (scope.inComponent()) {
-            const staticAttrs = node.attributes.filter(attr => !isDynamicAttribute(attr, scope));
+            const staticAttrs = node.attributes.filter(attr => !isDynamicAttribute(attr, scope) && !isRef(attr));
             if (staticAttrs.length) {
                 const mountComponent = new SourceNode();
                 mountComponent.add([`${scope.use(Symbols.mountComponent)}(${scope.element.localSymbol}, `, generateObject(staticAttrs, scope, sn, 1), `);`]);
@@ -183,7 +183,7 @@ const generators: NodeGeneratorMap = {
         ));
     },
     ENDAttribute(node: Ast.ENDAttribute, scope, sn) {
-        if (node.name instanceof JSAst.Identifier && node.name.name === 'ref') {
+        if (isRef(node)) {
             // Element reference: ref="name"
             // TODO support static refs
             const refName = compileAttributeValue(node.value, scope, sn);
@@ -517,6 +517,10 @@ function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeF
 
 function cssScopeArg(scope: CompileScope): string {
     return scope.options.cssScope ? `, ${scope.cssScopeSymbol}` : '';
+}
+
+function isRef(attr: Ast.ENDAttribute): boolean {
+    return attr.name instanceof JSAst.Identifier && attr.name.name === 'ref';
 }
 
 /**
