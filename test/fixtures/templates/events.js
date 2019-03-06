@@ -7,8 +7,7 @@ export default function $$template0(host, scope) {
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	function handler0(event) {
 		if (!host.componentModel) { return; }
-		const ctx = host.method1 ? host : host.componentModel.definition;
-		ctx.method1(host.props.foo, host.props.bar, host, event, this);
+		host.componentModel.definition.method1(host.props.foo, host.props.bar, host, event, this);
 	}
 	addEvent(injector0, "click", scope.$_handler0 = handler0);
 	function handler1(event) {
@@ -31,8 +30,7 @@ function $$template0Update(host, scope) {
 function $$conditionContent0(host, injector, scope) {
 	function handler0(event) {
 		if (!host.componentModel) { return; }
-		const ctx = host.method2 ? host : host.componentModel.definition;
-		ctx.method2(host.props.foo, host.props.bar, host, event, this);
+		host.componentModel.definition.method2(host.props.foo, host.props.bar, host, event, this);
 	}
 	addEvent(injector, "click", scope.$_handler1 = handler0);
 	return $$conditionContent0Update;

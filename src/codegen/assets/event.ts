@@ -53,8 +53,7 @@ export default function generateEvent(node: ENDDirective, scope: CompileScope, s
         output.add(`);`);
     } else {
         output.add([
-            `${indent}const ctx = ${scope.host}.${eventSymbol} ? ${scope.host} : ${scope.host}.componentModel.definition;\n`,
-            `${indent}ctx.${eventSymbol}(`
+            `${indent}${scope.host}.componentModel.definition.${eventSymbol}(`
         ]);
 
         if (handler instanceof JSAst.CallExpression) {
