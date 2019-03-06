@@ -152,7 +152,6 @@ const generators: NodeGeneratorMap = {
         const nodeVar = scope.scopeSymbol('text');
 
         const mount = new SourceNode();
-        const update = new SourceNode();
 
         mount.add(`${nodeVar} = `);
 
@@ -162,8 +161,9 @@ const generators: NodeGeneratorMap = {
             mount.add([`${scope.element.localSymbol}.appendChild(${scope.use(Symbols.text)}(`, expr, `));`]);
         }
 
-        update.add([`${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `);`]);
-        scope.func.update.push(update);
+        scope.pushUpdate(wrapSN([`${scope.use(Symbols.updateText)}(${nodeVar}, `, expr, `);`]));
+        scope.pushUnmount(nodeVar);
+
         return mount;
     },
     ENDInnerHTML(node: Ast.ENDInnerHTML, scope, sn) {

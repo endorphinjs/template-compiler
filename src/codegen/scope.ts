@@ -301,8 +301,9 @@ export default class CompileScope {
     /**
      * Adds given chunk as unmount item for current function
      */
-    pushUnmount(varSymbol: string, fnSymbol: RuntimeSymbols): void {
-        this.func.unmount.push(`${varSymbol} = ${this.use(fnSymbol)}(${varSymbol});`);
+    pushUnmount(varSymbol: string, fnSymbol?: RuntimeSymbols): void {
+        const dispose = fnSymbol != null ? `${this.use(fnSymbol)}(${varSymbol})` : 'null';
+        this.func.unmount.push(`${varSymbol} = ${dispose};`);
     }
 
     /**
