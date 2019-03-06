@@ -147,3 +147,9 @@ export function reverseObject(obj: { [key: string]: string[] }): PlainObject {
 
     return result;
 }
+
+export function wrapSN(chunk: Chunk | ChunkList): SourceNode {
+    const sn = new SourceNode();
+    sn.add(chunk);
+    return sn;
+}

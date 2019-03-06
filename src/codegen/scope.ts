@@ -11,11 +11,15 @@ import { getControlName } from '../parser/elements/utils';
  */
 
 export enum RuntimeSymbols {
-    mountBlock, updateBlock, mountIterator, updateIterator, mountKeyIterator,
-    updateKeyIterator, createInjector, block, setAttribute, addClass, finalizeAttributes,
+    mountBlock, updateBlock, unmountBlock,
+    mountIterator, updateIterator, unmountIterator,
+    mountKeyIterator, updateKeyIterator, unmountKeyIterator,
+    mountComponent, updateComponent, unmountComponent,
+    mountInnerHTML, updateInnerHTML, unmountInnerHTML,
+    mountPartial, updatePartial, unmountPartial,
+    createInjector, block, setAttribute, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, mountSlot, markSlotUpdate, setRef, finalizeRefs,
-    createComponent, mountComponent, updateComponent, mountInnerHTML, updateInnerHTML,
-    mountPartial, updatePartial, updateText, addDisposable, insert, get,
+    createComponent, updateText, addDisposeCallback, insert, get,
     elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore
 }
 
@@ -64,6 +68,7 @@ export interface CompileScopeOptions {
 
 interface FunctionContext {
     update: Array<Chunk | SlotMarker>;
+    unmount: Chunk[],
     parent?: FunctionContext;
     localSymbols: SymbolGenerator;
     updateSymbols: SymbolGenerator;
@@ -294,6 +299,13 @@ export default class CompileScope {
     }
 
     /**
+     * Adds given chunk as unmount item for current function
+     */
+    pushUnmount(varSymbol: string, fnSymbol: RuntimeSymbols): void {
+        this.func.unmount.push(`${varSymbol} = ${this.use(fnSymbol)}(${varSymbol});`);
+    }
+
+    /**
      * Generates symbol for update function. It can be used as a shorthand for
      * referencing `value` in update function
      */
@@ -316,7 +328,8 @@ export default class CompileScope {
             parent: this.func,
             output: new SourceNode(),
             scopeArg: new SourceNode(),
-            update: []
+            update: [],
+            unmount: []
         };
         this.func = ctx;
         return ctx.symbol;
@@ -332,6 +345,12 @@ export default class CompileScope {
         output.add(`) {\n${indent}`);
         output.add(format(body, indent));
 
+        const unmountSymbol = `${func.symbol}Unmount`;
+
+        if (func.unmount.length) {
+            output.add(`\n${indent}${this.use(RuntimeSymbols.addDisposeCallback)}(${func.injector || this.host}, ${unmountSymbol});`);
+        }
+
         if (func.update.length) {
             // Generate update function for rendered template
             const updateSymbol = `${func.symbol}Update`;
@@ -342,6 +361,14 @@ export default class CompileScope {
             output.add(this.generateUpdateCode(func, indent));
             output.add(`\n}`);
         } else {
+            output.add(`\n}`);
+        }
+
+        // Generate unmount function for rendered template
+        if (func.unmount.length) {
+            // Generate unmount function for rendered template
+            output.add(`\n\nfunction ${unmountSymbol}(${this.options.scope}) {\n${indent}`);
+            output.add(format(func.unmount, indent));
             output.add(`\n}`);
         }
 
@@ -480,27 +507,6 @@ export default class CompileScope {
 
             elem = elem.parent;
         }
-    }
-
-    /**
-     * Generates code to make given symbol a disposable (e.g. requires explicit dispose)
-     * @param symbol
-     */
-    makeDisposable(symbol: string): Chunk {
-        const host: string = this.func && this.func.injector
-            ? this.func.injector
-            : this.host;
-
-        return `${this.use(RuntimeSymbols.addDisposable)}(${host}, ${symbol});`;
-    }
-
-    /**
-     * Generates code for auto-disposable block
-     */
-    disposableBlock(blockSymbol: string, mount: SourceNode): SourceNode {
-        const result = new SourceNode();
-        result.add([`${blockSymbol} = `, mount, `\n${this.indent}`, this.makeDisposable(`${blockSymbol}.block`)]);
-        return result;
     }
 
     /**

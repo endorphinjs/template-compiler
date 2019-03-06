@@ -3,7 +3,7 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute, wrapSN } from './utils';
 import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
 import generateEvent from './assets/event';
@@ -90,9 +90,6 @@ const generators: NodeGeneratorMap = {
         let slotName: string = null;
 
         if (scope.inComponent()) {
-            // Add component into list of explicitly disposable items
-            chunks.push(scope.makeDisposable(scope.element.localSymbol));
-
             // Redirect input into component injector
             scope.element.injector = `${scope.element.localSymbol}.componentModel.input`;
 
@@ -130,6 +127,7 @@ const generators: NodeGeneratorMap = {
             }
 
             scope.pushUpdate(`${scope.use(Symbols.updateComponent)}(${scope.element.scopeSymbol});`);
+            scope.pushUnmount(scope.element.scopeSymbol, Symbols.unmountComponent);
         }
 
         if (elemName === 'slot') {
@@ -173,9 +171,10 @@ const generators: NodeGeneratorMap = {
         const blockSymbol = scope.scopeSymbol('html');
         const mount = sn(node, `${scope.use(Symbols.mountInnerHTML)}(${scope.host}, ${scope.localInjector()}, ${blockExpr});`);
 
-        scope.func.update.push(`${scope.use(Symbols.updateInnerHTML)}(${blockSymbol});`);
+        scope.pushUpdate(`${scope.use(Symbols.updateInnerHTML)}(${blockSymbol});`);
+        scope.pushUnmount(blockSymbol, Symbols.unmountInnerHTML);
 
-        return scope.disposableBlock(blockSymbol, mount);;
+        return wrapSN([blockSymbol, ' = ', mount]);
     },
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, scope, sn, next) {
         return sn(node, [].concat(
@@ -320,9 +319,10 @@ const generators: NodeGeneratorMap = {
             `(${scope.host}, ${scope.localInjector()}, ${blockExpr}${node.key ? `, ${blockKey}` : ''}, ${blockContent});`
         ]);
 
-        scope.func.update.push(`${scope.use(node.key ? Symbols.updateKeyIterator : Symbols.updateIterator)}(${blockSymbol});`);
+        scope.pushUpdate(`${scope.use(node.key ? Symbols.updateKeyIterator : Symbols.updateIterator)}(${blockSymbol});`);
+        scope.pushUnmount(blockSymbol, node.key ? Symbols.unmountKeyIterator : Symbols.unmountIterator);
 
-        return scope.disposableBlock(blockSymbol, mount);
+        return wrapSN([blockSymbol, ' = ', mount]);
     },
     ENDPartial(node: Ast.ENDPartial, scope, sn, next) {
         const symbol = scope.enterFunction(`partial${tagToJS(node.id.name, true)}`, 'injector');
@@ -338,14 +338,12 @@ const generators: NodeGeneratorMap = {
         const params = generateObject(node.params, scope, sn, 1);
         const getter = `${scope.host}.props['partial:${node.id.name}'] || ${scope.partials}${propAccessor(node.id.name)}`;
         const symbol = scope.scopeSymbol('partial');
-        const update = new SourceNode();
-        update.add([`${scope.use(Symbols.updatePartial)}(${symbol}, ${getter}, `, params, `);`]);
-
 
         const mount = sn(node, [`${scope.use(Symbols.mountPartial)}(${scope.host}, ${scope.localInjector()}, ${getter}, `, params, `);`]);
-        scope.func.update.push(update);
+        scope.pushUpdate(wrapSN([`${scope.use(Symbols.updatePartial)}(${symbol}, ${getter}, `, params, `);`]));
+        scope.pushUnmount(symbol, Symbols.unmountPartial);
 
-        return scope.disposableBlock(symbol, mount);
+        return wrapSN([symbol, ' = ', mount]);
     }
 };
 
@@ -501,9 +499,10 @@ function generateConditionalBlock(node: Ast.ENDNode, blocks: ConditionStatement[
     const blockVar = scope.scopeSymbol('block');
     const mount = sn(node, `${scope.use(Symbols.mountBlock)}(${scope.host}, ${scope.localInjector()}, ${blockEntry});`);
 
-    scope.func.update.push(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
+    scope.pushUpdate(sn(node, `${scope.use(Symbols.updateBlock)}(${blockVar});`));
+    scope.pushUnmount(blockVar, Symbols.unmountBlock);
 
-    return scope.disposableBlock(blockVar, mount);
+    return wrapSN([blockVar, ' = ', mount]);
 }
 
 function isSimpleConditionContent(node: Ast.ENDNode): boolean {
