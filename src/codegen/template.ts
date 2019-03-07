@@ -514,12 +514,16 @@ function isSimpleConditionContent(node: Ast.ENDNode): boolean {
 }
 
 function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeFactory, next: Generator): SourceNode {
+    const slotSymbol = scope.scopeSymbol('slot');
     const slotName = String(getAttrValue(node, 'name') || '');
     const slotContent: string = node.body.length
         ? createContentFunction(`slot${tagToJS(slotName || 'default', true)}Content`, scope, node.body, next)
         : '';
 
-    return sn(node, `${scope.use(Symbols.mountSlot)}(${scope.host}, ${qStr(slotName)}, ${scope.element.localSymbol}${slotContent ? `, ${slotContent}` : ''});`);
+    const mount = sn(node, `${scope.use(Symbols.mountSlot)}(${scope.host}, ${qStr(slotName)}, ${scope.element.localSymbol}${slotContent ? `, ${slotContent}` : ''});`)
+    scope.pushUnmount(slotSymbol, Symbols.unmountSlot);
+
+    return wrapSN([slotSymbol, ' = ', mount]);
 }
 
 function cssScopeArg(scope: CompileScope): string {

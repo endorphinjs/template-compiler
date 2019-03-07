@@ -17,8 +17,9 @@ export enum RuntimeSymbols {
     mountComponent, updateComponent, unmountComponent,
     mountInnerHTML, updateInnerHTML, unmountInnerHTML,
     mountPartial, updatePartial, unmountPartial,
+    mountSlot, unmountSlot, markSlotUpdate,
     createInjector, block, setAttribute, addClass, finalizeAttributes,
-    addEvent, addStaticEvent, finalizeEvents, mountSlot, markSlotUpdate, setRef, finalizeRefs,
+    addEvent, addStaticEvent, finalizeEvents, setRef, finalizeRefs,
     createComponent, updateText, addDisposeCallback, insert, get,
     elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore
 }
@@ -385,6 +386,10 @@ export default class CompileScope {
     }
 
     exitElement(): SourceNode {
+        if (this.element.hasScopeInjector) {
+            this.pushUnmount(this.element.scopeInjector);
+        }
+
         const result = this.element.finalize();
         this.func.element = this.element.parent;
         return result;

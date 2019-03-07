@@ -85,6 +85,13 @@ export default class ElementContext {
     }
 
     /**
+     * Check if current context used scope injector
+     */
+    get hasScopeInjector(): boolean {
+        return !!this._scopeInjector;
+    }
+
+    /**
      * Finalizes element and returns code required for element finalization
      */
     finalize(): SourceNode {
@@ -125,7 +132,7 @@ export default class ElementContext {
                 this.output.add(`const ${this.localInjector} = `);
             }
 
-            if (this._scopeInjector) {
+            if (this.hasScopeInjector) {
                 this.output.add(`${this.scopeInjector} = `);
             }
 
