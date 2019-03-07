@@ -1,4 +1,4 @@
-import { elem, setRef, insert, updateBlock, mountBlock, createComponent, mountComponent, updateComponent, createInjector, finalizeRefs, markSlotUpdate } from "@endorphinjs/endorphin";
+import { elem, setRef, insert, mountBlock, updateBlock, unmountBlock, createComponent, mountComponent, updateComponent, unmountComponent, createInjector, finalizeRefs, addDisposeCallback, markSlotUpdate } from "@endorphinjs/endorphin";
 import * as SlotInner from "./slot-inner.html";
 
 export default function $$template0(host, scope) {
@@ -15,6 +15,7 @@ export default function $$template0(host, scope) {
 	setRef(host, "addon", slotInner0);
 	mountComponent(slotInner0);
 	finalizeRefs(host);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -29,6 +30,11 @@ function $$template0Update(host, scope) {
 	updateComponent(scope.$_slotInner0);
 	finalizeRefs(host);
 	return s__slotInner0;
+}
+
+function $$template0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_slotInner0 = unmountComponent(scope.$_slotInner0);
 }
 
 function $$conditionContent0(host, injector, scope) {

@@ -1,4 +1,4 @@
-import { createComponent, setAttribute, mountComponent, updateComponent, markSlotUpdate } from "@endorphinjs/endorphin";
+import { createComponent, setAttribute, mountComponent, updateComponent, unmountComponent, addDisposeCallback, markSlotUpdate } from "@endorphinjs/endorphin";
 import * as SubComponent from "./sub-component.html";
 
 export default function $$template0(host, scope) {
@@ -11,6 +11,7 @@ export default function $$template0(host, scope) {
 	mountComponent(subComponent0, {
 		p1: "1"
 	});
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -23,6 +24,11 @@ function $$template0Update(host, scope) {
 	markSlotUpdate(scope.$_subComponent0, "", s__subComponent0);
 	updateComponent(scope.$_subComponent0);
 	return s__subComponent0;
+}
+
+function $$template0Unmount(scope) {
+	scope.$_subComponent0 = unmountComponent(scope.$_subComponent0);
+	scope.$_injector0 = null;
 }
 
 function $$ifAttr0(host, injector) {

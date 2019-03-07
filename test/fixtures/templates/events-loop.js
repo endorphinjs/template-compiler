@@ -1,4 +1,4 @@
-import { elem, elemWithText, insert, addStaticEvent, updateIterator, mountIterator, createInjector } from "@endorphinjs/endorphin";
+import { elem, elemWithText, insert, addStaticEvent, mountIterator, updateIterator, unmountIterator, createInjector, addDisposeCallback } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -7,6 +7,7 @@ export default function $$template0(host, scope) {
 	scope.foo = 1;
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
 	scope.foo = 2;
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -14,6 +15,10 @@ function $$template0Update(host, scope) {
 	scope.foo = 1;
 	updateIterator(scope.$_iter0);
 	scope.foo = 2;
+}
+
+function $$template0Unmount(scope) {
+	scope.$_iter0 = unmountIterator(scope.$_iter0);
 }
 
 function $$iteratorExpr0(host) {

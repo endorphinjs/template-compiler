@@ -1,4 +1,4 @@
-import { elem, insert, elemWithText, mountSlot, updateBlock, mountBlock, createInjector } from "@endorphinjs/endorphin";
+import { elem, insert, elemWithText, mountSlot, unmountSlot, addDisposeCallback, mountBlock, updateBlock, unmountBlock, createInjector } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -7,12 +7,13 @@ export default function $$template0(host, scope) {
 	div0.setAttribute("class", "container");
 	const slot0 = insert(injector0, elem("slot"));
 	slot0.setAttribute("name", "header");
-	mountSlot(host, "header", slot0, $$slotHeaderContent0);
+	scope.$_slot0 = mountSlot(host, "header", slot0, $$slotHeaderContent0);
 	insert(injector0, elemWithText("p", "content"));
 	const slot1 = insert(injector0, elem("slot"));
-	mountSlot(host, "", slot1);
+	scope.$_slot1 = mountSlot(host, "", slot1);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	scope.$_block1 = mountBlock(host, injector0, $$conditionEntry1);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -21,14 +22,26 @@ function $$template0Update(host, scope) {
 	updateBlock(scope.$_block1);
 }
 
+function $$template0Unmount(scope) {
+	scope.$_slot0 = unmountSlot(scope.$_slot0);
+	scope.$_slot1 = unmountSlot(scope.$_slot1);
+	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_block1 = unmountBlock(scope.$_block1);
+}
+
 function $$slotHeaderContent0(host, injector) {
 	insert(injector, elemWithText("h2", "Default header"));
 }
 
-function $$conditionContent0(host, injector) {
+function $$conditionContent0(host, injector, scope) {
 	const slot0 = insert(injector, elem("slot"));
 	slot0.setAttribute("name", "error");
-	mountSlot(host, "error", slot0);
+	scope.$_slot2 = mountSlot(host, "error", slot0);
+	addDisposeCallback(injector, $$conditionContent0Unmount);
+}
+
+function $$conditionContent0Unmount(scope) {
+	scope.$_slot2 = unmountSlot(scope.$_slot2);
 }
 
 function $$conditionEntry0(host) {
@@ -41,10 +54,15 @@ function $$slotFooterContent0(host, injector) {
 	insert(injector, elemWithText("footer", "Default footer"));
 }
 
-function $$conditionContent1(host, injector) {
+function $$conditionContent1(host, injector, scope) {
 	const slot0 = insert(injector, elem("slot"));
 	slot0.setAttribute("name", "footer");
-	mountSlot(host, "footer", slot0, $$slotFooterContent0);
+	scope.$_slot3 = mountSlot(host, "footer", slot0, $$slotFooterContent0);
+	addDisposeCallback(injector, $$conditionContent1Unmount);
+}
+
+function $$conditionContent1Unmount(scope) {
+	scope.$_slot3 = unmountSlot(scope.$_slot3);
 }
 
 function $$conditionEntry1(host) {

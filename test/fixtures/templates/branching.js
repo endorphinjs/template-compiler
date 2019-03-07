@@ -1,4 +1,4 @@
-import { elemWithText, insert, elem, updateBlock, mountBlock, text, createInjector } from "@endorphinjs/endorphin";
+import { elemWithText, insert, elem, mountBlock, updateBlock, unmountBlock, text, addDisposeCallback, createInjector } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -10,12 +10,18 @@ export default function $$template0(host, scope) {
 	insert(injector1, elemWithText("p", "Lorem ipsum 1"));
 	scope.$_block3 = mountBlock(host, injector1, $$conditionEntry3);
 	insert(injector1, elemWithText("p", "Lorem ipsum 2"));
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
 function $$template0Update(host, scope) {
 	updateBlock(scope.$_block2);
 	updateBlock(scope.$_block3);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_block2 = unmountBlock(scope.$_block2);
+	scope.$_block3 = unmountBlock(scope.$_block3);
 }
 
 function $$conditionContent1(host, injector) {
@@ -44,12 +50,18 @@ function $$conditionContent0(host, injector, scope) {
 	p0.appendChild(elemWithText("strong", "top 1"));
 	scope.$_block0 = mountBlock(host, injector, $$conditionEntry1);
 	scope.$_block1 = mountBlock(host, injector, $$conditionEntry2);
+	addDisposeCallback(injector, $$conditionContent0Unmount);
 	return $$conditionContent0Update;
 }
 
 function $$conditionContent0Update(host, injector, scope) {
 	updateBlock(scope.$_block0);
 	updateBlock(scope.$_block1);
+}
+
+function $$conditionContent0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_block1 = unmountBlock(scope.$_block1);
 }
 
 function $$conditionEntry0(host) {

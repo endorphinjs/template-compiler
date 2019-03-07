@@ -1,10 +1,10 @@
-import { elem, updatePartial, mountPartial, updateIterator, mountIterator, createInjector, finalizeRefs, insert, addClass, text, updateText, finalizeAttributes } from "@endorphinjs/endorphin";
+import { elem, mountPartial, updatePartial, unmountPartial, addDisposeCallback, mountIterator, updateIterator, unmountIterator, createInjector, finalizeRefs, insert, addClass, text, updateText, finalizeAttributes } from "@endorphinjs/endorphin";
 
 export const partials = {
 	button: {
 		body: $$partialButton0,
 		defaults: {
-			item: null,
+			item: true,
 			enabled: true,
 			pos: 0
 		}
@@ -17,6 +17,7 @@ function $$partialButton0(host, injector, scope) {
 	$$ifAttr0(host, injector0, scope);
 	scope.$_text0 = insert(injector0, text(scope.item));
 	finalizeAttributes(injector0);
+	addDisposeCallback(injector, $$partialButton0Unmount);
 	return $$partialButton0Update;
 }
 
@@ -27,18 +28,28 @@ function $$partialButton0Update(host, injector, scope) {
 	finalizeAttributes(injector0);
 }
 
+function $$partialButton0Unmount(scope) {
+	scope.$_text0 = null;
+	scope.$_injector0 = null;
+}
+
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
 	const ul0 = target0.appendChild(elem("ul"));
 	const injector0 = createInjector(ul0);
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
 	finalizeRefs(host);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
 function $$template0Update(host, scope) {
 	updateIterator(scope.$_iter0);
 	finalizeRefs(host);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_iter0 = unmountIterator(scope.$_iter0);
 }
 
 function $$iteratorExpr0(host) {
@@ -50,6 +61,7 @@ function $$iteratorBlock0(host, injector, scope) {
 		item: scope.item,
 		enabled: (scope.index !== 1)
 	});
+	addDisposeCallback(injector, $$iteratorBlock0Unmount);
 	return $$iteratorBlock0Update;
 }
 
@@ -58,6 +70,10 @@ function $$iteratorBlock0Update(host, injector, scope) {
 		item: scope.item,
 		enabled: (scope.index !== 1)
 	});
+}
+
+function $$iteratorBlock0Unmount(scope) {
+	scope.$_partial0 = unmountPartial(scope.$_partial0);
 }
 
 function $$ifAttr0(host, injector, scope) {

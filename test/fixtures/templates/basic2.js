@@ -1,4 +1,4 @@
-import { elemWithText, elem, text, updateText } from "@endorphinjs/endorphin";
+import { elemWithText, elem, text, updateText, addDisposeCallback } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -8,9 +8,14 @@ export default function $$template0(host, scope) {
 	p0.appendChild(text("foo "));
 	scope.$_text0 = p0.appendChild(text(host.props.bar));
 	p0.appendChild(text(" baz"));
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
 function $$template0Update(host, scope) {
 	updateText(scope.$_text0, host.props.bar);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_text0 = null;
 }

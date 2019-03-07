@@ -1,4 +1,4 @@
-import { elem, setAttribute, addClass, updateBlock, mountBlock, finalizeAttributes, createInjector } from "@endorphinjs/endorphin";
+import { elem, setAttribute, addClass, mountBlock, updateBlock, unmountBlock, finalizeAttributes, createInjector, addDisposeCallback } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -6,6 +6,7 @@ export default function $$template0(host, scope) {
 	const injector0 = scope.$_injector0 = createInjector(main0);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	finalizeAttributes(injector0);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -13,6 +14,10 @@ function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
 	updateBlock(scope.$_block0);
 	finalizeAttributes(injector0);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
 }
 
 function $$class0(host) {

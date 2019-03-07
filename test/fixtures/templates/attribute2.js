@@ -1,4 +1,4 @@
-import { elem, setAttribute, addClass, finalizeAttributes, createInjector } from "@endorphinjs/endorphin";
+import { elem, setAttribute, addClass, finalizeAttributes, createInjector, addDisposeCallback } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -12,6 +12,7 @@ export default function $$template0(host, scope) {
 	$$ifAttr2(host, injector0);
 	addClass(scope.$_injector0, "baz");
 	finalizeAttributes(injector0);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -25,6 +26,10 @@ function $$template0Update(host, scope) {
 	$$ifAttr2(host, injector0);
 	addClass(scope.$_injector0, "baz");
 	finalizeAttributes(injector0);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_injector0 = null;
 }
 
 function $$ifAttr0(host, injector) {

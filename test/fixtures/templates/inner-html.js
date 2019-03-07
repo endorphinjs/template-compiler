@@ -1,4 +1,4 @@
-import { elemWithText, insert, updateBlock, mountBlock, updateInnerHTML, mountInnerHTML, createInjector } from "@endorphinjs/endorphin";
+import { elemWithText, insert, mountBlock, updateBlock, unmountBlock, mountInnerHTML, updateInnerHTML, unmountInnerHTML, createInjector, addDisposeCallback } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
@@ -7,6 +7,7 @@ export default function $$template0(host, scope) {
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	scope.$_html0 = mountInnerHTML(host, injector0, $$getHTML0);
 	scope.$_block1 = mountBlock(host, injector0, $$conditionEntry1);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -14,6 +15,12 @@ function $$template0Update(host, scope) {
 	updateBlock(scope.$_block0);
 	updateInnerHTML(scope.$_html0);
 	updateBlock(scope.$_block1);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_html0 = unmountInnerHTML(scope.$_html0);
+	scope.$_block1 = unmountBlock(scope.$_block1);
 }
 
 function $$conditionContent0(host, injector) {

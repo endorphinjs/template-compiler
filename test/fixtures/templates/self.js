@@ -1,10 +1,11 @@
-import { elem, get, createComponent, insert, setAttribute, mountComponent, updateComponent, markSlotUpdate, elemWithText, updateBlock, mountBlock, createInjector } from "@endorphinjs/endorphin";
+import { elem, get, createComponent, insert, setAttribute, mountComponent, updateComponent, unmountComponent, addDisposeCallback, markSlotUpdate, elemWithText, mountBlock, updateBlock, unmountBlock, createInjector } from "@endorphinjs/endorphin";
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
 	const div0 = target0.appendChild(elem("div"));
 	const injector0 = createInjector(div0);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -12,11 +13,16 @@ function $$template0Update(host, scope) {
 	updateBlock(scope.$_block0);
 }
 
+function $$template0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
+}
+
 function $$conditionContent0(host, injector, scope) {
 	const e_self0 = scope.$_e_self0 = insert(injector, createComponent(host.nodeName, host.componentModel.definition, host));
 	const injector0 = scope.$_injector0 = e_self0.componentModel.input;
 	setAttribute(injector0, "item", host.props.link);
 	mountComponent(e_self0);
+	addDisposeCallback(injector, $$conditionContent0Unmount);
 	return $$conditionContent0Update;
 }
 
@@ -27,6 +33,11 @@ function $$conditionContent0Update(host, injector, scope) {
 	markSlotUpdate(scope.$_e_self0, "", s__e_self0);
 	updateComponent(scope.$_e_self0);
 	return s__e_self0;
+}
+
+function $$conditionContent0Unmount(scope) {
+	scope.$_e_self0 = unmountComponent(scope.$_e_self0);
+	scope.$_injector0 = null;
 }
 
 function $$conditionContent1(host, injector) {

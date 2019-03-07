@@ -1,4 +1,4 @@
-import { elem, addEvent, addStaticEvent, updateBlock, mountBlock, finalizeEvents, createInjector } from "@endorphinjs/endorphin";
+import { elem, addEvent, addStaticEvent, mountBlock, updateBlock, unmountBlock, finalizeEvents, createInjector, addDisposeCallback } from "@endorphinjs/endorphin";
 import { emit } from "endorphin/helpers.js";
 
 export default function $$template0(host, scope) {
@@ -17,6 +17,7 @@ export default function $$template0(host, scope) {
 	addStaticEvent(main0, "mouseenter", handler1);
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	finalizeEvents(injector0);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -25,6 +26,11 @@ function $$template0Update(host, scope) {
 	addEvent(injector0, "click", scope.$_handler0);
 	updateBlock(scope.$_block0);
 	finalizeEvents(injector0);
+}
+
+function $$template0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_injector0 = null;
 }
 
 function $$conditionContent0(host, injector, scope) {

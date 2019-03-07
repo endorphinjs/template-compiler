@@ -1,4 +1,4 @@
-import { elemWithText, createComponent, setAttribute, insert, updateBlock, mountBlock, updateIterator, mountIterator, mountComponent, updateComponent, markSlotUpdate } from "@endorphinjs/endorphin";
+import { elemWithText, createComponent, setAttribute, insert, mountBlock, updateBlock, unmountBlock, mountIterator, updateIterator, unmountIterator, mountComponent, updateComponent, unmountComponent, addDisposeCallback, markSlotUpdate } from "@endorphinjs/endorphin";
 import * as SubComponent from "./slot-inner.html";
 
 export default function $$template0(host, scope) {
@@ -14,6 +14,7 @@ export default function $$template0(host, scope) {
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
 	scope.$_block2 = mountBlock(host, injector0, $$conditionEntry2);
 	mountComponent(subComponent0);
+	addDisposeCallback(host, $$template0Unmount);
 	return $$template0Update;
 }
 
@@ -29,6 +30,15 @@ function $$template0Update(host, scope) {
 	markSlotUpdate(scope.$_subComponent0, "", s__subComponent0);
 	updateComponent(scope.$_subComponent0);
 	return s__subComponent0;
+}
+
+function $$template0Unmount(scope) {
+	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_block1 = unmountBlock(scope.$_block1);
+	scope.$_iter0 = unmountIterator(scope.$_iter0);
+	scope.$_block2 = unmountBlock(scope.$_block2);
+	scope.$_subComponent0 = unmountComponent(scope.$_subComponent0);
+	scope.$_injector0 = null;
 }
 
 function $$conditionContent0(host, injector) {

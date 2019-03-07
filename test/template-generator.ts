@@ -29,11 +29,12 @@ describe('Template generator', () => {
         const files = fs.readdirSync(samples);
 
         files.forEach(file => {
-            const template = read(path.join(samples, file));
-            const fixture = read(path.join(fixtures, file.replace(/\.\w+$/, '.js')));
-            const output = compile(template, file);
+            const template = path.join(samples, file);
+            const fixture = path.join(fixtures, file.replace(/\.\w+$/, '.js'));
+            const output = compile(read(template), file);
             const code = output.code.trim();
-            assert.equal(code, fixture, file);
+            // fs.writeFileSync(fixture, code);
+            assert.equal(code, read(fixture), file);
             lint(code, file);
         });
     });
