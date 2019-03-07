@@ -186,16 +186,17 @@ const generators: NodeGeneratorMap = {
         if (isRef(node)) {
             // Element reference: ref="name"
             // TODO support static refs
-            const refName = compileAttributeValue(node.value, scope, sn);
+            const refName = compileAttributeValue(node.value, scope);
             scope.pushUpdate(sn(node, [`${scope.use(Symbols.setRef)}(${scope.host}, `, refName, `, ${scope.element.scopeSymbol});`]));
             return sn(node, [`${scope.use(Symbols.setRef)}(${scope.host}, `, refName, `, ${scope.element.localSymbol});`]);
         }
 
-        const outputName = compileAttributeName(node.name, scope, sn);
-        const outputValue = compileAttributeValue(node.value, scope, sn);
+        const inComponent = scope.inComponent();
+        const outputName = compileAttributeName(node.name, scope);
+        const outputValue = compileAttributeValue(node.value, scope, inComponent);
 
         // Dynamic attributes must be handled by runtime and re-rendered on update
-        if (isDynamicAttribute(node, scope) || scope.inComponent()) {
+        if (isDynamicAttribute(node, scope) || inComponent) {
             const ref = scope.updateSymbol('injector', scope.scopeInjector());
             scope.pushUpdate(sn(node, [`${scope.use(Symbols.setAttribute)}(${ref}, `, outputName, ', ', outputValue, `);`]));
             return sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.localInjector()}, `, outputName, ', ', outputValue, `);`]);
@@ -400,7 +401,7 @@ export default function compileToJS(program: Ast.ENDProgram, options?: CompileSc
     return scope.compile();
 }
 
-function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, sn: SourceNodeFactory): Chunk {
+function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope): Chunk {
     if (name instanceof JSAst.Identifier) {
         // Static attribute name
         return qStr(name.name);
@@ -412,10 +413,10 @@ function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope, s
     }
 }
 
-function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope, sn: SourceNodeFactory): Chunk {
+function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope, forComponent?: boolean): Chunk {
     if (value === null) {
         // Static boolean attribute
-        return qStr('');
+        return forComponent ? 'true' : qStr('');
     }
 
     if (value instanceof JSAst.Literal) {

@@ -25,6 +25,9 @@ export default function generateObject(params: ENDAttribute[], scope: CompileSco
             result.add(sn(param.value, JSON.stringify(param.value.value)));
         } else if (param.value instanceof Program) {
             result.add(compileExpression(param.value, scope));
+        } else if (param.value === null) {
+            // Passing prop as boolean
+            result.add('true');
         } else {
             result.add('null');
         }
