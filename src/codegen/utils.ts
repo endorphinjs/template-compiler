@@ -153,3 +153,7 @@ export function wrapSN(chunk: Chunk | ChunkList): SourceNode {
     sn.add(chunk);
     return sn;
 }
+
+export function cssScopeArg(scope: CompileScope): string {
+    return scope.options.cssScope ? `, ${scope.cssScopeSymbol}` : '';
+}

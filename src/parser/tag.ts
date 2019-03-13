@@ -15,7 +15,7 @@ export const DOT = 46; // .
 export const UNDERSCORE = 95; // _
 
 const exprStart = String.fromCharCode(EXPRESSION_START);
-const directives = [prefix, 'on', 'ref', 'class', 'partial'];
+const directives = [prefix, 'on', 'ref', 'class', 'partial', 'animate'];
 
 /**
  * Consumes tag from current stream location, if possible

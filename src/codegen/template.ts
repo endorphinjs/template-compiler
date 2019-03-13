@@ -3,12 +3,14 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, Chunk, isIdentifier, propAccessor, tagToJS, isDynamicAttribute, wrapSN } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, isIdentifier, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg } from './utils';
 import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
+import generateAnimation from './assets/animation';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
 import { getAttrValue, getControlName } from '../parser/elements/utils';
+import { compileAttributeName, compileAttributeValue, createConcatFunction } from './assets/attribute';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -127,7 +129,9 @@ const generators: NodeGeneratorMap = {
             }
 
             scope.pushUpdate(`${scope.use(Symbols.updateComponent)}(${scope.element.scopeSymbol});`);
-            scope.pushUnmount(scope.element.scopeSymbol, Symbols.unmountComponent);
+            if (!hasAnimationOut(node)) {
+                scope.pushUnmount(scope.element.scopeSymbol, Symbols.unmountComponent);
+            }
         }
 
         if (elemName === 'slot') {
@@ -207,6 +211,10 @@ const generators: NodeGeneratorMap = {
     ENDDirective(node: Ast.ENDDirective, scope, sn) {
         if (node.prefix === 'on') {
             return generateEvent(node, scope, sn);
+        }
+
+        if (node.prefix === 'animate') {
+            return generateAnimation(node, scope, sn);
         }
     },
     ENDAddClassStatement(node: Ast.ENDAddClassStatement, scope, sn, next) {
@@ -401,42 +409,6 @@ export default function compileToJS(program: Ast.ENDProgram, options?: CompileSc
     return scope.compile();
 }
 
-function compileAttributeName(name: Ast.ENDAttributeName, scope: CompileScope): Chunk {
-    if (name instanceof JSAst.Identifier) {
-        // Static attribute name
-        return qStr(name.name);
-    }
-
-    if (name instanceof JSAst.Program) {
-        // Dynamic attribute name
-        return compileExpression(name, scope);
-    }
-}
-
-function compileAttributeValue(value: Ast.ENDAttributeValue, scope: CompileScope, forComponent?: boolean): Chunk {
-    if (value === null) {
-        // Static boolean attribute
-        return forComponent ? 'true' : qStr('');
-    }
-
-    if (value instanceof JSAst.Literal) {
-        // Static string attribute
-        return qStr(String(value.value != null ? value.value : ''));
-    }
-
-    if (value instanceof JSAst.Program) {
-        // Dynamic expression, must be compiled to function
-        return compileExpression(value, scope);
-    }
-
-    if (value instanceof Ast.ENDAttributeValueExpression) {
-        // List of static and dynamic tokens, must be compiled to function
-        const fnName = createConcatFunction('attrValue', scope,
-            value.elements.map(elem => elem instanceof JSAst.Literal ? String(elem.value) : elem))
-        return `${fnName}(${scope.host}, ${scope.scope})`;
-    }
-}
-
 function createExpressionFunction(prefix: string, scope: CompileScope, sn: SourceNodeFactory, value: JSAst.Program): string {
     const fnName = scope.enterFunction(prefix);
     const body = new SourceNode();
@@ -451,27 +423,6 @@ function createContentFunction(prefix: string, scope: CompileScope, statements: 
     const output = scope.exitFunction(statements.map(next));
     scope.push(output);
 
-    return fnName;
-}
-
-function createConcatFunction(prefix: string, scope: CompileScope, tokens: Array<string | JSAst.Program>): string {
-    const fnName = scope.enterFunction(prefix);
-    const body = new SourceNode();
-
-    body.add('return ');
-    tokens.forEach((token, i) => {
-        if (i !== 0) {
-            body.add(' + ');
-        }
-        if (token instanceof JSAst.Program) {
-            body.add(['(', compileExpression(token, scope), ')']);
-        } else {
-            body.add(qStr(token));
-        }
-    });
-    body.add(';');
-
-    scope.push(scope.exitFunction([body]));
     return fnName;
 }
 
@@ -527,10 +478,6 @@ function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeF
     return wrapSN([slotSymbol, ' = ', mount]);
 }
 
-function cssScopeArg(scope: CompileScope): string {
-    return scope.options.cssScope ? `, ${scope.cssScopeSymbol}` : '';
-}
-
 function isRef(attr: Ast.ENDAttribute): boolean {
     return attr.name instanceof JSAst.Identifier && attr.name.name === 'ref';
 }
@@ -579,4 +526,8 @@ function createElement(node: Ast.ENDElement, scope: CompileScope, stats: Element
     }
 
     return sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
+}
+
+function hasAnimationOut(node: Ast.ENDElement):boolean {
+    return node.directives.some(attr => attr.prefix === 'animate' && attr.name.name === 'out');
 }

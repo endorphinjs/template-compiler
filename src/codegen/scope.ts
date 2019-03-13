@@ -21,7 +21,8 @@ export enum RuntimeSymbols {
     createInjector, block, setAttribute, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, setRef, finalizeRefs,
     createComponent, updateText, addDisposeCallback, insert, get,
-    elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore
+    elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore,
+    animateIn, animateOut
 }
 
 export interface CompileScopeOptions {
