@@ -44,6 +44,11 @@ export interface ElementStats {
 
     /** Whether element contains attribute expressions, e.g. `{foo}="bar"` */
     attributeExpressions: boolean;
+
+    /** List of namespaces used by given element */
+    namespaces: {
+        [prefix: string]: string
+    }
 }
 
 /**
@@ -51,7 +56,7 @@ export interface ElementStats {
  */
 export default function collectStats(elem: ENDElement): ElementStats {
     // TODO check for inner html
-    const stats = createStats(elem.name.name);
+    const stats = createStats(elem);
 
     topLevelAttributeStats(elem.attributes, stats);
 
@@ -69,7 +74,7 @@ export default function collectStats(elem: ENDElement): ElementStats {
 /**
  * Collects stats about dynamic content in given element
  */
-export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: ElementStats = createStats()): ElementStats {
+export function collectDynamicStats(elem: ENDElement | ENDTemplate, stats: ElementStats = createStats(elem)): ElementStats {
     walk(elem, node => {
         if (dynamicContent.has(node.type)) {
             stats.staticContent = false;
@@ -144,15 +149,36 @@ function isRef(attr: ENDAttribute):boolean {
  * Creates stats object
  * @param name Name of context tag
  */
-function createStats(name: string = ''): ElementStats {
+function createStats(node: ENDElement | ENDTemplate): ElementStats {
+    const name = node instanceof ENDElement ? node.name.name : '';
     return {
         component: name.includes('-'),
         staticContent: true,
         dynamicAttributes: new Set(),
         dynamicEvents: new Set(),
         attributeExpressions: false,
-        hasPartials: false
+        hasPartials: false,
+        namespaces: node instanceof ENDElement ? collectNamespaces(node) : {}
     };
+}
+
+/**
+ * Collects namespaces registered in given element
+ */
+function collectNamespaces(elem: ENDElement): { [prefix: string]: string } {
+    const result = {};
+    elem.attributes.forEach(attr => {
+        if (attr.name instanceof Identifier) {
+            const parts = String(attr.name.name).split(':');
+            const prefix = parts.shift();
+
+            if (prefix === 'xmlns' && attr.value instanceof Literal) {
+                result[parts.join(':')] = String(attr.value.value);
+            }
+        }
+    });
+
+    return result;
 }
 
 /**

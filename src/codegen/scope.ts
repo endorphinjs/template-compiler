@@ -18,7 +18,7 @@ export enum RuntimeSymbols {
     mountInnerHTML, updateInnerHTML, unmountInnerHTML,
     mountPartial, updatePartial, unmountPartial,
     mountSlot, unmountSlot, markSlotUpdate,
-    createInjector, block, setAttribute, addClass, finalizeAttributes,
+    createInjector, block, setAttribute, setAttributeNS, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, setRef, finalizeRefs,
     createComponent, updateText, addDisposeCallback, insert, get,
     elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore,
@@ -405,15 +405,7 @@ export default class CompileScope {
             return;
         }
 
-        const uri = String(ns);
-        let symbol: string;
-        if (this.namespacesMap.has(uri)) {
-            symbol = this.namespacesMap.get(uri);
-        } else {
-            symbol = this.globalSymbol('ns');
-            this.namespacesMap.set(uri, symbol);
-        }
-
+        const symbol = this.getNamespaceSymbol(String(ns));
         this.namespaceStack.push(symbol);
     }
 
@@ -424,6 +416,15 @@ export default class CompileScope {
         if (ns != null) {
             this.namespaceStack.pop();
         }
+    }
+
+    getNamespaceSymbol(uri: string): string {
+        if (!this.namespacesMap.has(uri)) {
+            const symbol = this.globalSymbol('ns');
+            this.namespacesMap.set(uri, symbol);
+        }
+
+        return this.namespacesMap.get(uri);
     }
 
     enterSlotContext(slotName: string) {

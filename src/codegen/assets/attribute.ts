@@ -1,5 +1,5 @@
 import { SourceNode } from "source-map";
-import { ENDAttributeName, ENDAttributeValue, ENDAttributeValueExpression } from "../../ast/template";
+import { ENDAttributeName, ENDAttributeValue, ENDAttributeValueExpression, ENDAttribute } from "../../ast/template";
 import { Identifier, Program, Literal } from "../../ast/expression";
 import CompileScope from "../scope";
 import compileExpression from "../expression";
@@ -60,4 +60,32 @@ export function createConcatFunction(prefix: string, scope: CompileScope, tokens
 
     scope.push(scope.exitFunction([body]));
     return fnName;
+}
+
+/**
+ * Returns namespace URI for given attribute, if available
+ */
+export function getAttributeNS(attr: ENDAttribute, scope: CompileScope): { name: string, ns: string } {
+    if (attr.name instanceof Identifier) {
+        const parts = String(attr.name.name).split(':');
+        if (parts.length > 1 && parts[0] !== 'xmlns') {
+            // It’s a namespaced attribute, find it’s URI
+            const ns = findNSURI(scope, parts.shift());
+
+            if (ns) {
+                return { ns, name: parts.join(':') };
+            }
+        }
+    }
+}
+
+function findNSURI(scope: CompileScope, prefix: string): string {
+    let elem = scope.element;
+    while (elem) {
+        if (elem.stats.namespaces[prefix]) {
+            return elem.stats.namespaces[prefix];
+        }
+
+        elem = elem.parent;
+    }
 }

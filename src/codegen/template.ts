@@ -10,7 +10,7 @@ import generateAnimation from './assets/animation';
 import generateEvent from './assets/event';
 import generateObject from './assets/object';
 import { getAttrValue, getControlName } from '../parser/elements/utils';
-import { compileAttributeName, compileAttributeValue, createConcatFunction } from './assets/attribute';
+import { compileAttributeName, compileAttributeValue, createConcatFunction, getAttributeNS } from './assets/attribute';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -195,18 +195,32 @@ const generators: NodeGeneratorMap = {
             return sn(node, [`${scope.use(Symbols.setRef)}(${scope.host}, `, refName, `, ${scope.element.localSymbol});`]);
         }
 
+        const namespace = getAttributeNS(node, scope);
+
         const inComponent = scope.inComponent();
-        const outputName = compileAttributeName(node.name, scope);
+        const outputName = namespace
+            ? qStr(namespace.name)
+            : compileAttributeName(node.name, scope);
         const outputValue = compileAttributeValue(node.value, scope, inComponent);
 
         // Dynamic attributes must be handled by runtime and re-rendered on update
         if (isDynamicAttribute(node, scope) || inComponent) {
             const ref = scope.updateSymbol('injector', scope.scopeInjector());
+
+            if (namespace) {
+                // It’s a namespaced attribute
+                const nsSymbol = scope.getNamespaceSymbol(namespace.ns);
+                scope.pushUpdate(sn(node, [`${scope.use(Symbols.setAttributeNS)}(${ref}, ${nsSymbol}, `, outputName, ', ', outputValue, `);`]));
+                return sn(node, [`${scope.use(Symbols.setAttributeNS)}(${scope.localInjector()}, ${nsSymbol}, `, outputName, ', ', outputValue, `);`]);
+            }
+
             scope.pushUpdate(sn(node, [`${scope.use(Symbols.setAttribute)}(${ref}, `, outputName, ', ', outputValue, `);`]));
             return sn(node, [`${scope.use(Symbols.setAttribute)}(${scope.localInjector()}, `, outputName, ', ', outputValue, `);`]);
         }
 
-        return sn(node, [`${scope.element.localSymbol}.setAttribute(`, outputName, ', ', outputValue, `);`]);
+        return namespace
+            ? sn(node, [`${scope.element.localSymbol}.setAttributeNS(${scope.getNamespaceSymbol(namespace.ns)}, `, outputName, ', ', outputValue, `);`])
+            : sn(node, [`${scope.element.localSymbol}.setAttribute(`, outputName, ', ', outputValue, `);`]);
     },
     ENDDirective(node: Ast.ENDDirective, scope, sn) {
         if (node.prefix === 'on') {
