@@ -106,12 +106,12 @@ export default class ElementContext {
                 this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${ref});`);
                 chunks.push(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${this.localInjector});`);
             }
-        }
 
-        if (this.stats.dynamicEvents.size) {
-            const ref = this.scope.updateSymbol('injector', this.scopeInjector);
-            this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeEvents)}(${ref});`);
-            chunks.push(`${this.scope.use(RuntimeSymbols.finalizeEvents)}(${this.localInjector});`);
+            if (this.stats.dynamicEvents.size) {
+                const ref = this.scope.updateSymbol('injector', this.scopeInjector);
+                this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeEvents)}(${ref});`);
+                chunks.push(`${this.scope.use(RuntimeSymbols.finalizeEvents)}(${this.localInjector});`);
+            }
         }
 
         result.add(format(chunks, this.scope.indent));
