@@ -118,6 +118,8 @@ function collectStatsInBlock(node: ENDStatement, stats: ElementStats) {
             child.directives.forEach(directive => {
                 if (directive.prefix === 'on') {
                     stats.dynamicEvents.add(directive.name.name);
+                } else if (directive.prefix === 'class') {
+                    stats.dynamicAttributes.add('class');
                 }
             });
         }
