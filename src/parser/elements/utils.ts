@@ -55,8 +55,13 @@ export function tagBody(scanner: Scanner, open: ParsedTag, body: ENDStatement[],
             } else {
                 tagStack.push(tagEntry);
             }
-        } else if (token = innerHTML(scanner) || expression(scanner) || text(scanner)) {
+        } else if (token = innerHTML(scanner) || expression(scanner)) {
             items.push(token);
+        } else if (token = text(scanner)) {
+            // Skip formatting tokens: a whitespace-only text token with new lines
+            if (!/^\s+$/.test(token.value) || !/[\r\n]/.test(token.value)) {
+                items.push(token);
+            }
         } else if (!ignored(scanner)) {
             throw scanner.error(`Unexpected token`);
         }
