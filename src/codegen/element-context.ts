@@ -9,6 +9,12 @@ export default class ElementContext {
     /** Output source node with mounted element */
     output: SourceNode;
 
+    /** Unmount code for context element, used for animations */
+    unmount: Chunk[] = [];
+
+    /** Callback argument for animation end callback */
+    unmountCallbackArg: SourceNode = new SourceNode();
+
     private _localSymbol: string;
     private _scopeSymbol: string;
     private _localInjector: string;

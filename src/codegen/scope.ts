@@ -305,7 +305,20 @@ export default class CompileScope {
      */
     pushUnmount(varSymbol: string, fnSymbol?: RuntimeSymbols): void {
         const dispose = fnSymbol != null ? `${this.use(fnSymbol)}(${varSymbol})` : 'null';
-        this.func.unmount.push(`${varSymbol} = ${dispose};`);
+
+        let target = this.func.unmount;
+
+        // In case if parent contains explicit animate:out, we should delay
+        // child unmount on animation end
+        let elem = this.element;
+        while (elem && (elem = elem.parent)) {
+            if (elem.stats.hasAnimationOut) {
+                target = elem.unmount;
+                break;
+            }
+        }
+
+        target.push(`${varSymbol} = ${dispose};`);
     }
 
     /**
@@ -387,12 +400,28 @@ export default class CompileScope {
     }
 
     exitElement(): SourceNode {
-        if (this.element.hasScopeInjector) {
-            this.pushUnmount(this.element.scopeInjector);
+        const { element } = this;
+
+        if (element.stats.hasAnimationOut) {
+            if (element.unmount.length) {
+                const { unmountCallbackArg } = element;
+                const indent = this.indent;
+                const innerIndent = indent.repeat(2);
+                // Generate unmount function for animation end
+                unmountCallbackArg.add(`, function() {\n${innerIndent}`);
+                unmountCallbackArg.add(format(element.unmount, innerIndent));
+                unmountCallbackArg.add(`\n${indent}}`);
+            }
+        } else if (this.isComponent(element.name)) {
+            this.pushUnmount(element.scopeSymbol, RuntimeSymbols.unmountComponent);
         }
 
-        const result = this.element.finalize();
-        this.func.element = this.element.parent;
+        if (element.hasScopeInjector) {
+            this.pushUnmount(element.scopeInjector);
+        }
+
+        const result = element.finalize();
+        this.func.element = element.parent;
         return result;
     }
 

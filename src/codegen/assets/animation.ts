@@ -13,7 +13,9 @@ export default function generateAnimation(node: ENDDirective, scope: CompileScop
 
     if (name === 'out') {
         const elemSymbol = scope.element.scopeSymbol;
-        scope.func.unmount.push(sn(node, [`${elemSymbol} = ${scope.use(Symbols.animateOut)}(${elemSymbol}, `, compileAttributeValue(node.value, scope), `${cssScopeArg(scope)});`]));
+        // NB: set unmount directly into function context since `pushUnmount`
+        // will use current element context instead
+        scope.func.unmount.push(sn(node, [`${elemSymbol} = ${scope.use(Symbols.animateOut)}(${elemSymbol}, `, compileAttributeValue(node.value, scope), scope.element.unmountCallbackArg, `${cssScopeArg(scope)});`]));
         return;
     }
 

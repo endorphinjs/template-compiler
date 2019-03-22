@@ -129,9 +129,6 @@ const generators: NodeGeneratorMap = {
             }
 
             scope.pushUpdate(`${scope.use(Symbols.updateComponent)}(${scope.element.scopeSymbol});`);
-            if (!hasAnimationOut(node)) {
-                scope.pushUnmount(scope.element.scopeSymbol, Symbols.unmountComponent);
-            }
         }
 
         if (elemName === 'slot') {
@@ -540,8 +537,4 @@ function createElement(node: Ast.ENDElement, scope: CompileScope, stats: Element
     }
 
     return sn(node.name, `${scope.use(Symbols.elem)}(${qStr(elemName)}${cssScopeArg(scope)})`);
-}
-
-function hasAnimationOut(node: Ast.ENDElement):boolean {
-    return node.directives.some(attr => attr.prefix === 'animate' && attr.name.name === 'out');
 }

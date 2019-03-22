@@ -45,6 +45,8 @@ export interface ElementStats {
     /** Whether element contains attribute expressions, e.g. `{foo}="bar"` */
     attributeExpressions: boolean;
 
+    hasAnimationOut: boolean;
+
     /** List of namespaces used by given element */
     namespaces: {
         [prefix: string]: string
@@ -160,6 +162,7 @@ function createStats(node: ENDElement | ENDTemplate): ElementStats {
         dynamicEvents: new Set(),
         attributeExpressions: false,
         hasPartials: false,
+        hasAnimationOut: node instanceof ENDElement ? hasAnimationOut(node) : false,
         namespaces: node instanceof ENDElement ? collectNamespaces(node) : {}
     };
 }
@@ -204,4 +207,8 @@ function walk(elem: ENDStatement | ENDTemplate, callback: (node: ENDStatement) =
     } else if (elem instanceof ENDForEachStatement) {
         elem.body.forEach(visit);
     }
+}
+
+function hasAnimationOut(node: ENDElement): boolean {
+    return node.directives.some(attr => attr.prefix === 'animate' && attr.name.name === 'out');
 }
