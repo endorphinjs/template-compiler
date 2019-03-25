@@ -72,4 +72,11 @@ describe('Template generator', () => {
         const fixture = read('./fixtures/svg.js');
         assert.equal(code.trim(), fixture);
     });
+
+    it('should generate code without file url', () => {
+        const { code } = compile(read('./samples/svg.html'));
+        const fixture = read('./fixtures/svg.js');
+
+        assert.equal(code.trim(), fixture);
+    });
 });

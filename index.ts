@@ -44,12 +44,20 @@ export function parse(code: string, url?: string): ParsedTemplate {
 export function generate(parsed: ParsedTemplate, options?: CompileScopeOptions): CodeWithMap {
     try {
         const sourceMap = compileToJS(parsed.ast, options);
-        sourceMap.setSourceContent(parsed.url, parsed.code);
-        const result = sourceMap.toStringWithSourceMap({ file: parsed.url });
-        return {
-            code: result.code,
-            map: result.map.toJSON()
-        };
+
+        if (parsed.url) {
+            sourceMap.setSourceContent(parsed.url, parsed.code);
+
+            const result = sourceMap.toStringWithSourceMap({ file: parsed.url });
+
+            return {
+                code: result.code,
+                map: result.map.toJSON()
+            };
+        }
+
+        return { code: sourceMap.toString(), map: null };
+
     } catch (err) {
         if (err instanceof ENDCompileError) {
             const { loc } = err.node;
