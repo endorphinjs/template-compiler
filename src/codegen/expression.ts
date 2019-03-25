@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import * as Ast from '../ast/expression';
 import CompileScope, { RuntimeSymbols as Symbols } from './scope';
 import { ENDCompileError } from '../parser/syntax-error';
-import { Chunk, ChunkList, qStr, sn, propAccessor } from './utils';
+import { Chunk, ChunkList, qStr, sn, propAccessor, wrapSN } from './utils';
 
 /**
  * SourceNode factory which attaches location info to source map node from given
@@ -92,21 +92,43 @@ const generators: NodeGeneratorMap = {
     },
     CallExpression(node: Ast.CallExpression, scope, sn, next) {
         const args: ChunkList = node.arguments.map(next);
-        let callee: SourceNode;
+        const { callee } = node;
 
-        if (node.callee instanceof Ast.Identifier && node.callee.name in scope.helpers) {
+        if (callee instanceof Ast.Identifier && callee.name in scope.helpers) {
             // Calling helper method
             // The first argument in helper is always a host component
             // TODO handle deep requests like `helper.bar()`
             args.unshift(scope.host);
-            callee = sn(node.callee, [scope.useHelper(node.callee.name)]);
-        } else {
-            callee = next(node.callee);
+            return sn(node, commaChunks(args, `${scope.useHelper(callee.name)}(`, ')'));
         }
 
-        const chunks: ChunkList = commaChunks(args, '(', ')');
-        chunks.unshift(callee);
-        return sn(node, chunks);
+        if (callee instanceof Ast.ENDStoreIdentifier) {
+            const chunks: ChunkList = commaChunks(args, '(', ')');
+            chunks.unshift(next(callee));
+            return sn(node, chunks);
+        }
+
+        const argsNodes = wrapSN(args.length ? commaChunks(args, ', [', ']') : '');
+
+        if (callee instanceof Ast.ENDGetter) {
+            const getterPath = Array.from(callee.path);
+            const methodName = getterPath.pop();
+            const parentGetter = new Ast.ENDGetter(callee.root, getterPath);
+            parentGetter.loc = callee.loc;
+
+            const chunks: ChunkList = [next(parentGetter), ', ', next(methodName), argsNodes];
+            return sn(node, [`${scope.use(Symbols.call)}(`, wrapSN(chunks), ')']);
+        }
+
+        if (callee instanceof Ast.ENDPropertyIdentifier || callee instanceof Ast.ENDStateIdentifier || callee instanceof Ast.ENDVariableIdentifier) {
+            return sn(node, [`${scope.use(Symbols.call)}(`,
+                getPrefix(callee, scope), ', ',
+                qStr(callee.name),
+                wrapSN(argsNodes),
+            ')']);
+        }
+
+        throw new ENDCompileError(`Unexpected token ${callee.type} for function call`, node);
     },
     EmptyStatement(node: Ast.EmptyStatement, scope, sn) {
         return sn(node, '');
@@ -128,13 +150,13 @@ const generators: NodeGeneratorMap = {
         return sn(node, chunks);
     },
     ENDPropertyIdentifier(node: Ast.ENDPropertyIdentifier, scope, sn) {
-        return sn(node, `${scope.host}.props${propAccessor(node.name)}`, node.raw);
+        return sn(node, `${getPrefix(node, scope)}${propAccessor(node.name)}`, node.raw);
     },
     ENDStateIdentifier(node: Ast.ENDStateIdentifier, scope, sn) {
-        return sn(node, `${scope.host}.state${propAccessor(node.name)}`, node.raw);
+        return sn(node, `${getPrefix(node, scope)}${propAccessor(node.name)}`, node.raw);
     },
     ENDVariableIdentifier(node: Ast.ENDVariableIdentifier, scope, sn) {
-        return sn(node, `${scope.scope}${propAccessor(node.name)}`, node.raw);
+        return sn(node, `${getPrefix(node, scope)}${propAccessor(node.name)}`, node.raw);
     },
     ENDStoreIdentifier(node: Ast.ENDStoreIdentifier, scope, sn) {
         return sn(node, scope.useStore(node.name), node.raw);
@@ -195,4 +217,25 @@ function commaChunks<T extends Chunk>(items: T[], before?: string, after?: strin
     after != null && chunks.push(after);
 
     return chunks;
+}
+
+/**
+ * Returns accessor prefix from host component for given token
+ * @param node
+ * @param scope
+ */
+function getPrefix(node: Ast.JSNode, scope: CompileScope): string {
+    if (node instanceof Ast.ENDPropertyIdentifier) {
+        return `${scope.host}.props`;
+    }
+
+    if (node instanceof Ast.ENDStateIdentifier) {
+        return `${scope.host}.state`;
+    }
+
+    if (node instanceof Ast.ENDVariableIdentifier) {
+        return scope.scope;
+    }
+
+    return 'null';
 }

@@ -66,15 +66,16 @@ describe('Expression codegen', () => {
     });
 
     it('should resolve globals', () => {
-        assert.equal(compile('Math.min(foo, bar)'), 'get(Math, "min")(host.props.foo, host.props.bar)');
+        assert.equal(compile('Math.min(foo, bar)'), 'call(Math, "min", [host.props.foo, host.props.bar])');
     });
 
     it('should generate call expressions', () => {
-        assert.equal(compile('foo()'), 'host.props.foo()');
-        assert.equal(compile('foo(1, 2)'), 'host.props.foo(1, 2)');
-        assert.equal(compile('foo([bar])'), 'host.props.foo([host.props.bar])');
-        assert.equal(compile('foo().bar()'), 'get(host.props.foo(), "bar")()');
-        assert.equal(compile('foo().bar().baz()'), 'get(get(host.props.foo(), "bar")(), "baz")()');
+        assert.equal(compile('foo()'), 'call(host.props, "foo")');
+        assert.equal(compile('foo(1, 2)'), 'call(host.props, "foo", [1, 2])');
+        assert.equal(compile('foo([bar])'), 'call(host.props, "foo", [[host.props.bar]])');
+        assert.equal(compile('foo.bar()'), 'call(host.props.foo, "bar")');
+        assert.equal(compile('foo().bar()'), 'call(call(host.props, "foo"), "bar")');
+        assert.equal(compile('foo().bar().baz()'), 'call(call(call(host.props, "foo"), "bar"), "baz")');
 
 
         const scope = new CompileScope({
@@ -91,7 +92,7 @@ describe('Expression codegen', () => {
         assert.deepEqual(helpers.get('@helper-module'), ['setState']);
 
         assert.equal(compile('$l10n("foo")', scope), 'host.store.data.l10n("foo")');
-        assert.equal(compile('#l10n("foo")', scope), 'host.state.l10n("foo")');
+        assert.equal(compile('#l10n("foo")', scope), 'call(host.state, "l10n", ["foo"])');
         assert.equal(compile('$foo-bar("foo")', scope), 'host.store.data["foo-bar"]("foo")');
     });
 });
