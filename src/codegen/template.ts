@@ -275,6 +275,19 @@ const generators: NodeGeneratorMap = {
             value = sn(node.value, JSON.stringify(node.value.value));
         } else if (node.value instanceof JSAst.Program) {
             value = compileExpression(node.value, scope);
+        } else if (node.value instanceof Ast.ENDAttributeValueExpression) {
+            value = new SourceNode();
+            node.value.elements.forEach((elem, i) => {
+                if (i !== 0) {
+                    value.add(' + ');
+                }
+
+                if (elem instanceof JSAst.Literal) {
+                    value.add(sn(elem, JSON.stringify(elem.value)));
+                } else {
+                    value.add(compileExpression(elem, scope));
+                }
+            });
         } else {
             value = new SourceNode();
             value.add('null');
