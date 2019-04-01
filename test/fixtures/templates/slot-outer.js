@@ -7,7 +7,7 @@ export default function $$template0(host, scope) {
 	const subComponent0 = scope.$_subComponent0 = target0.appendChild(createComponent("sub-component", SubComponent, host));
 	const injector0 = scope.$_injector0 = subComponent0.componentModel.input;
 	setAttribute(injector0, "id", host.props.id);
-	scope.foo = host.props.bar;
+	$$vars0(host, scope);
 	insert(injector0, elemWithText("div", "foo"));
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry0);
 	scope.$_block1 = mountBlock(host, injector0, $$conditionEntry1);
@@ -22,7 +22,7 @@ function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
 	let s__subComponent0 = 0;
 	s__subComponent0 |= setAttribute(injector0, "id", host.props.id);
-	scope.foo = host.props.bar;
+	$$vars0(host, scope);
 	s__subComponent0 |= updateBlock(scope.$_block0);
 	s__subComponent0 |= updateBlock(scope.$_block1);
 	s__subComponent0 |= updateIterator(scope.$_iter0);
@@ -39,6 +39,10 @@ function $$template0Unmount(scope) {
 	scope.$_block2 = unmountBlock(scope.$_block2);
 	scope.$_subComponent0 = unmountComponent(scope.$_subComponent0);
 	scope.$_injector0 = null;
+}
+
+function $$vars0(host, scope) {
+	scope.foo = host.props.bar;
 }
 
 function $$conditionContent0(host, injector) {

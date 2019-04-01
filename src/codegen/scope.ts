@@ -296,8 +296,9 @@ export default class CompileScope {
     /**
      * Adds given chunk as update item for current function
      */
-    pushUpdate(chunk: Chunk | SlotMarker): void {
+    pushUpdate<T extends Chunk | SlotMarker>(chunk: T): T {
         this.func.update.push(chunk);
+        return chunk;
     }
 
     /**

@@ -3,7 +3,7 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, isIdentifier, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg } from './utils';
 import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
 import generateAnimation from './assets/animation';
@@ -11,6 +11,7 @@ import generateEvent from './assets/event';
 import generateObject from './assets/object';
 import { getAttrValue, getControlName } from '../parser/elements/utils';
 import { compileAttributeName, compileAttributeValue, createConcatFunction, getAttributeNS } from './assets/attribute';
+import compileVariableStatement, { compileVariable } from './assets/variable';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -252,54 +253,14 @@ const generators: NodeGeneratorMap = {
         }
     },
     ENDVariableStatement(node: Ast.ENDVariableStatement, scope, sn, next) {
-        return sn(node, node.variables.map(next));
-    },
-    ENDVariable(node: Ast.ENDVariable, scope, sn) {
-        const name = new SourceNode();
-        name.add(scope.scope);
-
-        if (node.name instanceof JSAst.Identifier) {
-            // Static attribute name
-            if (isIdentifier(node.name.name)) {
-                name.add(['.', sn(node.name, node.name.name)]);
-            } else {
-                name.add(['[', qStr(node.name.name), ']']);
-            }
-        } else if (node.name instanceof JSAst.Program) {
-            // Dynamic attribute name
-            name.add(['[', compileExpression(node.name, scope), ']']);
-        }
-
-        let value: SourceNode;
-        if (node.value instanceof JSAst.Literal) {
-            value = sn(node.value, JSON.stringify(node.value.value));
-        } else if (node.value instanceof JSAst.Program) {
-            value = compileExpression(node.value, scope);
-        } else if (node.value instanceof Ast.ENDAttributeValueExpression) {
-            value = new SourceNode();
-            node.value.elements.forEach((elem, i) => {
-                if (i !== 0) {
-                    value.add(' + ');
-                }
-
-                if (elem instanceof JSAst.Literal) {
-                    value.add(sn(elem, JSON.stringify(elem.value)));
-                } else {
-                    value.add(compileExpression(elem, scope));
-                }
-            });
-        } else {
-            value = new SourceNode();
-            value.add('null');
-        }
-
-        const output = new SourceNode();
+        const fn = compileVariableStatement(node, scope, sn);
         // FIXME this hack will skip slot update accumulation in update code
         // need to think about better solution
-        output['$$noUpdate'] = true;
-        output.add([name, ` = `, value, ';']);
-        scope.func.update.push(output);
-        return output;
+        fn['$$noUpdate'] = true;
+        return scope.pushUpdate(fn);
+    },
+    ENDVariable(node: Ast.ENDVariable, scope, sn) {
+        return compileVariable(node, scope, sn);
     },
     ENDIfStatement(node: Ast.ENDIfStatement, scope, sn, next) {
         // Edge case: if statement contains attributes only, we can create much simpler

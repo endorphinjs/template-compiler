@@ -2,7 +2,7 @@ import { elem, setAttribute, text, updateText, finalizeAttributes, createInjecto
 
 export default function $$template0(host, scope) {
 	const target0 = host.componentView;
-	scope.v1 = "bar";scope.v2 = (1 + 2);scope.v3 = "foo " + host.props.v1;
+	$$vars0(host, scope);
 	const div0 = target0.appendChild(elem("div"));
 	const injector0 = scope.$_injector0 = createInjector(div0);
 	setAttribute(injector0, "class", scope.v1);
@@ -16,9 +16,7 @@ export default function $$template0(host, scope) {
 
 function $$template0Update(host, scope) {
 	const injector0 = scope.$_injector0;
-	scope.v1 = "bar";
-	scope.v2 = (1 + 2);
-	scope.v3 = "foo " + host.props.v1;
+	$$vars0(host, scope);
 	setAttribute(injector0, "class", scope.v1);
 	setAttribute(injector0, "title", host.props.v3);
 	updateText(scope.$_text0, scope.v2);
@@ -28,4 +26,10 @@ function $$template0Update(host, scope) {
 function $$template0Unmount(scope) {
 	scope.$_text0 = null;
 	scope.$_injector0 = null;
+}
+
+function $$vars0(host, scope) {
+	scope.v1 = "bar";
+	scope.v2 = (1 + 2);
+	scope.v3 = "foo " + host.props.v1;
 }

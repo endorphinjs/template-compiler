@@ -79,4 +79,10 @@ describe('Template generator', () => {
 
         assert.equal(code.trim(), fixture);
     });
+
+    // it.only('debug', () => {
+    //     const { code } = compile(read('./samples/templates/slot-outer.html'));
+    //     fs.writeFileSync(path.resolve(__dirname, './fixtures/templates/slot-outer.js'), code.trim());
+    //     console.log(code.trim());
+    // });
 });
