@@ -20,7 +20,7 @@ export enum RuntimeSymbols {
     mountSlot, unmountSlot, markSlotUpdate,
     createInjector, block, setAttribute, setAttributeNS, addClass, finalizeAttributes,
     addEvent, addStaticEvent, finalizeEvents, setRef, finalizeRefs,
-    createComponent, updateText, addDisposeCallback, insert, get, call,
+    createComponent, updateText, addDisposeCallback, insert, get, call, assign,
     elem, elemWithText, elemNS, elemNSWithText, text, filter, subscribeStore,
     animateIn, animateOut
 }

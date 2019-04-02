@@ -3,15 +3,16 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg, isRef } from './utils';
 import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
 import generateAnimation from './assets/animation';
 import generateEvent from './assets/event';
-import generateObject from './assets/object';
+import generateObject, { toObjectLiteral } from './assets/object';
 import { getAttrValue, getControlName } from '../parser/elements/utils';
 import { compileAttributeName, compileAttributeValue, createConcatFunction, getAttributeNS } from './assets/attribute';
 import compileVariableStatement, { compileVariable } from './assets/variable';
+import { collectStaticProps } from './assets/component';
 
 type TemplateEntry = Ast.ENDNode;
 
@@ -120,10 +121,10 @@ const generators: NodeGeneratorMap = {
         scope.exitSlotContext(slotName);
 
         if (scope.inComponent()) {
-            const staticAttrs = node.attributes.filter(attr => !isDynamicAttribute(attr, scope) && !isRef(attr));
-            if (staticAttrs.length) {
+            const staticProps = collectStaticProps(node, scope);
+            if (staticProps.size) {
                 const mountComponent = new SourceNode();
-                mountComponent.add([`${scope.use(Symbols.mountComponent)}(${scope.element.localSymbol}, `, generateObject(staticAttrs, scope, sn, 1), `);`]);
+                mountComponent.add([`${scope.use(Symbols.mountComponent)}(${scope.element.localSymbol}, `, toObjectLiteral(staticProps, scope, 1), `);`]);
                 chunks.push(mountComponent);
             } else {
                 chunks.push(`${scope.use(Symbols.mountComponent)}(${scope.element.localSymbol});`);
@@ -323,13 +324,13 @@ const generators: NodeGeneratorMap = {
 
         scope.partialsMap.set(node.id.name, {
             name: symbol,
-            defaults: generateObject(node.params, scope, sn, 2)
+            defaults: generateObject(node.params, scope, 2)
         });
         return sn(node, scope.exitFunction(node.body.map(next)));
     },
     ENDPartialStatement(node: Ast.ENDPartialStatement, scope, sn) {
         // Generate arguments to pass into partials
-        const params = generateObject(node.params, scope, sn, 1);
+        const params = generateObject(node.params, scope, 1);
         const getter = `${scope.host}.props['partial:${node.id.name}'] || ${scope.partials}${propAccessor(node.id.name)}`;
         const symbol = scope.scopeSymbol('partial');
 
@@ -461,10 +462,6 @@ function generateSlot(node: Ast.ENDElement, scope: CompileScope, sn: SourceNodeF
     scope.pushUnmount(slotSymbol, Symbols.unmountSlot);
 
     return wrapSN([slotSymbol, ' = ', mount]);
-}
-
-function isRef(attr: Ast.ENDAttribute): boolean {
-    return attr.name instanceof JSAst.Identifier && attr.name.name === 'ref';
 }
 
 /**

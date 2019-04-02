@@ -107,13 +107,13 @@ export default class ElementContext {
         // First, we have generate finalization code to create local variable
         // references, if required
         if (!this.isComponent) {
-            if (this.stats.attributeExpressions || this.stats.dynamicAttributes.size) {
+            if (this.stats.attributeExpressions || this.stats.dynamicAttributes.size || this.stats.hasPartials) {
                 const ref = this.scope.updateSymbol('injector', this.scopeInjector);
                 this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${ref});`);
                 chunks.push(`${this.scope.use(RuntimeSymbols.finalizeAttributes)}(${this.localInjector});`);
             }
 
-            if (this.stats.dynamicEvents.size) {
+            if (this.stats.dynamicEvents.size || this.stats.hasPartials) {
                 const ref = this.scope.updateSymbol('injector', this.scopeInjector);
                 this.scope.pushUpdate(`${this.scope.use(RuntimeSymbols.finalizeEvents)}(${ref});`);
                 chunks.push(`${this.scope.use(RuntimeSymbols.finalizeEvents)}(${this.localInjector});`);

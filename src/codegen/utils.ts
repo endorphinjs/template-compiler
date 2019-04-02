@@ -135,6 +135,14 @@ export function isDynamicAttribute(attr: ENDAttribute, scope: CompileScope): boo
         || attr.value instanceof ENDAttributeValueExpression;
 }
 
+/**
+ * Check if given attribute is an element reference
+ * @param attr
+ */
+export function isRef(attr: ENDAttribute): boolean {
+    return attr.name instanceof Identifier && attr.name.name === 'ref';
+}
+
 interface PlainObject {
     [key: string]: string
 }

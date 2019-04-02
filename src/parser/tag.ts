@@ -1,5 +1,5 @@
 import expression, { EXPRESSION_START } from './expression';
-import { Identifier, Literal, Program, ExpressionStatement } from '../ast/expression';
+import { Identifier, Literal, Program, ExpressionStatement, LiteralValue } from '../ast/expression';
 import { ENDAttribute, ENDAttributeValue, ParsedTag, ENDAttributeName, ENDAttributeValueExpression, ENDBaseAttributeValue, ENDDirective } from '../ast/template';
 import { isWhiteSpace, isQuote, eatQuoted, isAlpha, isNumber, isSpace } from './utils';
 import { prefix } from './elements/utils';
@@ -184,7 +184,7 @@ function attributeValue(scanner: Scanner): ENDAttributeValue {
     if (scanner.eatWhile(isUnquoted)) {
         scanner.start = start;
         const value = scanner.current();
-        return scanner.astNode(new Literal(value, value), start);
+        return scanner.astNode(new Literal(castAttributeValue(value), value), start);
     }
 }
 
@@ -271,4 +271,33 @@ function expandExpression(expr: Program): Program | Literal {
     }
 
     return expr;
+}
+
+function castAttributeValue(value: string): LiteralValue {
+    // Cast primitive values
+    if (/^\d+$/.test(value)) {
+        return Number(value);
+    }
+
+    if (/^\d*\.\d+$/.test(value)) {
+        return parseFloat(value);
+    }
+
+    if (value === 'true') {
+        return true;
+    }
+
+    if (value === 'false') {
+        return false;
+    }
+
+    if (value === 'null') {
+        return null;
+    }
+
+    if (value === 'undefined') {
+        return undefined;
+    }
+
+    return value;
 }

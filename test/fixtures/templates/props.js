@@ -7,7 +7,7 @@ export default function $$template0(host, scope) {
 	const injector0 = scope.$_injector0 = subComponent0.componentModel.input;
 	setAttribute(injector0, "id", host.props.id);
 	$$ifAttr0(host, injector0);
-	setAttribute(injector0, "p3", "3");
+	setAttribute(injector0, "p3", 3);
 	mountComponent(subComponent0, {
 		p1: "1"
 	});
@@ -20,7 +20,7 @@ function $$template0Update(host, scope) {
 	let s__subComponent0 = 0;
 	s__subComponent0 |= setAttribute(injector0, "id", host.props.id);
 	s__subComponent0 |= $$ifAttr0(host, injector0);
-	s__subComponent0 |= setAttribute(injector0, "p3", "3");
+	s__subComponent0 |= setAttribute(injector0, "p3", 3);
 	markSlotUpdate(scope.$_subComponent0, "", s__subComponent0);
 	updateComponent(scope.$_subComponent0);
 	return s__subComponent0;
@@ -33,7 +33,7 @@ function $$template0Unmount(scope) {
 
 function $$ifAttr0(host, injector) {
 	if (host.props.c1) {
-		setAttribute(injector, "p2", "2");
+		setAttribute(injector, "p2", 2);
 	}
 	return 0;
 }

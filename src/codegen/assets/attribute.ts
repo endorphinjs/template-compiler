@@ -25,6 +25,10 @@ export function compileAttributeValue(value: ENDAttributeValue, scope: CompileSc
 
     if (value instanceof Literal) {
         // Static string attribute
+        if (forComponent && typeof value.value !== 'string') {
+            return String(value.value);
+        }
+
         return qStr(String(value.value != null ? value.value : ''));
     }
 
