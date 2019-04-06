@@ -111,7 +111,7 @@ export class ENDChooseStatement extends ENDNode {
 }
 
 export class ENDChooseCase extends ENDNode {
-    type = 'ENDSwitchCase';
+    type = 'ENDChooseCase';
     consequent: ENDStatement[];
     constructor(readonly test: Program = null) {
         super();
