@@ -138,7 +138,7 @@ export class LogicalExpression extends JSNode {
 export class CallExpression extends JSNode {
     type = 'CallExpression';
     readonly arguments: ArgumentListElement[];
-    constructor(readonly callee: Expression, args: ArgumentListElement[]) {
+    constructor(readonly callee: Expression, args: ArgumentListElement[] = []) {
         super();
         this.arguments = args;
     }
@@ -146,7 +146,7 @@ export class CallExpression extends JSNode {
 
 export class MemberExpression extends JSNode {
     type = 'MemberExpression';
-    constructor(readonly object: Expression, readonly property: Expression, readonly computed: boolean) {
+    constructor(readonly object: Expression, readonly property: Expression, readonly computed: boolean = false) {
         super();
     }
 }
@@ -209,7 +209,7 @@ export class ReturnStatement extends JSNode {
 
 export class BlockStatement extends JSNode {
     type = 'BlockStatement';
-    constructor(readonly body: Statement[]) {
+    constructor(readonly body: Statement[] = []) {
         super();
     }
 }

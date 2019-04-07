@@ -5,11 +5,15 @@ import parseJS from '../src/parser/expression/js-parser';
 import Scanner from '../src/parser/scanner'
 import CompileScope from '../src/codegen/scope';
 import expression from '../src/codegen/expression';
+import { Program } from '../src/ast/expression';
+import { simple as walk } from '../src/ast/walk';
+
+function parse(code: string): Program {
+    return parseJS(code, new Scanner(code, null));
+}
 
 function compile(code: string, scope: CompileScope = new CompileScope()): string {
-    const scanner = new Scanner(code, null);
-    const ast = parseJS(code, scanner);
-    return expression(ast, scope).toString();
+    return expression(parse(code), scope).toString();
 }
 
 function read(fileName: string): string {
@@ -94,5 +98,14 @@ describe('Expression codegen', () => {
         assert.equal(compile('$l10n("foo")', scope), 'host.store.data.l10n("foo")');
         assert.equal(compile('#l10n("foo")', scope), 'call(host.state, "l10n", ["foo"])');
         assert.equal(compile('$foo-bar("foo")', scope), 'host.store.data["foo-bar"]("foo")');
+    });
+
+    it.only('should generate event handlers', () => {
+        const ast = parse('e => handleClick(e.pageX, e.pageY)');
+        walk(ast, {
+            CallExpression(node) {
+                console.log('call', node);
+            }
+        })
     });
 });

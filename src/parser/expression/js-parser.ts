@@ -311,7 +311,7 @@ function loc<T extends Node>(node: T, aNode: AcornNode, scanner: Scanner): T {
  */
 function walkParam(param: any, scope: Scope): void {
     if (param.type === 'Identifier') {
-        scope.reserve(param.name)
+        scope.reserve(param.name);
     } else if (param.type === 'ObjectExpression' || param.type === 'ObjectPattern') {
         // Object destructuring: `{a, b}` or `{a: b}`
         param.properties.forEach(prop => walkParam(prop.value, scope));
