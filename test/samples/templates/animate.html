@@ -1,0 +1,20 @@
+<template>
+    <p>test</p>
+    <div class="overlay"
+        style="left: {left}px"
+        e:if={enabled}
+        animate:in="show"
+        animate:out="hide">
+        <e:if test={foo}>
+            bar
+        </e:if>
+        {{ html }}
+        <e:for-each select={items}>
+            <partial:test />
+        </e:for-each>
+    </div>
+</template>
+
+<template partial:test>
+    <p>partial</p>
+</template>

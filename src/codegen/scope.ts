@@ -307,19 +307,15 @@ export default class CompileScope {
     pushUnmount(varSymbol: string, fnSymbol?: RuntimeSymbols): void {
         const dispose = fnSymbol != null ? `${this.use(fnSymbol)}(${varSymbol})` : 'null';
 
-        let target = this.func.unmount;
+        let { unmount, element } = this.func;
 
         // In case if parent contains explicit animate:out, we should delay
         // child unmount on animation end
-        let elem = this.element;
-        while (elem && (elem = elem.parent)) {
-            if (elem.stats.hasAnimationOut) {
-                target = elem.unmount;
-                break;
-            }
+        if (element && element.stats.hasAnimationOut) {
+            unmount = element.unmount;
         }
 
-        target.push(`${varSymbol} = ${dispose};`);
+        unmount.push(`${varSymbol} = ${dispose};`);
     }
 
     /**

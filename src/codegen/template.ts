@@ -3,7 +3,7 @@ import * as Ast from '../ast/template';
 import * as JSAst from '../ast/expression';
 import { ENDCompileError } from '../parser/syntax-error';
 import CompileScope, { RuntimeSymbols as Symbols, CompileScopeOptions } from './scope';
-import { ChunkList, qStr, SourceNodeFactory, sn, format, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg, isRef } from './utils';
+import { ChunkList, qStr, SourceNodeFactory, sn, format, propAccessor, tagToJS, isDynamicAttribute, wrapSN, cssScopeArg, isRef, Chunk } from './utils';
 import getStats, { collectDynamicStats, ElementStats } from './node-stats';
 import compileExpression from './expression';
 import generateAnimation from './assets/animation';
@@ -111,9 +111,20 @@ const generators: NodeGeneratorMap = {
 
         scope.enterSlotContext(slotName);
 
+        // Explicitly generate in-animation code: it must be added after element
+        // was mounted. If element contains `style` attribute modification,
+        // setting animation *before* attribute was finalized will reset animation
+        let animateIn: Chunk;
+
         chunks = chunks.concat(
             attributes.map(next),
-            node.directives.map(next),
+            node.directives.map(dir => {
+                if (dir.prefix === 'animate' && dir.name.name === 'in') {
+                    animateIn = next(dir);
+                } else {
+                    return next(dir);
+                }
+            }),
             // Do not create plain body content for slots and elements with static text
             body && elemName !== 'slot' && !stats.text ? body.map(next) : []
         );
@@ -137,7 +148,7 @@ const generators: NodeGeneratorMap = {
             chunks.push(generateSlot(node, scope, sn, next));
         }
 
-        chunks.push(scope.exitElement());
+        chunks.push(scope.exitElement(), animateIn);
         scope.exitNamespace(xmlns);
 
         return sn(node, format(chunks, scope.indent));
