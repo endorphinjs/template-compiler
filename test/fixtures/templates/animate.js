@@ -1,4 +1,5 @@
-import { elemWithText, insert, elem, setAttribute, animateIn, animateOut, text, mountBlock, updateBlock, unmountBlock, mountInnerHTML, updateInnerHTML, unmountInnerHTML, mountPartial, updatePartial, unmountPartial, addDisposeCallback, mountIterator, updateIterator, unmountIterator, finalizeAttributes, finalizeEvents, createInjector, finalizeRefs } from "@endorphinjs/endorphin";
+import { elemWithText, insert, elem, setAttribute, animateIn, animateOut, text, mountBlock, updateBlock, unmountBlock, mountInnerHTML, updateInnerHTML, unmountInnerHTML, mountPartial, updatePartial, unmountPartial, addDisposeCallback, mountIterator, updateIterator, unmountIterator, createComponent, mountComponent, updateComponent, unmountComponent, finalizeAttributes, finalizeEvents, createInjector, finalizeRefs } from "@endorphinjs/endorphin";
+import * as InnerComponent from "./inner-component.html";
 
 export const partials = {
 	test: {
@@ -74,6 +75,8 @@ function $$conditionContent0(host, injector, scope) {
 	scope.$_block0 = mountBlock(host, injector0, $$conditionEntry1);
 	scope.$_html0 = mountInnerHTML(host, injector0, $$getHTML0);
 	scope.$_iter0 = mountIterator(host, injector0, $$iteratorExpr0, $$iteratorBlock0);
+	const innerComponent0 = scope.$_innerComponent0 = insert(injector0, createComponent("inner-component", InnerComponent, host));
+	mountComponent(innerComponent0);
 	finalizeAttributes(injector0);
 	finalizeEvents(injector0);
 	animateIn(div0, "show");
@@ -88,8 +91,10 @@ function $$conditionContent0Update(host, injector, scope) {
 	updateBlock(scope.$_block0);
 	updateInnerHTML(scope.$_html0);
 	updateIterator(scope.$_iter0);
+	updateComponent(scope.$_innerComponent0);
 	finalizeAttributes(injector0);
 	finalizeEvents(injector0);
+	return 0;
 }
 
 function $$conditionContent0Unmount(scope) {
@@ -97,7 +102,9 @@ function $$conditionContent0Unmount(scope) {
 		scope.$_block0 = unmountBlock(scope.$_block0);
 		scope.$_html0 = unmountInnerHTML(scope.$_html0);
 		scope.$_iter0 = unmountIterator(scope.$_iter0);
+		scope.$_innerComponent0 = unmountComponent(scope.$_innerComponent0);
 	});
+	scope.$_injector0 = null;
 }
 
 function $$conditionEntry0(host) {

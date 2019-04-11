@@ -18,6 +18,7 @@ function $$template0Update(host, scope) {
 
 function $$template0Unmount(scope) {
 	scope.$_block0 = unmountBlock(scope.$_block0);
+	scope.$_injector0 = null;
 }
 
 function $$class0(host) {

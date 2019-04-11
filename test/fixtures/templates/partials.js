@@ -55,6 +55,7 @@ function $$template0Update(host, scope) {
 
 function $$template0Unmount(scope) {
 	scope.$_iter0 = unmountIterator(scope.$_iter0);
+	scope.$_injector0 = null;
 }
 
 function $$iteratorExpr0(host) {

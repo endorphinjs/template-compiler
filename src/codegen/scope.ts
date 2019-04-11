@@ -398,6 +398,8 @@ export default class CompileScope {
 
     exitElement(): SourceNode {
         const { element } = this;
+        const result = element.finalize();
+        this.func.element = element.parent;
 
         if (element.stats.hasAnimationOut) {
             if (element.unmount.length) {
@@ -417,8 +419,6 @@ export default class CompileScope {
             this.pushUnmount(element.scopeInjector);
         }
 
-        const result = element.finalize();
-        this.func.element = element.parent;
         return result;
     }
 
