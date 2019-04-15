@@ -1,7 +1,10 @@
 import { SourceNode } from 'source-map';
+import { AstWalkerContinuation } from '@endorphinjs/template-parser';
+import CompileState from './compile-state';
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
+export type AstContinue = AstWalkerContinuation<CompileState>
 
 /**
  * Converts given HTML tag name to JS variable name

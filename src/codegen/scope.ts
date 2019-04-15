@@ -216,7 +216,7 @@ export default class CompileScope {
         return this.options.partials;
     }
 
-    /** Current indentation token */
+    /** Indentation token */
     get indent(): string {
         return this.options.indent;
     }

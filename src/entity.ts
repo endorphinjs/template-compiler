@@ -28,9 +28,11 @@ export default class Entity {
 
 /**
  * Creates basic chunk builder that uses Endorphin runtime symbols
- * @param state
- * @param symbol
  */
 export function symbolBuilder(state: CompileState, symbol: RuntimeSymbols): ChunkBuilder {
     return ctx => `${state.runtime(symbol)}(${ctx.entity()});`;
+}
+
+export function functionBuilder(state: CompileState, fnName: string): ChunkBuilder {
+
 }

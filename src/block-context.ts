@@ -27,4 +27,12 @@ export default class BlockContext {
     push(entity: Entity) {
         this.entities.push(entity);
     }
+
+    /**
+     * Generates JS code for accumulated context data
+     */
+    generate(): SourceNode {
+        // TODO implement
+        return this.output;
+    }
 }
