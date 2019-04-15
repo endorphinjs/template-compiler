@@ -1,9 +1,11 @@
 import { SourceNode } from "source-map";
+import { ENDElement } from "@endorphinjs/template-parser";
 import createGetter, { RuntimeSymbols, SymbolGetter } from "./symbols";
 import BlockContext from "./block-context";
 import Entity from "./entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
 import { tagToJS, Chunk } from "./utils";
+import ElementContext from "./element-context";
 
 type HelpersMap = { [url: string]: string[] };
 type PlainObject = { [key: string]: string };
@@ -154,6 +156,28 @@ export default class CompileState {
         this.blockCtx = block.parent;
 
         return varName;
+    }
+
+    /**
+     * Runs given `fn` function in context of `node` element
+     */
+    element(node: ENDElement, fn: (element: ElementContext, block: BlockContext) => void) {
+        const { blockCtx } = this;
+        if (!blockCtx) {
+            throw new Error('Unable to run in element context: parent block is absent');
+        }
+        const prevElem = blockCtx.element;
+        const elemCtx = blockCtx.element = new ElementContext(node);
+        fn(elemCtx, blockCtx);
+        blockCtx.element = prevElem;
+    }
+
+    /**
+     * Marks given helper symbol as used
+     */
+    useHelper(symbol: string): string {
+        this.usedHelpers.add(symbol);
+        return symbol;
     }
 }
 
