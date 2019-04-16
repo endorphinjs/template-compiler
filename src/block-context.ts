@@ -25,14 +25,10 @@ export default class BlockContext {
      * Adds given entity to list
      */
     push(entity: Entity) {
-        this.entities.push(entity);
-    }
-
-    /**
-     * Generates JS code for accumulated context data
-     */
-    generate(): SourceNode {
-        // TODO implement
-        return this.output;
+        if (this.element) {
+            this.element.entities.push(entity);
+        } else {
+            this.entities.push(entity);
+        }
     }
 }

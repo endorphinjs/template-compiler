@@ -1,6 +1,6 @@
 export type SymbolGenerator = (name: string) => string;
 type SymbolPartGenerator = (num: number) => number | string;
-const numGenerator: SymbolPartGenerator = num => num;
+const numGenerator: SymbolPartGenerator = num => num.toString(36);
 
 /**
  * Creates symbol generator: a function that generates unique symbols with given

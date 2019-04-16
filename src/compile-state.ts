@@ -4,7 +4,7 @@ import createGetter, { RuntimeSymbols, SymbolGetter } from "./symbols";
 import BlockContext from "./block-context";
 import Entity from "./entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { tagToJS, Chunk } from "./utils";
+import { tagToJS, Chunk, propGetter } from "./utils";
 import ElementContext from "./element-context";
 
 type HelpersMap = { [url: string]: string[] };
@@ -56,8 +56,8 @@ export const defaultOptions: CompileStateOptions = {
     scope: 'scope',
     partials: 'partials',
     indent: '\t',
-    prefix: '$$',
-    suffix: '',
+    prefix: '',
+    suffix: '$$',
     module: '@endorphinjs/endorphin',
     component: '',
     helpers: {
@@ -79,7 +79,7 @@ export default class CompileState {
     private usedStore: Set<string> = new Set();
 
     /** Context of currently rendered block */
-    private blockCtx?: BlockContext;
+    blockContext?: BlockContext;
 
     readonly options: CompileStateOptions;
 
@@ -94,6 +94,9 @@ export default class CompileState {
 
     /** Generates unique global JS module symbol with given name */
     globalSymbol: SymbolGenerator;
+
+    /** Generates unique symbol with given name for storing in component scope */
+    scopeSymbol: SymbolGenerator;
 
     /**
      * List of available helpers. Key is a helper name (name of function) and value
@@ -115,7 +118,8 @@ export default class CompileState {
         this.runtime = createGetter(this.usedRuntime);
 
         const suffix = tagToJS(this.options.component || '', true) + (this.options.suffix || '');
-        this.globalSymbol = createSymbolGenerator(this.options.prefix, num => suffix + num);
+        this.globalSymbol = createSymbolGenerator(this.options.prefix, num => suffix + num.toString(36));
+        this.scopeSymbol = createSymbolGenerator(this.options.prefix, num => this.options.suffix + num.toString(36));
     }
 
     /** Current indentation token */
@@ -128,7 +132,7 @@ export default class CompileState {
      * @param entity
      */
     pushEntity(entity: Entity): void {
-        this.blockCtx.push(entity);
+        this.blockContext.push(entity);
     }
 
     /**
@@ -150,10 +154,16 @@ export default class CompileState {
     block(name: string, fn: (block: BlockContext) => Chunk | void): string {
         const varName = this.globalSymbol(name);
         const block = new BlockContext(varName);
-        block.parent = this.blockCtx;
-        this.blockCtx = block;
-        this.pushOutput(fn(block));
-        this.blockCtx = block.parent;
+
+        // Accumulate entities for current block
+        block.parent = this.blockContext;
+        this.blockContext = block;
+        fn(block);
+        this.blockContext = block.parent;
+
+        // Render accumulated entities
+
+
 
         return varName;
     }
@@ -162,14 +172,28 @@ export default class CompileState {
      * Runs given `fn` function in context of `node` element
      */
     element(node: ENDElement, fn: (element: ElementContext, block: BlockContext) => void) {
-        const { blockCtx } = this;
+        const { blockContext: blockCtx } = this;
         if (!blockCtx) {
             throw new Error('Unable to run in element context: parent block is absent');
         }
+
         const prevElem = blockCtx.element;
-        const elemCtx = blockCtx.element = new ElementContext(node);
+        const elemCtx = blockCtx.element = new ElementContext(node, this.scopeSymbol);
+        elemCtx.parent = prevElem;
         fn(elemCtx, blockCtx);
         blockCtx.element = prevElem;
+
+        // Render element’s own entities to collect usage stats
+        const ownEntities = elemCtx.entities.filter(entity => !entity.rendered);
+        ownEntities.forEach(entity => entity.render(this));
+
+        const parent = prevElem || blockCtx;
+        parent.entities.push(new Entity(elemCtx.name,
+            ctx => {
+
+            }));
+
+
     }
 
     /**
@@ -178,6 +202,15 @@ export default class CompileState {
     useHelper(symbol: string): string {
         this.usedHelpers.add(symbol);
         return symbol;
+    }
+
+    /**
+     * Marks given store property of current component as used
+     * @param name
+     */
+    useStore(name: string): string {
+        this.usedStore.add(name);
+        return `${this.options.host}.store.data${propGetter(name)}`;
     }
 }
 

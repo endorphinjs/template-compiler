@@ -1,6 +1,6 @@
 import * as Ast from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import { BuilderContext } from "./BuilderContext";
+import { BuilderContext } from './builder';
 import { Chunk, ChunkList, sn, propGetter, qStr } from './utils';
 import { ENDCompileError } from './error';
 
