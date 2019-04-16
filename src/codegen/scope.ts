@@ -407,7 +407,7 @@ export default class CompileScope {
                 const indent = this.indent;
                 const innerIndent = indent.repeat(2);
                 // Generate unmount function for animation end
-                unmountCallbackArg.add(`, function() {\n${innerIndent}`);
+                unmountCallbackArg.add(`, ${this.scope}, function(${this.scope}) {\n${innerIndent}`);
                 unmountCallbackArg.add(format(element.unmount, innerIndent));
                 unmountCallbackArg.add(`\n${indent}}`);
             }

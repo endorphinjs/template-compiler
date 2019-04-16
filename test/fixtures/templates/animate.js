@@ -98,7 +98,7 @@ function $$conditionContent0Update(host, injector, scope) {
 }
 
 function $$conditionContent0Unmount(scope) {
-	scope.$_div0 = animateOut(scope.$_div0, "hide", function() {
+	scope.$_div0 = animateOut(scope.$_div0, "hide", scope, function(scope) {
 		scope.$_block0 = unmountBlock(scope.$_block0);
 		scope.$_html0 = unmountInnerHTML(scope.$_html0);
 		scope.$_iter0 = unmountIterator(scope.$_iter0);
