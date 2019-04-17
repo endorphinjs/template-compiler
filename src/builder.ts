@@ -1,8 +1,8 @@
 import CompileState from './compile-state';
-import { Chunk } from './utils';
+import { ChunkList } from './utils';
 import { RuntimeSymbols } from './symbols';
 
-export type Builder = (ctx: BuilderContext) => Chunk;
+export type Builder = (ctx: BuilderContext) => ChunkList;
 export type BuilderGetter = () => string;
 
 export interface BuilderContext {
@@ -29,5 +29,5 @@ export interface BuilderContext {
  * Creates basic chunk builder that uses Endorphin runtime symbols
  */
 export function symbolBuilder(symbol: RuntimeSymbols): Builder {
-    return ctx => `${ctx.state.runtime(symbol)}(${ctx.entity()});`;
+    return ctx => [`${ctx.state.runtime(symbol)}(${ctx.entity()});`];
 }

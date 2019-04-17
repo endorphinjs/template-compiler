@@ -1,4 +1,4 @@
-import { ENDElement } from "@endorphinjs/template-parser";
+import { ENDElement, ENDTemplate, Node } from "@endorphinjs/template-parser";
 import { SymbolGenerator } from "./symbol-generator";
 import Entity from "./entity";
 import { tagToJS } from "./utils";
@@ -12,9 +12,6 @@ export default class ElementContext {
     /** List of namespaces in current element */
     namespaces: NamespaceList;
 
-    /** Indicates that given element is a component */
-    readonly isComponent: boolean;
-
     /** Pointer to parent element context */
     parent?: ElementContext;
 
@@ -22,18 +19,18 @@ export default class ElementContext {
     private _injector: string;
     private _ref: string;
 
-    constructor(readonly node: ENDElement, private generator: SymbolGenerator) {
-        this.isComponent = this.name.includes('-');
-        this.namespaces = collectNamespaces(node);
+    constructor(readonly node: ENDElement | ENDTemplate, private generator: SymbolGenerator) {
+        this.namespaces = isElement(node) ? collectNamespaces(node) : {};
     }
 
     /** Name of current element */
-    get name(): string {
-        return this.node.name.name;
+    get name(): string | null {
+        return isElement(this.node) ? this.node.name.name : null;
     }
 
     /** Symbol for referencing element */
     get ref(): string {
+        // TODO generate ref for template context
         return this._ref || (this._ref = this.generator(tagToJS(this.name)));
     }
 
@@ -45,6 +42,11 @@ export default class ElementContext {
     /** Indicates that element context should use injector to operate */
     get usesInjector(): boolean {
         return this._injector != null;
+    }
+
+    /** Indicates that current element is a component */
+    get isComponent(): boolean {
+        return isElement(this.node) && this.node.component;
     }
 }
 
@@ -65,4 +67,11 @@ function collectNamespaces(elem: ENDElement): NamespaceList {
     });
 
     return result;
+}
+
+/**
+ * Check if given AST node is element
+ */
+function isElement(node: Node): node is ENDElement {
+    return node.type === 'ENDElement';
 }

@@ -1,17 +1,20 @@
 import { Builder, BuilderContext } from './builder';
 import CompileState from './compile-state';
-import { Chunk } from './utils';
+import { Chunk, ChunkList } from './utils';
+import ElementContext from './element-context';
 
 type RenderContext = 'create' | 'update' | 'destroy';
+type EntityType = 'element' | 'text' | 'block';
 
-interface UsageStats {
+interface RenderModel {
+    code: ChunkList | null;
     injector?: boolean;
     scope?: boolean;
     entity?: boolean;
 }
 
 type RenderResult = {
-    [K in RenderContext]?: Chunk | null
+    [K in RenderContext]?: RenderModel
 }
 
 /**
@@ -20,14 +23,19 @@ type RenderResult = {
  */
 export default class Entity {
     private cache?: RenderResult;
-    readonly usage: { [K in RenderContext]: UsageStats }
 
-    constructor(public name: string, public create?: Builder, public update?: Builder, public destroy?: Builder) {
-        this.usage = {
-            create: {},
-            update: {},
-            destroy: {}
-        };
+    /**
+     * @param type Entity type, describes how entity should be attached to parent
+     * @param symbol Variable name (symbol) for referencing current entity
+     * @param create Builder function that generates code for creating entity
+     * @param update Builder function that generates code for updating entity
+     * @param destroy Builder function that generates code for destroying entity
+     */
+    constructor(readonly type: EntityType,
+                public symbol: string,
+                public create?: Builder,
+                public update?: Builder,
+                public destroy?: Builder) {
     }
 
     /** Check if entity was already rendered */
@@ -38,26 +46,32 @@ export default class Entity {
     /**
      * Renders current entity. Render result is cached for later reuse
      */
-    render(state: CompileState): RenderResult {
+    render(state: CompileState, elemCtx?: ElementContext): RenderResult {
         const entity = this;
         let rendering: RenderContext;
+
+        const result: RenderResult = {
+            create: { code: null },
+            update: { code: null },
+            destroy: { code: null }
+        };
+
         const ctx: BuilderContext = {
             state,
             host() {
                 return state.options.host;
             },
             entity() {
-                entity.usage[rendering].entity = true;
-                return entity.name;
+                result[rendering].entity = true;
+                return entity.symbol;
             },
             injector() {
-                const { element } = state.blockContext;
-                entity.usage[rendering].injector = true;
-                return element ? element.injector : 'injector';
+                result[rendering].injector = true;
+                return elemCtx ? elemCtx.injector : 'injector';
             },
             scope() {
                 // In most cases, `scope` is passed as argument of every function
-                entity.usage[rendering].scope = true;
+                result[rendering].scope = true;
                 return state.options.scope;
             },
             store(name) {
@@ -65,30 +79,15 @@ export default class Entity {
             }
         };
 
-        const render = (name: RenderContext): Chunk | null => {
+        const render = (name: RenderContext): Chunk[] | null => {
             const builder = this[rendering = name];
             return builder ? builder(ctx) : null;
         };
 
-        this.resetUsage();
-        return this.cache = {
-            create: render('create'),
-            update: render('update'),
-            destroy: render('destroy')
-        };
-    }
+        result.create.code = render('create');
+        result.update.code = render('update');
+        result.destroy.code = render('destroy');
 
-    /**
-     * Returns rendered result of current entity: might return cached result if
-     * entity was already rendered
-     */
-    getRendered(state: CompileState): RenderResult {
-        return this.cache || this.render(state);
-    }
-
-    private resetUsage() {
-        this.usage.create = {};
-        this.usage.update = {};
-        this.usage.destroy = {};
+        return result;
     }
 }

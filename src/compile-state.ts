@@ -1,10 +1,10 @@
 import { SourceNode } from "source-map";
-import { ENDElement } from "@endorphinjs/template-parser";
+import { ENDElement, ENDImport, LiteralValue } from "@endorphinjs/template-parser";
 import createGetter, { RuntimeSymbols, SymbolGetter } from "./symbols";
 import BlockContext from "./block-context";
 import Entity from "./entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { tagToJS, Chunk, propGetter } from "./utils";
+import { tagToJS, Chunk, propGetter, getAttrValue } from "./utils";
 import ElementContext from "./element-context";
 
 type HelpersMap = { [url: string]: string[] };
@@ -65,6 +65,20 @@ export const defaultOptions: CompileStateOptions = {
     }
 }
 
+interface ComponentImport {
+    /** JS symbol for referencing imported module */
+    symbol: string;
+
+    /** URL of module */
+    href: string;
+
+    /** Source node */
+    node: ENDImport;
+
+    /** Indicates given component was used */
+    used?: boolean;
+}
+
 export default class CompileState {
     /** Symbol for referencing CSS isolation scope */
     readonly cssScopeSymbol = 'cssScope';
@@ -98,6 +112,13 @@ export default class CompileState {
     /** Generates unique symbol with given name for storing in component scope */
     scopeSymbol: SymbolGenerator;
 
+    /** List of child components */
+    readonly componentsMap: Map<string, ComponentImport> = new Map();
+
+    /** List of used namespaces */
+    readonly namespacesMap: Map<string, string> = new Map();
+    private namespaceStack: string[] = [];
+
     /**
      * List of available helpers. Key is a helper name (name of function) and value
      * is a module URL
@@ -125,6 +146,11 @@ export default class CompileState {
     /** Current indentation token */
     get indent(): string {
         return this.options.indent;
+    }
+
+    /** Current `xmlns` namespace symbol, if available */
+    get namespace(): string | null {
+        return this.namespaceStack.length ? this.namespaceStack[this.namespaceStack.length - 1] : null;
     }
 
     /**
@@ -180,7 +206,11 @@ export default class CompileState {
         const prevElem = blockCtx.element;
         const elemCtx = blockCtx.element = new ElementContext(node, this.scopeSymbol);
         elemCtx.parent = prevElem;
+
+        const xmlns = getAttrValue(node, 'xmlns');
+        this.enterNamespace(xmlns);
         fn(elemCtx, blockCtx);
+        this.exitNamespace(xmlns);
         blockCtx.element = prevElem;
 
         // Render element’s own entities to collect usage stats
@@ -188,10 +218,7 @@ export default class CompileState {
         ownEntities.forEach(entity => entity.render(this));
 
         const parent = prevElem || blockCtx;
-        parent.entities.push(new Entity(elemCtx.name,
-            ctx => {
 
-            }));
 
 
     }
@@ -211,6 +238,55 @@ export default class CompileState {
     useStore(name: string): string {
         this.usedStore.add(name);
         return `${this.options.host}.store.data${propGetter(name)}`;
+    }
+
+    /** Displays warning with given message  */
+    warn(msg: string, pos?: number): void {
+        if (this.options.warn) {
+            this.options.warn(msg, pos);
+        }
+    }
+
+    /**
+     * Displays warning only once for given label
+     * @param label
+     * @param msg
+     * @param pos
+     */
+    warnOnce(label: string, msg: string, pos?: number): void {
+        if (!this._warned.has(label)) {
+            this._warned.add(label);
+            this.warn(msg, pos);
+        }
+    }
+
+    /**
+     * Enters XML namespace with given URI. All elements will be created with given
+     * namespace
+     */
+    private enterNamespace(ns?: LiteralValue) {
+        if (ns != null) {
+            const symbol = this.getNamespaceSymbol(String(ns));
+            this.namespaceStack.push(symbol);
+        }
+    }
+
+    /**
+     * Exit current namespace
+     */
+    private exitNamespace(ns?: LiteralValue) {
+        if (ns != null) {
+            this.namespaceStack.pop();
+        }
+    }
+
+    private getNamespaceSymbol(uri: string): string {
+        if (!this.namespacesMap.has(uri)) {
+            const symbol = this.globalSymbol('ns');
+            this.namespacesMap.set(uri, symbol);
+        }
+
+        return this.namespacesMap.get(uri);
     }
 }
 

@@ -1,11 +1,17 @@
 import { SourceNode } from 'source-map';
-import { AstWalkerContinuation, Node, Identifier, Program } from '@endorphinjs/template-parser';
+import { AstWalkerContinuation, Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute } from '@endorphinjs/template-parser';
 import { BuilderContext } from "./builder";
 import generateExpression from './expression';
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
 export type AstContinue = AstWalkerContinuation<BuilderContext>
+
+/**
+ * A prefix for Endorphin element and attribute names
+ */
+export const prefix = 'e';
+const nsPrefix = prefix + ':';
 
 /**
  * Converts given HTML tag name to JS variable name
@@ -55,6 +61,39 @@ export function sn(chunks: Chunk | ChunkList, node?: Node, name?: string): Sourc
  */
 export function isIdentifier(name: string): boolean {
     return /^[a-zA-Z_$][\w_$]*$/.test(name);
+}
+
+/**
+ * Returns attribute with given name from tag name definition, if any
+ */
+export function getAttr(elem: ENDElement | ENDAttributeStatement, name: string): ENDAttribute {
+    return elem.attributes.find(attr => attr.name.type === 'Identifier' && attr.name.name === name);
+}
+
+/**
+ * Returns value of attribute with given name from tag name definition, if any
+ */
+export function getAttrValue(openTag: ENDElement | ENDAttributeStatement, name: string): LiteralValue {
+    const attr = getAttr(openTag, name);
+    if (attr && attr.value.type === 'Literal') {
+        return attr.value.value;
+    }
+}
+
+/**
+ * Returns control statement name from given tag name if possible
+ * @param name Tag name
+ */
+export function getControlName(name: string): string {
+    if (name.startsWith(nsPrefix)) {
+        return name.slice(nsPrefix.length);
+    }
+
+    if (name.startsWith('partial:')) {
+        return 'partial';
+    }
+
+    return null;
 }
 
 /**
