@@ -1,37 +1,23 @@
 import { ENDElement, ENDTemplate, Node } from "@endorphinjs/template-parser";
 import { SymbolGenerator } from "./symbol-generator";
 import Entity from "./entity";
-import { tagToJS } from "./utils";
-
-type NamespaceList = { [prefix: string]: string };
+import { usageStats } from "./utils";
 
 /**
  * Contains data about element context
  */
 export default class ElementContext {
-    /** List of namespaces in current element */
-    namespaces: NamespaceList;
-
-    /** Pointer to parent element context */
-    parent?: ElementContext;
-
     readonly entities: Entity[] = [];
     private _injector: string;
-    private _ref: string;
 
-    constructor(readonly node: ENDElement | ENDTemplate, private generator: SymbolGenerator) {
-        this.namespaces = isElement(node) ? collectNamespaces(node) : {};
-    }
+    /** Injector usage stats in different contexts */
+    readonly usage = usageStats();
 
-    /** Name of current element */
-    get name(): string | null {
-        return isElement(this.node) ? this.node.name.name : null;
-    }
+    constructor(readonly node: ENDElement | ENDTemplate, readonly entity: Entity, private generator: SymbolGenerator) {}
 
     /** Symbol for referencing element */
-    get ref(): string {
-        // TODO generate ref for template context
-        return this._ref || (this._ref = this.generator(tagToJS(this.name)));
+    get symbol(): string {
+        return this.entity.symbol;
     }
 
     /** Symbol for referencing element’s injector */
@@ -48,25 +34,6 @@ export default class ElementContext {
     get isComponent(): boolean {
         return isElement(this.node) && this.node.component;
     }
-}
-
-/**
- * Collects namespaces registered in given element
- */
-function collectNamespaces(elem: ENDElement): NamespaceList {
-    const result = {};
-    elem.attributes.forEach(attr => {
-        if (attr.name.type === 'Identifier') {
-            const parts = String(attr.name.name).split(':');
-            const prefix = parts.shift();
-
-            if (prefix === 'xmlns' && attr.value.type === 'Literal') {
-                result[parts.join(':')] = String(attr.value.value);
-            }
-        }
-    });
-
-    return result;
 }
 
 /**

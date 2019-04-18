@@ -1,11 +1,8 @@
 import { SourceNode } from 'source-map';
-import { AstWalkerContinuation, Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute } from '@endorphinjs/template-parser';
-import { BuilderContext } from "./builder";
+import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute } from '@endorphinjs/template-parser';
 import generateExpression from './expression';
-
-export type Chunk = string | SourceNode;
-export type ChunkList = Chunk[];
-export type AstContinue = AstWalkerContinuation<BuilderContext>
+import CompileState from './compile-state';
+import { Chunk, ChunkList, UsageStats, RenderContext } from './types';
 
 /**
  * A prefix for Endorphin element and attribute names
@@ -64,6 +61,26 @@ export function isIdentifier(name: string): boolean {
 }
 
 /**
+ * Creates usage stats object
+ */
+export function usageStats(): UsageStats {
+    return {
+        mount: 0,
+        update: 0,
+        unmount: 0
+    };
+}
+
+/**
+ * Marks given context in usage stats as used
+ */
+export function markUsed(stats: UsageStats, ctx: RenderContext): void {
+    if (ctx) {
+        stats[ctx]++;
+    }
+}
+
+/**
  * Returns attribute with given name from tag name definition, if any
  */
 export function getAttr(elem: ENDElement | ENDAttributeStatement, name: string): ENDAttribute {
@@ -113,12 +130,47 @@ export function propGetter(name: string): string {
 /**
  * Generates property setter code
  */
-export function propSetter(node: Identifier | Program, ctx: BuilderContext): Chunk {
+export function propSetter(node: Identifier | Program, state: CompileState): Chunk {
     if (node.type === 'Program') {
         const result = new SourceNode();
-        result.add(['[', generateExpression(node, ctx), ']']);
+        result.add(['[', generateExpression(node, state), ']']);
         return result;
     }
 
     return isIdentifier(node.name) ? node.name : qStr(node.name)
+}
+
+export function flatten<T>(arr: Array<T | T[]>): T[] {
+    let result: T[];
+    arr.forEach(arg => {
+        if (Array.isArray(arg)) {
+            result = result.concat(flatten(arg));
+        } else {
+            result.push(arg);
+        }
+    });
+
+    return result;
+}
+
+export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
+    const result: ChunkList = [];
+
+    chunks.filter(isValidChunk).forEach((chunk, i, arr) => {
+        if (i !== 0) {
+            result.push(prefix);
+        }
+
+        result.push(chunk);
+
+        if (i !== arr.length - 1) {
+            result.push(suffix);
+        }
+    });
+    return result;
+}
+function isValidChunk(chunk: Chunk): boolean {
+    return chunk instanceof SourceNode
+        ? chunk.children.length !== 0
+        : chunk && chunk.length !== 0;
 }

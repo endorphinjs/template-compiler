@@ -1,27 +1,27 @@
 import * as Ast from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import { BuilderContext } from './builder';
 import { Chunk, ChunkList, sn, propGetter, qStr } from './utils';
 import { ENDCompileError } from './error';
+import CompileState from './compile-state';
 
 type AstContinue = (node: Ast.Node) => SourceNode;
-type AstVisitor = (node: Ast.Node, ctx: BuilderContext, next: AstContinue) => SourceNode;
+type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => SourceNode;
 type AstVisitorMap = { [name: string]: AstVisitor };
 
-export default function generateExpression(expr: Ast.Program, ctx: BuilderContext, visitors: AstVisitorMap = {}): SourceNode {
-    return walk(expr, ctx, { ...baseVisitors, ...visitors });
+export default function generateExpression(expr: Ast.Program, state: CompileState, visitors: AstVisitorMap = {}): SourceNode {
+    return walk(expr, state, { ...baseVisitors, ...visitors });
 }
 
 const baseVisitors = {
-    Program(node: Ast.Program, ctx, next) {
+    Program(node: Ast.Program, state, next) {
         return sn(node.body.map(next), node);
     },
-    Identifier(node: Ast.Identifier, ctx) {
+    Identifier(node: Ast.Identifier, state) {
         if (node.context === 'store') {
-            return sn(ctx.store(node.name), node, node.raw);
+            return sn(state.store(node.name), node, node.raw);
         }
 
-        const prefix = getPrefix(node, ctx);
+        const prefix = getPrefix(node, state);
         return prefix
             ? sn([prefix, propGetter(node.name)], node, node.raw)
             : sn(node.name, node, node.name);
@@ -29,28 +29,28 @@ const baseVisitors = {
     Literal(node: Ast.Literal) {
         return sn(typeof node.value === 'string' ? qStr(node.value) : String(node.value), node);
     },
-    ConditionalExpression(node: Ast.ConditionalExpression, ctx, next) {
+    ConditionalExpression(node: Ast.ConditionalExpression, state, next) {
         // TODO check if parentheses are required here
         return sn(['(', next(node.test), ' ? ', next(node.consequent), ' : ', next(node.alternate), ')'], node);
     },
-    ArrayExpression(node: Ast.ArrayExpression, ctx, next) {
+    ArrayExpression(node: Ast.ArrayExpression, state, next) {
         return sn(commaChunks(node.elements.map(next), '[', ']'), node);
     },
-    BinaryExpression(node: Ast.BinaryExpression, scope, next) {
+    BinaryExpression(node: Ast.BinaryExpression, state, next) {
         // TODO check if parentheses are required here
         return sn(['(', next(node.left), ` ${node.operator} `, next(node.right), ')'], node);
     },
-    LogicalExpression(node: Ast.LogicalExpression, scope, next) {
+    LogicalExpression(node: Ast.LogicalExpression, state, next) {
         // TODO check if parentheses are required here
         return sn(['(', next(node.left), ` ${node.operator} `, next(node.right), ')'], node);
     },
-    ExpressionStatement(node: Ast.ExpressionStatement, ctx, next) {
+    ExpressionStatement(node: Ast.ExpressionStatement, state, next) {
         return next(node.expression);
     },
-    ObjectExpression(node: Ast.ObjectExpression, ctx, next) {
+    ObjectExpression(node: Ast.ObjectExpression, state, next) {
         return sn(commaChunks(node.properties.map(next), '{', '}'), node);
     },
-    Property(node: Ast.Property, ctx, next) {
+    Property(node: Ast.Property, state, next) {
         const key: Chunk = node.key.type === 'Identifier'
             ? node.key.name
             : next(node.key);
@@ -68,13 +68,13 @@ const baseVisitors = {
     RegExpLiteral(node: Ast.RegExpLiteral) {
         return sn(`${node.regex.pattern}/${node.regex.flags}`, node);
     },
-    SequenceExpression(node: Ast.SequenceExpression, ctx, next) {
+    SequenceExpression(node: Ast.SequenceExpression, state, next) {
         return sn(commaChunks(node.expressions.map(next)), node);
     },
-    UnaryExpression(node: Ast.UnaryExpression, ctx, next) {
+    UnaryExpression(node: Ast.UnaryExpression, state, next) {
         return sn([node.operator, node.operator.length > 2 ? ' ' : '', next(node.argument)], node);
     },
-    CallExpression(node: Ast.CallExpression, ctx, next) {
+    CallExpression(node: Ast.CallExpression, state, next) {
         const args: ChunkList = node.arguments.map(next);
         const { callee } = node;
 
@@ -83,8 +83,8 @@ const baseVisitors = {
                 // Calling helper method
                 // The first argument in helper is always a host component
                 // TODO handle deep requests like `helper.bar()`
-                args.unshift(ctx.host());
-                return sn(commaChunks(args, `${ctx.state.useHelper(callee.name)}(`, ')'), node);
+                args.unshift(state.host);
+                return sn(commaChunks(args, `${state.helper(callee.name)}(`, ')'), node);
             }
 
             if (callee.context === 'store') {
@@ -95,8 +95,8 @@ const baseVisitors = {
 
             if (callee.context === 'property' || callee.context === 'state' || callee.context === 'variable') {
                 return sn([
-                    `${ctx.state.runtime('call')}(`,
-                    getPrefix(callee, ctx), ', ',
+                    `${state.runtime('call')}(`,
+                    getPrefix(callee, state), ', ',
                     qStr(callee.name),
                     sn(args.length ? commaChunks(args, ', [', ']') : ''),
                     ')'
@@ -121,15 +121,15 @@ const baseVisitors = {
     EmptyStatement(node: Ast.EmptyStatement) {
         return sn('', node);
     },
-    ThisExpression(node: Ast.ThisExpression, scope) {
-        return sn(scope.host(), node);
+    ThisExpression(node: Ast.ThisExpression, state) {
+        return sn(state.host, node);
     }
 } as AstVisitorMap;
 
-function walk(node: Ast.Node, ctx: BuilderContext, visitors: AstVisitorMap): SourceNode {
+function walk(node: Ast.Node, state: CompileState, visitors: AstVisitorMap): SourceNode {
     const next: AstContinue = node => {
         if (node.type in visitors) {
-            return visitors[node.type](node, ctx, next);
+            return visitors[node.type](node, state, next);
         }
 
         throw new ENDCompileError(`${node.type} is not supported in getter expressions`, node);
@@ -160,17 +160,17 @@ function commaChunks<T extends Chunk>(items: T[], before?: string, after?: strin
 /**
  * Returns accessor prefix from host component for given token
  */
-function getPrefix(node: Ast.Identifier, ctx: BuilderContext): string {
+function getPrefix(node: Ast.Identifier, state: CompileState): string {
     if (node.context === 'property') {
-        return `${ctx.host()}.props`;
+        return `${state.host}.props`;
     }
 
     if (node.context === 'state') {
-        return `${ctx.host()}.state`;
+        return `${state.host}.state`;
     }
 
     if (node.context === 'variable') {
-        return ctx.scope();
+        return state.scope;
     }
 
     return '';
