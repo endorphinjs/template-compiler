@@ -22,6 +22,10 @@ const baseVisitors = {
                 entity.fill.push(sn[createEntityRef(entity, state), `${state.host}.componentView;`]);
                 attachEntities(entities, ctx, state, entity);
 
+                if (ctx.usesInjector) {
+                    entities.unshift(createInjector(entity.symbol, ctx, state));
+                }
+
                 return entities;
             });
         });
@@ -36,6 +40,11 @@ const baseVisitors = {
                 .concat(flatten(node.body.map(next)))
                 .filter(Boolean);
 
+            // We’ve used injector for current element content: mount it
+            if (ctx.usesInjector) {
+                entities.unshift(createInjector(entity.symbol, ctx, state));
+            }
+
             // Attach created entities
             attachEntities(entities, ctx, state, entity);
 
@@ -47,6 +56,20 @@ const baseVisitors = {
         });
     }
 } as AstVisitorMap;
+
+function createInjector(symbol: string, ctx: ElementContext, state: CompileState): Entity {
+    const injector = new Entity('block', ctx.injector);
+    injector.mount = sn([
+        createRef(ctx.injector, ctx.usage, state),
+        `${state.runtime('createInjector')}(${symbol});`
+    ]);
+
+    if (ctx.usage.update || ctx.usage.unmount) {
+        injector.unmount = `${state.scope}.${ctx.injector} = null;`;
+    }
+
+    return injector;
+}
 
 function attachEntities(entities: Entity[], ctx: ElementContext, state: CompileState, entity: Entity) {
     entities.forEach(childEntity => {
@@ -63,22 +86,7 @@ function attachEntities(entities: Entity[], ctx: ElementContext, state: CompileS
         // Do we need entity reference?
         insert.prepend(createEntityRef(childEntity, state));
         entity.fill.push(insert);
-        // We’ve used injector for current element content: mount it
-        if (ctx.usesInjector) {
-            // TODO remove injector ref in unmount
-            const injector = new Entity('block', ctx.injector);
-            injector.mount = sn([
-                createRef(ctx.injector, ctx.usage, state),
-                `${state.runtime('createInjector')}(${entity.symbol});`
-            ]);
 
-            if (ctx.usage.update || ctx.usage.unmount) {
-                injector.unmount = `${state.scope}.${ctx.injector} = null;`
-            }
-
-            entity.fill.push(injector);
-
-        }
         entity.fill = entity.fill.concat(childEntity.fill);
         childEntity.mount = null;
         childEntity.fill.length = 0;

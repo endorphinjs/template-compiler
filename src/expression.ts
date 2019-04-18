@@ -1,8 +1,9 @@
 import * as Ast from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import { Chunk, ChunkList, sn, propGetter, qStr } from './utils';
+import { sn, propGetter, qStr } from './utils';
 import { ENDCompileError } from './error';
 import CompileState from './compile-state';
+import { Chunk, ChunkList } from './types';
 
 type AstContinue = (node: Ast.Node) => SourceNode;
 type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => SourceNode;
