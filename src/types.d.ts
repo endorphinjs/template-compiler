@@ -1,6 +1,6 @@
 import { SourceNode } from "source-map";
 import CompileState from "./compile-state";
-import { ENDImport } from "@endorphinjs/template-parser";
+import { ENDImport, ENDProgram } from "@endorphinjs/template-parser";
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
@@ -8,6 +8,18 @@ export type RenderContext = 'mount' | 'update' | 'unmount';
 export type EntityType = 'element' | 'attribute' | 'text' | 'directive' | 'variable' | 'block';
 export type UsageStats = { [K in RenderContext]: number };
 export type HelpersMap = { [url: string]: string[] };
+
+export interface ParsedTemplate {
+    /** Original template source code */
+    code: string,
+    url?: string,
+    ast: ENDProgram,
+}
+
+export interface CodeWithMap {
+    code: string,
+    map: object
+}
 
 export interface ComponentImport {
     /** JS symbol for referencing imported module */

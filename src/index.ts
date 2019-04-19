@@ -1,26 +1,15 @@
-import { walk, ENDProgram }  from '@endorphinjs/template-parser';
-import CompileState, { CompileStateOptions } from './compile-state';
+import parse from '@endorphinjs/template-parser';
+import generateTemplate from './template';
 import { ENDCompileError, ENDSyntaxError } from './error';
+import { CompileStateOptions, ParsedTemplate, CodeWithMap } from './types';
 
-interface ParsedTemplate {
-    /** Original template source code */
-    code: string,
-    url?: string,
-    ast: ENDProgram,
-}
-
-interface CodeWithMap {
-    code: string,
-    map: object
+export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap {
+    return generate({ ast: parse(code, url), code, url }, options);
 }
 
 export function generate(parsed: ParsedTemplate, options?: CompileStateOptions): CodeWithMap {
-    const state = new CompileState(options);
     try {
-        state.block('template', block => {
-
-        });
-        const sourceMap = state.output;
+        const sourceMap = generateTemplate(parsed.ast, options);
 
         if (parsed.url) {
             sourceMap.setSourceContent(parsed.url, parsed.code);
@@ -43,5 +32,4 @@ export function generate(parsed: ParsedTemplate, options?: CompileStateOptions):
 
         throw err;
     }
-
 }

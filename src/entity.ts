@@ -24,4 +24,12 @@ export default class Entity {
     push(...items: Array<Chunk | ChunkList>): ChunkList {
         return this.fill = this.fill.concat(...items);
     }
+
+    prepend(chunk: Chunk) {
+        this.fill.unshift(chunk);
+    }
+
+    toString() {
+        return this.symbol;
+    }
 }

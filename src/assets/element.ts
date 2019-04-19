@@ -1,4 +1,4 @@
-import { ENDElement } from "@endorphinjs/template-parser";
+import { ENDElement, Literal } from "@endorphinjs/template-parser";
 import CompileState from "../compile-state";
 import { getControlName, sn, qStr } from "../utils";
 import { Chunk } from "../types";
@@ -6,7 +6,7 @@ import { Chunk } from "../types";
 /**
  * Generates element create code
  */
-export function createElement(node: ENDElement, state: CompileState): Chunk {
+export function createElement(node: ENDElement, state: CompileState, text?: Literal): Chunk {
     const elemName = node.name.name;
     const srcNode = node.name;
 
@@ -23,11 +23,17 @@ export function createElement(node: ENDElement, state: CompileState): Chunk {
     // Create plain DOM element
     const nodeName = getNodeName(elemName);
     const nsSymbol = state.namespace(nodeName.ns);
-    if (nsSymbol) {
-        return sn(`${state.runtime('elemNS')}(${qStr(nodeName.name)}, ${nsSymbol}${cssScopeArg(state)})`, srcNode);
+
+    if (text) {
+        const textValue = qStr(text.value as string);
+        return nsSymbol
+            ? sn(`${state.runtime('elemNSWithText')}(${qStr(nodeName.name)}, ${textValue}, ${nsSymbol}${cssScopeArg(state)})`, srcNode)
+            : sn(`${state.runtime('elemWithText')}(${qStr(elemName)}, ${textValue}${cssScopeArg(state)})`, srcNode);
     }
 
-    return sn(`${state.runtime('elem')}(${qStr(elemName)}${cssScopeArg(state)})`, srcNode);
+    return nsSymbol
+        ? sn(`${state.runtime('elemNS')}(${qStr(nodeName.name)}, ${nsSymbol}${cssScopeArg(state)})`, srcNode)
+        : sn(`${state.runtime('elem')}(${qStr(elemName)}${cssScopeArg(state)})`, srcNode);
 }
 
 function cssScopeArg(state: CompileState): string {

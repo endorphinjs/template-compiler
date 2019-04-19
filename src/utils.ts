@@ -169,12 +169,12 @@ export function isRef(attr: ENDAttribute): boolean {
     return isIdentifier(attr.name) && attr.name.name === 'ref';
 }
 
-export function flatten<T>(arr: Array<T | T[]>): T[] {
-    let result: T[];
+export function flatten<T>(arr: Array<T | T[] | void>): T[] {
+    let result: T[] = [];
     arr.forEach(arg => {
         if (Array.isArray(arg)) {
             result = result.concat(flatten(arg));
-        } else {
+        } else if (arg) {
             result.push(arg);
         }
     });
@@ -198,6 +198,7 @@ export function format(chunks: ChunkList, prefix: string = '', suffix: string = 
     });
     return result;
 }
+
 function isValidChunk(chunk: Chunk): boolean {
     return chunk instanceof SourceNode
         ? chunk.children.length !== 0

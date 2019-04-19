@@ -4,7 +4,7 @@ import createGetter, { RuntimeSymbols, SymbolGetter } from "./symbols";
 import BlockContext from "./block-context";
 import Entity from "./entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { nameToJS, propGetter, usageStats, markUsed, sn, format, isIdentifier, isLiteral } from "./utils";
+import { nameToJS, propGetter, markUsed, sn, format, isIdentifier, isLiteral } from "./utils";
 import ElementContext from "./element-context";
 import { Chunk, RenderContext, EntityType, ChunkList, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
 
@@ -30,7 +30,7 @@ export default class CompileState {
     readonly cssScopeSymbol = 'cssScope';
 
     /** Endorphin runtime symbols required by compiled template */
-    private usedRuntime: Set<RuntimeSymbols> = new Set();
+    usedRuntime: Set<RuntimeSymbols> = new Set();
 
     /** List of helpers used in compiled template */
     private usedHelpers: Set<string> = new Set();
@@ -63,12 +63,10 @@ export default class CompileState {
     readonly componentsMap: Map<string, ComponentImport> = new Map();
 
     /** List of used namespaces and their JS symbols */
-    private namespaceSymbols: Map<string, string> = new Map();
+    namespaceSymbols: Map<string, string> = new Map();
 
     /** Current namespaces */
     private namespaceMap: NamespaceMap = {};
-
-    private scopeUsage = usageStats();
 
     /**
      * List of available helpers. Key is a helper name (name of function) and value
@@ -111,17 +109,24 @@ export default class CompileState {
 
     /** Symbol for referencing runtime scope */
     get scope(): string {
-        markUsed(this.scopeUsage, this.blockRenderContext);
+        markUsed(this.blockContext.scopeUsage, this.blockRenderContext);
         return this.options.scope;
     }
 
-    /** Symbol for referencing injector */
+    /** Symbol for referencing current element’s injector */
     get injector(): string {
         const elem = this.blockContext && this.blockContext.element;
         if (elem) {
             markUsed(elem.usage, this.blockRenderContext);
             return elem.injector;
         }
+    }
+
+    /** Symbol for referencing current element */
+    get element(): string {
+        return this.blockContext
+            && this.blockContext.element
+            && this.blockContext.element.symbol;
     }
 
     /**
@@ -156,7 +161,7 @@ export default class CompileState {
      * and added into final output
      * @returns Variable name for given block, generated from `name` argument
      */
-    block(name: string, fn: (block: BlockContext) => Entity[]): string {
+    runBlock(name: string, fn: (block: BlockContext) => Entity[]): string {
         const varName = this.globalSymbol(name);
         const block = new BlockContext(varName);
         const prevBlock = this.blockContext;
@@ -176,9 +181,6 @@ export default class CompileState {
         let mountChunks: ChunkList = [];
         const updateChunks: ChunkList = [];
         const unmountChunks: ChunkList = [];
-        let mountScopeUsage = 0;
-        let updateScopeUsage = 0;
-        let unmountScopeUsage = 0;
 
         entities.forEach(entity => {
             if (entity.mount) {
@@ -197,10 +199,6 @@ export default class CompileState {
             if (entity.unmount) {
                 unmountChunks.push(entity.unmount);
             }
-
-            mountScopeUsage += entity.usage.mount;
-            updateScopeUsage += entity.usage.update;
-            unmountScopeUsage += entity.usage.unmount;
         });
 
         if (updateChunks.length) {
@@ -208,13 +206,14 @@ export default class CompileState {
         }
 
         if (toNull.length) {
-            unmountScopeUsage++;
+            markUsed(block.scopeUsage, 'unmount');
             unmountChunks.push(toNull.map(entity => `${scope}.${entity.symbol} = `).join('') + 'null');
         }
 
-        this.outputFunction(varName, `${this.host}${scopeArg(mountScopeUsage)}`, mountChunks);
-        this.outputFunction(`${varName}Update`, `${this.host}${scopeArg(updateScopeUsage)}`, updateChunks);
-        this.outputFunction(`${varName}Unmount`, unmountScopeUsage ? scope : '', unmountChunks);
+
+        this.pushFunction(varName, `${this.host}${scopeArg(block.scopeUsage.mount)}`, mountChunks);
+        this.pushFunction(`${varName}Update`, `${this.host}${scopeArg(block.scopeUsage.update)}`, updateChunks);
+        this.pushFunction(`${varName}Unmount`, block.scopeUsage.unmount ? scope : '', unmountChunks);
 
         return varName;
     }
@@ -222,7 +221,7 @@ export default class CompileState {
     /**
      * Runs given `fn` function in context of `node` element
      */
-    element(node: ENDTemplate | ENDElement, fn: (element: ElementContext, entity: Entity) => Entity[]): Entity[] {
+    runElement(node: ENDTemplate | ENDElement, fn: (element: ElementContext, entity: Entity) => Entity[]): Entity[] {
         const elemName = node.type === 'ENDTemplate' ? 'target' : node.name.name;
         const entity = this.entity('element', elemName);
         const { blockContext } = this;
@@ -243,7 +242,7 @@ export default class CompileState {
         }
 
         let childEntities: Entity[];
-        this.runInContext('mount', () => childEntities = fn(elemCtx, entity));
+        childEntities = this.mount(() => fn(elemCtx, entity));
 
         this.namespaceMap = prevNsMap;
         blockContext.element = prevElem;
@@ -310,6 +309,14 @@ export default class CompileState {
         return this.componentsMap.get(elemName).symbol;
     }
 
+    registerComponent(elem: ENDImport) {
+        this.componentsMap.set(elem.name, {
+            symbol: nameToJS(elem.name, true),
+            href: elem.href,
+            node: elem
+        });
+    }
+
     /**
      * Displays warning with given message
      */
@@ -340,6 +347,37 @@ export default class CompileState {
     }
 
     /**
+     * Generates function from given fragments and pushes it into output
+     */
+    pushFunction(name: string, args: string, chunks: ChunkList): void {
+        if (chunks && chunks.length) {
+            this.pushOutput(sn([
+                `\nfunction ${name}(${args}) {\n${this.indent}`,
+                ...format(chunks, this.indent),
+                '\n}'
+            ]));
+        }
+    }
+
+    /**
+     * Returns map of used helpers and their URLs
+     */
+    getUsedHelpers(): Map<string, string[]> {
+        const result: Map<string, string[]> = new Map();
+
+        this.usedHelpers.forEach(helper => {
+            const url = this.helpers[helper];
+            if (result.has(url)) {
+                result.get(url).push(helper);
+            } else {
+                result.set(url, [helper]);
+            }
+        });
+
+        return result;
+    }
+
+    /**
      * Runs given function in given rendering context
      */
     private runInContext<T>(ctx: RenderContext, fn: (state: this) => T): T {
@@ -348,16 +386,6 @@ export default class CompileState {
         const result = fn(this);
         this.blockRenderContext = prev;
         return result;
-    }
-
-    private outputFunction(name: string, args: string, chunks: ChunkList): void {
-        if (chunks && chunks.length) {
-            this.output.add(sn([
-                `\nfunction ${name}(${args}) {\n${this.indent}`,
-                ...format(chunks, this.indent),
-                '\n}\n'
-            ]));
-        }
     }
 }
 

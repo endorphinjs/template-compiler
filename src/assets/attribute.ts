@@ -1,7 +1,7 @@
 import { SourceNode } from "source-map";
+import { ENDAttributeName, ENDAttributeValue, Program, ENDAttribute } from "@endorphinjs/template-parser";
 import compileExpression from "../expression";
 import { qStr, isLiteral, isIdentifier } from "../utils";
-import { ENDAttributeName, ENDAttributeValue, Program, ENDAttribute } from "@endorphinjs/template-parser";
 import CompileState from "../compile-state";
 import { Chunk } from "../types";
 
@@ -44,7 +44,7 @@ export function compileAttributeValue(value: ENDAttributeValue, state: CompileSt
 }
 
 export function createConcatFunction(prefix: string, state: CompileState, tokens: Array<string | Program>): string {
-    return state.block(prefix, () => {
+    return state.runBlock(prefix, () => {
         const entity = state.entity('block');
         const body = entity.mount = new SourceNode();
 
