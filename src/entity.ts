@@ -17,4 +17,11 @@ export default class Entity {
             ? this.symbolGetter
             : this.symbolGetter();
     }
+
+    /**
+     * Adds given chunks to entity content fill section
+     */
+    push(...items: Array<Chunk | ChunkList>): ChunkList {
+        return this.fill = this.fill.concat(...items);
+    }
 }

@@ -4,53 +4,12 @@ import createGetter, { RuntimeSymbols, SymbolGetter } from "./symbols";
 import BlockContext from "./block-context";
 import Entity from "./entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { tagToJS as nameToJS, propGetter, usageStats, markUsed, sn, format } from "./utils";
+import { nameToJS, propGetter, usageStats, markUsed, sn, format, isIdentifier, isLiteral } from "./utils";
 import ElementContext from "./element-context";
-import { Chunk, RenderContext, EntityType, ChunkList } from "./types";
+import { Chunk, RenderContext, EntityType, ChunkList, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
 
-type HelpersMap = { [url: string]: string[] };
 type PlainObject = { [key: string]: string };
-
-export interface CompileStateOptions {
-    /** Path to JS module that holds Endorphin runtime functions */
-    module?: string;
-
-    /** Symbol for referencing host component of the rendered template */
-    host?: string;
-
-    /** Symbol for referencing local scope of rendered component */
-    scope?: string;
-
-    /** Symbol for referencing partials container of rendered component */
-    partials?: string;
-
-    /** String token for scoping CSS styles of component */
-    cssScope?: string;
-
-    /**
-     * List of supported helpers. Key is an URL of module and value is a list of
-     * available (exported) functions in this module
-     */
-    helpers?: HelpersMap;
-
-    /** Name of component being compiled, must be in CamelCase */
-    component?: string;
-
-    /** Characters for one level of indentation */
-    indent?: string;
-
-    /** Prefix for generated top-level module symbols */
-    prefix?: string;
-
-    /** Suffix for generated top-level module symbols */
-    suffix?: string;
-
-    /** Do not import components which were detected as unused */
-    removeUnusedImports?: boolean;
-
-    /** Called with warning messages */
-    warn?(msg: string, pos?: number): void;
-}
+type NamespaceMap = { [prefix: string]: string };
 
 export const defaultOptions: CompileStateOptions = {
     host: 'host',
@@ -66,22 +25,6 @@ export const defaultOptions: CompileStateOptions = {
     }
 }
 
-interface ComponentImport {
-    /** JS symbol for referencing imported module */
-    symbol: string;
-
-    /** URL of module */
-    href: string;
-
-    /** Source node */
-    node: ENDImport;
-
-    /** Indicates given component was used */
-    used?: boolean;
-}
-
-type NamespaceMap = { [prefix: string]: string };
-
 export default class CompileState {
     /** Symbol for referencing CSS isolation scope */
     readonly cssScopeSymbol = 'cssScope';
@@ -93,7 +36,7 @@ export default class CompileState {
     private usedHelpers: Set<string> = new Set();
 
     /** List of symbols used for store access in template */
-    private usedStore: Set<string> = new Set();
+    usedStore: Set<string> = new Set();
 
     /** Context of currently rendered block */
     blockContext?: BlockContext;
@@ -161,6 +104,11 @@ export default class CompileState {
         return this.options.host;
     }
 
+    // TODO implement
+    get hasPartials(): boolean {
+        return false;
+    }
+
     /** Symbol for referencing runtime scope */
     get scope(): string {
         markUsed(this.scopeUsage, this.blockRenderContext);
@@ -179,8 +127,8 @@ export default class CompileState {
     /**
      * Creates entity symbol getter for given context
      */
-    entity(type: EntityType, name: string): Entity {
-        const symbol = this.globalSymbol(nameToJS(name));
+    entity(type: EntityType, name?: string): Entity {
+        const symbol = this.globalSymbol(nameToJS(name || type));
         const entity = new Entity(type, () => {
             markUsed(entity.usage, this.blockRenderContext);
             return symbol;
@@ -191,7 +139,7 @@ export default class CompileState {
     /**
      * Returns current namespace JS symbol for given prefix, if available
      */
-    namespace(prefix: string = ''): string | null {
+    namespace(prefix: string = ''): string {
         const uri = this.namespaceMap[prefix];
         if (uri) {
             if (!this.namespaceSymbols.has(uri)) {
@@ -206,9 +154,9 @@ export default class CompileState {
      * Creates new block with `name` and runs `fn` function in its context.
      * Block context, accumulated during `fn` run, will be generates and JS code
      * and added into final output
-     * @returns Variables name for given block, generated from `name` argument
+     * @returns Variable name for given block, generated from `name` argument
      */
-    block(name: string, fn: (block: BlockContext) => Entity[]): void {
+    block(name: string, fn: (block: BlockContext) => Entity[]): string {
         const varName = this.globalSymbol(name);
         const block = new BlockContext(varName);
         const prevBlock = this.blockContext;
@@ -267,6 +215,8 @@ export default class CompileState {
         this.outputFunction(varName, `${this.host}${scopeArg(mountScopeUsage)}`, mountChunks);
         this.outputFunction(`${varName}Update`, `${this.host}${scopeArg(updateScopeUsage)}`, updateChunks);
         this.outputFunction(`${varName}Unmount`, unmountScopeUsage ? scope : '', unmountChunks);
+
+        return varName;
     }
 
     /**
@@ -320,22 +270,44 @@ export default class CompileState {
     /**
      * Runs given function in `mount` block context
      */
-    mount(fn: (state: this) => void): void {
-        this.runInContext('mount', fn);
+    mount<T>(fn: (state: this) => T): T {
+        return this.runInContext('mount', fn);
     }
 
     /**
      * Runs given function in `update` block context
      */
-    update(fn: (state: this) => void): void {
-        this.runInContext('update', fn);
+    update<T>(fn: (state: this) => T): T {
+        return this.runInContext('update', fn);
     }
 
     /**
      * Runs given function in `unmount` block context
      */
-    unmount(fn: (state: this) => void): void {
-        this.runInContext('unmount', fn);
+    unmount<T>(fn: (state: this) => T): T {
+        return this.runInContext('unmount', fn);
+    }
+
+    /**
+     * Check if given element is a *registered* component
+     */
+    isComponent(elem: ENDElement): boolean {
+        const elemName = elem.name.name;
+        if (this.componentsMap.has(elem.name.name)) {
+            return true;
+        }
+
+        if (elem.component) {
+            this.warnOnce(elemName, `Missing component definition for <${elemName}>, did you forgot to <link rel="import"> it?`, elem.loc.start.offset);
+        }
+    }
+
+    /**
+     * Returns component definition symbol for given element
+     */
+    getComponent(elem: ENDElement): string {
+        const elemName = elem.name.name;
+        return this.componentsMap.get(elemName).symbol;
     }
 
     /**
@@ -370,15 +342,16 @@ export default class CompileState {
     /**
      * Runs given function in given rendering context
      */
-    private runInContext(ctx: RenderContext, fn: (state: this) => void): void {
+    private runInContext<T>(ctx: RenderContext, fn: (state: this) => T): T {
         const prev = this.blockRenderContext;
         this.blockRenderContext = ctx;
-        fn(this);
+        const result = fn(this);
         this.blockRenderContext = prev;
+        return result;
     }
 
     private outputFunction(name: string, args: string, chunks: ChunkList): void {
-        if (chunks) {
+        if (chunks && chunks.length) {
             this.output.add(sn([
                 `\nfunction ${name}(${args}) {\n${this.indent}`,
                 ...format(chunks, this.indent),
@@ -408,11 +381,11 @@ function prepareHelpers(...helpers: HelpersMap[]): PlainObject {
 function collectNamespaces(elem: ENDElement): NamespaceMap {
     const result = {};
     elem.attributes.forEach(attr => {
-        if (attr.name.type === 'Identifier') {
+        if (isIdentifier(attr.name)) {
             const parts = attr.name.name.split(':');
             const prefix = parts.shift();
 
-            if (prefix === 'xmlns' && attr.value.type === 'Literal') {
+            if (prefix === 'xmlns' && isLiteral(attr.value)) {
                 result[parts.join(':')] = String(attr.value.value);
             }
         }

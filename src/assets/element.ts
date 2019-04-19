@@ -15,9 +15,9 @@ export function createElement(node: ENDElement, state: CompileState): Chunk {
         return sn([`${state.runtime('createComponent')}(${state.host}.nodeName, ${state.host}).componentModel.definition, ${state.host})`], srcNode);
     }
 
-    if (node.component) {
+    if (state.isComponent(node)) {
         // Create component
-        return sn([`${state.runtime('createComponent')}(${qStr(elemName)}, ${state.componentsMap.get(elemName).symbol}, ${state.host})`], srcNode);
+        return sn([`${state.runtime('createComponent')}(${qStr(elemName)}, ${state.getComponent(node)}, ${state.host})`], srcNode);
     }
 
     // Create plain DOM element

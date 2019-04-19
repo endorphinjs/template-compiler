@@ -1,5 +1,5 @@
 import { SourceNode } from 'source-map';
-import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute } from '@endorphinjs/template-parser';
+import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
 import generateExpression from './expression';
 import CompileState from './compile-state';
 import { Chunk, ChunkList, UsageStats, RenderContext } from './types';
@@ -13,7 +13,7 @@ const nsPrefix = prefix + ':';
 /**
  * Converts given HTML tag name to JS variable name
  */
-export function tagToJS(name: string, capitalize: boolean = false): string {
+export function nameToJS(name: string, capitalize: boolean = false): string {
     name = name
         .replace(/-(\w)/g, (str: string, p1: string) => p1.toUpperCase())
         .replace(/\W/g, '_');
@@ -54,10 +54,31 @@ export function sn(chunks: Chunk | ChunkList, node?: Node, name?: string): Sourc
 }
 
 /**
- * Check if given name can be used as property identifier
+ * Check if given name can be used as property identifier literal
  */
-export function isIdentifier(name: string): boolean {
+export function isPropKey(name: string): boolean {
     return /^[a-zA-Z_$][\w_$]*$/.test(name);
+}
+
+/**
+ * Check if given AST node is an identifier
+ */
+export function isIdentifier(node: Node): node is Identifier {
+    return node.type === 'Identifier';
+}
+
+/**
+ * Check if given AST node is a literal value
+ */
+export function isLiteral(node: Node): node is Literal {
+    return node.type === 'Literal';
+}
+
+/**
+ * Check if given AST node is a an expression
+ */
+export function isExpression(node: Node): node is Program {
+    return node.type === 'Program';
 }
 
 /**
@@ -84,7 +105,7 @@ export function markUsed(stats: UsageStats, ctx: RenderContext): void {
  * Returns attribute with given name from tag name definition, if any
  */
 export function getAttr(elem: ENDElement | ENDAttributeStatement, name: string): ENDAttribute {
-    return elem.attributes.find(attr => attr.name.type === 'Identifier' && attr.name.name === name);
+    return elem.attributes.find(attr => isIdentifier(attr.name) && attr.name.name === name);
 }
 
 /**
@@ -92,7 +113,7 @@ export function getAttr(elem: ENDElement | ENDAttributeStatement, name: string):
  */
 export function getAttrValue(openTag: ENDElement | ENDAttributeStatement, name: string): LiteralValue {
     const attr = getAttr(openTag, name);
-    if (attr && attr.value.type === 'Literal') {
+    if (attr && isLiteral(attr.value)) {
         return attr.value.value;
     }
 }
@@ -124,7 +145,7 @@ export function qStr(text: string): string {
  * Generates property getter code
  */
 export function propGetter(name: string): string {
-    return isIdentifier(name) ? `.${name}` : `[${qStr(name)}]`;
+    return isPropKey(name) ? `.${name}` : `[${qStr(name)}]`;
 }
 
 /**
@@ -137,7 +158,15 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
         return result;
     }
 
-    return isIdentifier(node.name) ? node.name : qStr(node.name)
+    return isPropKey(node.name) ? node.name : qStr(node.name)
+}
+
+/**
+ * Check if given attribute is an element reference
+ * @param attr
+ */
+export function isRef(attr: ENDAttribute): boolean {
+    return isIdentifier(attr.name) && attr.name.name === 'ref';
 }
 
 export function flatten<T>(arr: Array<T | T[]>): T[] {
