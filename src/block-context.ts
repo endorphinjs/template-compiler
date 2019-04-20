@@ -4,9 +4,13 @@ import CompileState from "./compile-state";
 import { ChunkList, Chunk } from "./types";
 import Entity from "./entity";
 
+const injectorArg = 'injector';
+
 export default class BlockContext {
     element?: ElementContext;
     scopeUsage = usageStats();
+
+    usesInjector?: boolean;
 
     /**
      * @param name Name of the block, will be used as suffix in generated function
@@ -27,6 +31,16 @@ export default class BlockContext {
      */
     get rawScope(): string {
         return this.state.options.scope;
+    }
+
+    get injector(): string {
+        if (this.element) {
+            return this.element.injector;
+        }
+
+        // Assume that block should receive injector as argument
+        this.usesInjector = true;
+        return injectorArg;
     }
 
     /**
@@ -88,7 +102,7 @@ export default class BlockContext {
 
         const { indent } = state;
         return [
-            createFunction(name, `${state.host}${scopeArg(scopeUsage.mount)}`, mountChunks, indent),
+            createFunction(name, `${state.host}${this.usesInjector ? ', ' + injectorArg : ''}${scopeArg(scopeUsage.mount)}`, mountChunks, indent),
             createFunction(`${name}Update`, `${state.host}${scopeArg(scopeUsage.update)}`, updateChunks, indent),
             createFunction(`${name}Unmount`, scopeArg(scopeUsage.unmount, true), unmountChunks, indent)
         ];

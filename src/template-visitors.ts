@@ -2,12 +2,11 @@ import * as Ast from '@endorphinjs/template-parser';
 import Entity from './entity';
 import CompileState from './compile-state';
 import { flatten, sn, isLiteral, qStr } from './utils';
-import ElementContext from './element-context';
-import { SourceNode } from 'source-map';
 import { createElement } from './assets/element';
 import { attributeEntity } from './assets/attribute';
 import generateExpression from './expression';
-import { UsageStats, Chunk } from './types';
+import { Chunk } from './types';
+import { conditionEntity } from './assets/condition';
 
 export type AstContinue = (node: Ast.Node) => Entity | Entity[] | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | Entity[] | void;
@@ -17,15 +16,16 @@ export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
         const name = state.runBlock('template', () => {
             return state.runElement(node, (ctx, entity) => {
-                const injector = ctx.usesInjector;
-                const entities = flatten(
-                    injector && createInjector(entity.symbol, ctx, state),
-                    node.body.map(next),
-                ) as Entity[];
+                const entities = flatten(node.body.map(next)) as Entity[];
 
-                attachEntities(entity, entities, state, injector);
+                if (ctx.usesInjector) {
+                    entities.unshift(ctx.createInjector());
+                }
 
-                entity.mount(() => sn([createEntityVar(entity, state), `${state.host}.componentView;`]));
+                // Attach created entities
+                ctx.attachEntities(entities);
+
+                entity.mount(() => sn([entity.createVar(), `${state.host}.componentView;`]));
 
                 if (state.usedStore.size) {
                     entity.push(subscribeStore(state));
@@ -47,16 +47,18 @@ export default {
                 entity.mount(() => createElement(node, state));
 
                 // Generate contents
-                const injector = ctx.usesInjector;
                 const entities = flatten(
-                    injector && createInjector(entity.symbol, ctx, state),
                     node.ref && refEntity(node.ref, state),
                     node.attributes.map(next),
                     flatten(node.body.map(next))
                 ) as Entity[];
 
+                if (ctx.usesInjector) {
+                    entities.unshift(ctx.createInjector());
+                }
+
                 // Attach created entities
-                attachEntities(entity, entities, state, injector);
+                ctx.attachEntities(entities);
 
                 if (node.component) {
                     // TODO Mount component
@@ -90,74 +92,16 @@ export default {
         return state.entity('text')
             .mount(() => sn([`${state.runtime('text')}(`, expr, ')'], node))
             .update(entity => sn([`${state.runtime('updateText')}(${entity.symbol}, `, expr, ');'], node));
+    },
+
+    ENDIfStatement(node: Ast.ENDIfStatement, state, next) {
+        return conditionEntity(node, state, next);
+    },
+
+    ENDChooseStatement(node: Ast.ENDChooseStatement, state, next) {
+        return conditionEntity(node, state, next);
     }
 } as AstVisitorMap;
-
-function attachEntities(entity: Entity, children: Entity[], state: CompileState, useInjector?: boolean) {
-    children.forEach(childEntity => {
-        if (childEntity.mountCode) {
-            let insert: SourceNode;
-            if (childEntity.type === 'element' || childEntity.type === 'text') {
-                // Attach child element
-                insert = useInjector
-                    ? sn([`${state.runtime('insert')}(${state.injector}, `, childEntity.mountCode, `);`])
-                    : sn([`${entity.symbol}.appendChild(`, childEntity.mountCode, `);`]);
-            }
-            else {
-                insert = sn(childEntity.mountCode);
-            }
-            // Do we need entity reference?
-            insert.prepend(createEntityVar(childEntity, state));
-            entity.push(insert);
-            childEntity.mountCode = null;
-        }
-
-        entity.push(childEntity.content);
-        childEntity.content.length = 0;
-    });
-}
-
-/**
- * Creates injector entity
- */
-function createInjector(symbol: string, ctx: ElementContext, state: CompileState): Entity {
-    const injector = state.entity('block', ctx.injector);
-
-    injector.mount(() => sn([
-        createVar(ctx.injector, ctx.usage, state),
-        `${state.runtime('createInjector')}(${symbol});`
-    ]));
-
-    if (ctx.usage.update || ctx.usage.unmount) {
-        injector.unmount(() => `${state.scope}.${ctx.injector} = null;`);
-    }
-
-    return injector;
-}
-
-/**
- * Returns code for referencing entity by symbol depending on its usage stats
- */
-function createVar(symbol: Entity | string, usage: UsageStats, state: CompileState): string {
-    let result = '';
-
-    if (usage.mount) {
-        result += `const ${symbol} = `;
-    }
-
-    if (usage.update || usage.unmount) {
-        result += `${state.scope}.${symbol} = `;
-    }
-
-    return result;
-}
-
-/**
- * Returns code for referencing entity depending on its usage stats
- */
-function createEntityVar(entity: Entity, state: CompileState): string {
-    return createVar(entity, entity.usage, state);
-}
 
 /**
  * Creates element ref entity

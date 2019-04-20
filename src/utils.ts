@@ -194,6 +194,23 @@ export function format(chunks: ChunkList, prefix: string = '', suffix: string = 
     return result;
 }
 
+/**
+ * Returns code for referencing entity by symbol depending on its usage stats
+ */
+export function createVar(symbol: { toString(): string }, usage: UsageStats, state: CompileState): string {
+    let result = '';
+
+    if (usage.mount) {
+        result += `const ${symbol} = `;
+    }
+
+    if (usage.update || usage.unmount) {
+        result += `${state.scope}.${symbol} = `;
+    }
+
+    return result;
+}
+
 function isValidChunk(chunk: Chunk): boolean {
     return chunk instanceof SourceNode
         ? chunk.children.length !== 0

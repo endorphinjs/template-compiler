@@ -1,5 +1,5 @@
 import { Chunk, ChunkList, EntityType } from "./types";
-import { usageStats, markUsed } from "./utils";
+import { usageStats, markUsed, createVar } from "./utils";
 import CompileState from "./compile-state";
 
 type RenderChunk = (entity: Entity) => Chunk;
@@ -22,6 +22,9 @@ export default class Entity {
     get symbol(): string {
         if (this.state) {
             markUsed(this.usage, this.state.renderContext);
+            if (this.state.renderContext === 'unmount') {
+                return `${this.state.scope}.${this._symbol}`;
+            }
         }
         return this._symbol;
     }
@@ -77,7 +80,14 @@ export default class Entity {
         this.content.unshift(chunk);
     }
 
-    toString() {
+    /**
+     * Creates variable references for current entity based on its usage stats
+     */
+    createVar(): string {
+        return createVar(this, this.usage, this.state);
+    }
+
+    toString(): string {
         return this.symbol;
     }
 }

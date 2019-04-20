@@ -1,7 +1,8 @@
 import { ENDElement, ENDTemplate, Node, ENDAttributeStatement, ENDAttribute, ENDStatement } from "@endorphinjs/template-parser";
 import Entity from "./entity";
-import { usageStats, isLiteral, isExpression, isIdentifier, markUsed } from "./utils";
+import { usageStats, isLiteral, isExpression, isIdentifier, markUsed, sn, createVar } from "./utils";
 import CompileState from "./compile-state";
+import { SourceNode } from "source-map";
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -87,6 +88,58 @@ export default class ElementContext {
         }
 
         return false;
+    }
+
+    /**
+     * Returns code for appending given entity as a child to current element
+     * @param entity
+     */
+    appendChild(entity: Entity, injector?: string): SourceNode {
+        if (entity.type === 'element' || entity.type === 'text') {
+            // Attach child element
+            return injector
+                ? sn([`${this.state.runtime('insert')}(${injector}, `, entity.mountCode, `);`])
+                : sn([`${this.symbol}.appendChild(`, entity.mountCode, `);`]);
+        }
+
+        return sn(entity.mountCode);
+    }
+
+    /**
+     * Attaches given entities to current element context
+     */
+    attachEntities(children: Entity[]) {
+        children.forEach(childEntity => {
+            if (childEntity.mountCode) {
+                const insert = this.appendChild(childEntity, this.usesInjector ? this.injector : null);
+
+                // Do we need entity reference?
+                insert.prepend(childEntity.createVar());
+                this.entity.push(insert);
+                childEntity.mountCode = null;
+            }
+
+            this.entity.push(childEntity.content);
+            childEntity.content.length = 0;
+        });
+    }
+
+    /**
+     * Creates injector entity
+     */
+    createInjector(): Entity {
+        const injector = this.state.entity('block', this.injector);
+
+        injector.mount(() => sn([
+            createVar(this.injector, this.usage, this.state),
+            `${this.state.runtime('createInjector')}(${this.symbol});`
+        ]));
+
+        if (this.usage.update || this.usage.unmount) {
+            injector.unmount(() => `${this.state.scope}.${this.injector} = null;`);
+        }
+
+        return injector;
     }
 }
 

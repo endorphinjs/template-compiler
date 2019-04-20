@@ -109,10 +109,7 @@ export default class CompileState {
 
     /** Symbol for referencing current element’s injector */
     get injector(): string {
-        const elem = this.blockContext && this.blockContext.element;
-        if (elem) {
-            return elem.injector;
-        }
+        return this.blockContext.injector;
     }
 
     /** Symbol for referencing current element */
@@ -140,7 +137,7 @@ export default class CompileState {
      * Creates entity symbol getter for given context
      */
     entity(type: EntityType, name?: string): Entity {
-        const symbol = this.globalSymbol(nameToJS(name || type));
+        const symbol = this.scopeSymbol(nameToJS(name || type));
         return new Entity(type, symbol, this);
     }
 
