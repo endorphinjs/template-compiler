@@ -8,9 +8,11 @@ describe('New compiler', () => {
     }
 
     it.only('debug', () => {
-        const file = 'templates/basic2.html';
-        const { code } = compile(read(`./samples/${file}`), file);
-        fs.writeFileSync(path.resolve(__dirname, `./fixtures2/${file.replace(/\.html$/, '.js')}`), code.trim());
-        console.log(code);
+        const files = ['templates/basic1.html', 'templates/basic2.html'];
+
+        files.forEach(file => {
+            const { code } = compile(read(`./samples/${file}`), file);
+            fs.writeFileSync(path.resolve(__dirname, `./fixtures2/${file.replace(/\.html$/, '.js')}`), code.trim());
+        });
     });
 });

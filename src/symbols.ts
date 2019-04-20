@@ -11,15 +11,3 @@ export type RuntimeSymbols = 'mountBlock' | 'updateBlock' | 'unmountBlock'
     | 'insert' | 'get' | 'call' | 'assign' | 'elem' | 'elemWithText' | 'elemNS'
     | 'elemNSWithText' | 'text' | 'filter' | 'subscribeStore'
     | 'animateIn' | 'animateOut';
-
-export type SymbolGetter = <T extends RuntimeSymbols>(symbol: T) => T;
-
-/**
- * A symbol getter adds all symbols into `used` set
- */
-export default function createGetter(used: Set<RuntimeSymbols>): SymbolGetter {
-    return symbol => {
-        used.add(symbol);
-        return symbol;
-    };
-}

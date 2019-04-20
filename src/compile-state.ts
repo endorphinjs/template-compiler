@@ -1,12 +1,12 @@
 import { SourceNode } from "source-map";
 import { ENDElement, ENDImport, ENDTemplate } from "@endorphinjs/template-parser";
-import createGetter, { RuntimeSymbols, SymbolGetter } from "./symbols";
+import { RuntimeSymbols } from "./symbols";
 import BlockContext from "./block-context";
+import ElementContext from "./element-context";
 import Entity from "./entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { nameToJS, propGetter, markUsed, sn, format, isIdentifier, isLiteral } from "./utils";
-import ElementContext from "./element-context";
-import { Chunk, RenderContext, EntityType, ChunkList, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
+import { nameToJS, propGetter, isIdentifier, isLiteral, flatten } from "./utils";
+import { Chunk, RenderContext, EntityType, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
 
 type PlainObject = { [key: string]: string };
 type NamespaceMap = { [prefix: string]: string };
@@ -17,7 +17,7 @@ export const defaultOptions: CompileStateOptions = {
     partials: 'partials',
     indent: '\t',
     prefix: '',
-    suffix: '$$',
+    suffix: '$',
     module: '@endorphinjs/endorphin',
     component: '',
     helpers: {
@@ -43,12 +43,6 @@ export default class CompileState {
     private _renderContext?: RenderContext;
 
     readonly options: CompileStateOptions;
-
-    /**
-     * Getter for Endorphin runtime symbols: marks given symbol as used to
-     * explicitly import it from Endorphin runtime lib
-     */
-    readonly runtime: SymbolGetter;
 
     /** Generated code output */
     readonly output = new SourceNode();
@@ -85,11 +79,11 @@ export default class CompileState {
             ...(defaultOptions.helpers || {}),
             ...(options && options.helpers || {})
         });
-        this.runtime = createGetter(this.usedRuntime);
 
-        const suffix = nameToJS(this.options.component || '', true) + (this.options.suffix || '');
-        this.globalSymbol = createSymbolGenerator(this.options.prefix, num => suffix + num.toString(36));
-        this.scopeSymbol = createSymbolGenerator(this.options.prefix, num => this.options.suffix + num.toString(36));
+        const { prefix = '', suffix = '' } = this.options;
+        const globalSuffix = nameToJS(this.options.component || '', true) + suffix;
+        this.globalSymbol = createSymbolGenerator(prefix, num => globalSuffix + num.toString(36));
+        this.scopeSymbol = createSymbolGenerator(prefix, num => suffix + num.toString(36));
     }
 
     /** Current indentation token */
@@ -109,15 +103,14 @@ export default class CompileState {
 
     /** Symbol for referencing runtime scope */
     get scope(): string {
-        markUsed(this.blockContext.scopeUsage, this.renderContext);
-        return this.options.scope;
+        const { blockContext } = this;
+        return blockContext ? blockContext.scope : this.options.scope;
     }
 
     /** Symbol for referencing current element’s injector */
     get injector(): string {
         const elem = this.blockContext && this.blockContext.element;
         if (elem) {
-            markUsed(elem.usage, this.renderContext);
             return elem.injector;
         }
     }
@@ -132,6 +125,15 @@ export default class CompileState {
     /** Current rendering context */
     get renderContext(): RenderContext {
         return this._renderContext;
+    }
+
+    /**
+     * Getter for Endorphin runtime symbols: marks given symbol as used to
+     * explicitly import it from Endorphin runtime lib
+     */
+    runtime(symbol: RuntimeSymbols): RuntimeSymbols {
+        this.usedRuntime.add(symbol);
+        return symbol;
     }
 
     /**
@@ -163,62 +165,20 @@ export default class CompileState {
      * @returns Variable name for given block, generated from `name` argument
      */
     runBlock(name: string, fn: (block: BlockContext) => Entity | Entity[]): string {
-        const varName = this.globalSymbol(name);
-        const block = new BlockContext(varName);
+        const block = new BlockContext(this.globalSymbol(name), this);
         const prevBlock = this.blockContext;
 
         this.blockContext = block;
-        const result = fn(block);
+        const result = this.mount(() => fn(block));
         const entities = Array.isArray(result)
             ? result.filter(Boolean)
             : (result ? [result] : []);
         this.blockContext = prevBlock;
 
-        // Generate mount, update and unmount functions from received entities
+        block.generate(entities)
+            .forEach(chunk => this.pushOutput(chunk));
 
-        // List of entities that must be explicitly nulled because of absent unmount code
-        const toNull: Entity[] = [];
-
-        const { scope } = this.options;
-        const scopeArg = (count: number): string => count ? `, ${scope}` : '';
-
-        let mountChunks: ChunkList = [];
-        const updateChunks: ChunkList = [];
-        const unmountChunks: ChunkList = [];
-
-        entities.forEach(entity => {
-            if (entity.mountCode) {
-                mountChunks.push(entity.mountCode);
-            }
-
-            mountChunks = mountChunks.concat(entity.content);
-
-            if (entity.updateCode) {
-                updateChunks.push(entity.updateCode);
-                if (!entity.unmountCode) {
-                    toNull.push(entity);
-                }
-            }
-
-            if (entity.unmountCode) {
-                unmountChunks.push(entity.unmountCode);
-            }
-        });
-
-        if (updateChunks.length) {
-            mountChunks.push(`return ${varName}Update;`);
-        }
-
-        if (toNull.length) {
-            markUsed(block.scopeUsage, 'unmount');
-            unmountChunks.push(toNull.map(entity => `${scope}.${entity.symbol} = `).join('') + 'null');
-        }
-
-        this.pushFunction(varName, `${this.host}${scopeArg(block.scopeUsage.mount)}`, mountChunks);
-        this.pushFunction(`${varName}Update`, `${this.host}${scopeArg(block.scopeUsage.update)}`, updateChunks);
-        this.pushFunction(`${varName}Unmount`, block.scopeUsage.unmount ? scope : '', unmountChunks);
-
-        return varName;
+        return block.name;
     }
 
     /**
@@ -228,14 +188,14 @@ export default class CompileState {
         const elemName = node.type === 'ENDTemplate' ? 'target' : node.name.name;
         const entity = this.entity('element', elemName);
         const { blockContext } = this;
+
         if (!blockContext) {
             throw new Error('Unable to run in element context: parent block is absent');
         }
 
         const prevElem = blockContext.element;
         const prevNsMap = this.namespaceMap;
-        const elemCtx = blockContext.element
-            = new ElementContext(node, entity, this.scopeSymbol);
+        const elemCtx = blockContext.element = new ElementContext(node, entity, this);
 
         if (node.type === 'ENDElement') {
             this.namespaceMap = {
@@ -244,12 +204,11 @@ export default class CompileState {
             };
         }
 
-        let childEntities: Entity[];
-        childEntities = this.mount(() => fn(elemCtx, entity));
+        const childEntities = fn(elemCtx, entity);
 
         this.namespaceMap = prevNsMap;
         blockContext.element = prevElem;
-        return [entity].concat(childEntities).filter(Boolean);
+        return flatten(entity, childEntities);
     }
 
     /**
@@ -353,19 +312,6 @@ export default class CompileState {
         if (chunk) {
             this.output.add(chunk);
             this.output.add('\n');
-        }
-    }
-
-    /**
-     * Generates function from given fragments and pushes it into output
-     */
-    pushFunction(name: string, args: string, chunks: ChunkList): void {
-        if (chunks && chunks.length) {
-            this.pushOutput(sn([
-                `\nfunction ${name}(${args}) {\n${this.indent}`,
-                ...format(chunks, this.indent),
-                '\n}'
-            ]));
         }
     }
 

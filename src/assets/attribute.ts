@@ -8,8 +8,14 @@ import Entity from "../entity";
 
 export function attributeEntity(attr: ENDAttribute, state: CompileState, isDynamic?: boolean): Entity {
     const symbol = isIdentifier(attr.name) ? `${attr.name.name}Attr` : 'exprAttr';
-    return state.entity('attribute', symbol)
-        .shared(() => isDynamic ? dynamicAttr(attr, state) : staticAttr(attr, state));
+    const entity = state.entity('attribute', symbol);
+
+    if (!isDynamic && !isExpression(attr.value)) {
+        // Attribute with literal value: set only once, no need to update
+        return entity.mount(() => staticAttr(attr, state));
+    }
+
+    return entity.shared(() => isDynamic ? dynamicAttr(attr, state) : staticAttr(attr, state));
 }
 
 function staticAttr(attr: ENDAttribute, state: CompileState): Chunk {

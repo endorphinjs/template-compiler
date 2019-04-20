@@ -1,7 +1,7 @@
 import { ENDElement, ENDTemplate, Node, ENDAttributeStatement, ENDAttribute, ENDStatement } from "@endorphinjs/template-parser";
-import { SymbolGenerator } from "./symbol-generator";
 import Entity from "./entity";
-import { usageStats, isLiteral, isExpression, isIdentifier } from "./utils";
+import { usageStats, isLiteral, isExpression, isIdentifier, markUsed } from "./utils";
+import CompileState from "./compile-state";
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -9,7 +9,6 @@ const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForE
  * Contains data about element context
  */
 export default class ElementContext {
-    readonly entities: Entity[] = [];
     private _injector: string;
 
     /**
@@ -36,7 +35,7 @@ export default class ElementContext {
     /** Injector usage stats in different contexts */
     readonly usage = usageStats();
 
-    constructor(readonly node: ENDElement | ENDTemplate, readonly entity: Entity, private generator: SymbolGenerator) {
+    constructor(readonly node: ENDElement | ENDTemplate, readonly entity: Entity, private state: CompileState) {
         // Collect stats about given element
         if (node.type === 'ENDElement') {
             node.attributes.forEach(attr => {
@@ -60,7 +59,8 @@ export default class ElementContext {
 
     /** Symbol for referencing element’s injector */
     get injector(): string {
-        return this._injector || (this._injector = this.generator('inj'));
+        markUsed(this.usage, this.state.renderContext);
+        return this._injector || (this._injector = this.state.scopeSymbol('inj'));
     }
 
     /** Indicates that element context should use injector to operate */
