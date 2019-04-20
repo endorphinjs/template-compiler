@@ -96,7 +96,10 @@ export function usageStats(): UsageStats {
  * Marks given context in usage stats as used
  */
 export function markUsed(stats: UsageStats, ctx: RenderContext): void {
-    if (ctx) {
+    if (ctx === 'shared') {
+        stats.mount++;
+        stats.update++;
+    } else {
         stats[ctx]++;
     }
 }
@@ -152,7 +155,7 @@ export function propGetter(name: string): string {
  * Generates property setter code
  */
 export function propSetter(node: Identifier | Program, state: CompileState): Chunk {
-    if (node.type === 'Program') {
+    if (isExpression(node)) {
         const result = new SourceNode();
         result.add(['[', generateExpression(node, state), ']']);
         return result;
@@ -161,19 +164,11 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
     return isPropKey(node.name) ? node.name : qStr(node.name)
 }
 
-/**
- * Check if given attribute is an element reference
- * @param attr
- */
-export function isRef(attr: ENDAttribute): boolean {
-    return isIdentifier(attr.name) && attr.name.name === 'ref';
-}
-
-export function flatten<T>(arr: Array<T | T[] | void>): T[] {
+export function flatten<T>(...arr: Array<T | T[] | void>): T[] {
     let result: T[] = [];
     arr.forEach(arg => {
         if (Array.isArray(arg)) {
-            result = result.concat(flatten(arg));
+            result = result.concat(flatten(...arg));
         } else if (arg) {
             result.push(arg);
         }

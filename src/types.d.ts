@@ -4,9 +4,10 @@ import { ENDImport, ENDProgram } from "@endorphinjs/template-parser";
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
-export type RenderContext = 'mount' | 'update' | 'unmount';
+export type UsageContext = 'mount' | 'update' | 'unmount';
+export type UsageStats = { [K in UsageContext]: number };
+export type RenderContext = UsageContext | 'shared';
 export type EntityType = 'element' | 'attribute' | 'text' | 'directive' | 'variable' | 'block';
-export type UsageStats = { [K in RenderContext]: number };
 export type HelpersMap = { [url: string]: string[] };
 
 export interface ParsedTemplate {

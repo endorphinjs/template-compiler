@@ -40,7 +40,7 @@ export default class CompileState {
 
     /** Context of currently rendered block */
     blockContext?: BlockContext;
-    private blockRenderContext?: RenderContext;
+    private _renderContext?: RenderContext;
 
     readonly options: CompileStateOptions;
 
@@ -109,7 +109,7 @@ export default class CompileState {
 
     /** Symbol for referencing runtime scope */
     get scope(): string {
-        markUsed(this.blockContext.scopeUsage, this.blockRenderContext);
+        markUsed(this.blockContext.scopeUsage, this.renderContext);
         return this.options.scope;
     }
 
@@ -117,7 +117,7 @@ export default class CompileState {
     get injector(): string {
         const elem = this.blockContext && this.blockContext.element;
         if (elem) {
-            markUsed(elem.usage, this.blockRenderContext);
+            markUsed(elem.usage, this.renderContext);
             return elem.injector;
         }
     }
@@ -129,16 +129,17 @@ export default class CompileState {
             && this.blockContext.element.symbol;
     }
 
+    /** Current rendering context */
+    get renderContext(): RenderContext {
+        return this._renderContext;
+    }
+
     /**
      * Creates entity symbol getter for given context
      */
     entity(type: EntityType, name?: string): Entity {
         const symbol = this.globalSymbol(nameToJS(name || type));
-        const entity = new Entity(type, () => {
-            markUsed(entity.usage, this.blockRenderContext);
-            return symbol;
-        });
-        return entity;
+        return new Entity(type, symbol, this);
     }
 
     /**
@@ -161,13 +162,16 @@ export default class CompileState {
      * and added into final output
      * @returns Variable name for given block, generated from `name` argument
      */
-    runBlock(name: string, fn: (block: BlockContext) => Entity[]): string {
+    runBlock(name: string, fn: (block: BlockContext) => Entity | Entity[]): string {
         const varName = this.globalSymbol(name);
         const block = new BlockContext(varName);
         const prevBlock = this.blockContext;
 
         this.blockContext = block;
-        const entities = fn(block).filter(Boolean);
+        const result = fn(block);
+        const entities = Array.isArray(result)
+            ? result.filter(Boolean)
+            : (result ? [result] : []);
         this.blockContext = prevBlock;
 
         // Generate mount, update and unmount functions from received entities
@@ -183,21 +187,21 @@ export default class CompileState {
         const unmountChunks: ChunkList = [];
 
         entities.forEach(entity => {
-            if (entity.mount) {
-                mountChunks.push(entity.mount);
+            if (entity.mountCode) {
+                mountChunks.push(entity.mountCode);
             }
 
-            mountChunks = mountChunks.concat(entity.fill);
+            mountChunks = mountChunks.concat(entity.content);
 
-            if (entity.update) {
-                updateChunks.push(entity.update);
-                if (!entity.unmount) {
+            if (entity.updateCode) {
+                updateChunks.push(entity.updateCode);
+                if (!entity.unmountCode) {
                     toNull.push(entity);
                 }
             }
 
-            if (entity.unmount) {
-                unmountChunks.push(entity.unmount);
+            if (entity.unmountCode) {
+                unmountChunks.push(entity.unmountCode);
             }
         });
 
@@ -209,7 +213,6 @@ export default class CompileState {
             markUsed(block.scopeUsage, 'unmount');
             unmountChunks.push(toNull.map(entity => `${scope}.${entity.symbol} = `).join('') + 'null');
         }
-
 
         this.pushFunction(varName, `${this.host}${scopeArg(block.scopeUsage.mount)}`, mountChunks);
         this.pushFunction(`${varName}Update`, `${this.host}${scopeArg(block.scopeUsage.update)}`, updateChunks);
@@ -285,6 +288,13 @@ export default class CompileState {
      */
     unmount<T>(fn: (state: this) => T): T {
         return this.runInContext('unmount', fn);
+    }
+
+    /**
+     * Runs given function in `shared` block context (both `mount` and `update`)
+     */
+    shared<T>(fn: (state: this) => T): T {
+        return this.runInContext('shared', fn);
     }
 
     /**
@@ -381,10 +391,10 @@ export default class CompileState {
      * Runs given function in given rendering context
      */
     private runInContext<T>(ctx: RenderContext, fn: (state: this) => T): T {
-        const prev = this.blockRenderContext;
-        this.blockRenderContext = ctx;
+        const prev = this.renderContext;
+        this._renderContext = ctx;
         const result = fn(this);
-        this.blockRenderContext = prev;
+        this._renderContext = prev;
         return result;
     }
 }

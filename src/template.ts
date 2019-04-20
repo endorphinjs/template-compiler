@@ -3,10 +3,10 @@ import { SourceNode } from 'source-map';
 import CompileState from "./compile-state";
 import { createElement } from './assets/element';
 import Entity from './entity';
-import { sn, flatten, qStr, isRef, isIdentifier, format, isLiteral } from './utils';
+import { sn, flatten, qStr, format, isLiteral } from './utils';
 import { UsageStats, Chunk, CompileStateOptions, ChunkList } from './types';
 import ElementContext from './element-context';
-import { compileAttributeValue, getAttributeNS, compileAttributeName } from './assets/attribute';
+import { attributeEntity } from './assets/attribute';
 import { ENDCompileError } from './error';
 import generateExpression from './expression';
 
@@ -72,16 +72,15 @@ const baseVisitors = {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
         const name = state.runBlock('template', () => {
             return state.runElement(node, (ctx, entity) => {
-                const entities = flatten(node.body.map(next))
-                    .filter(Boolean);
+                const injector = ctx.usesInjector;
+                const entities = flatten(
+                    injector && createInjector(entity.symbol, ctx, state),
+                    node.body.map(next),
+                ) as Entity[];
 
-                attachEntities(entities, ctx, state, entity);
+                attachEntities(entity, entities, state, injector);
 
-                if (ctx.usesInjector) {
-                    entities.unshift(createInjector(entity.symbol, ctx, state));
-                }
-
-                entity.mount = sn([createEntityVar(entity, state), `${state.host}.componentView;`]);
+                entity.mount(() => sn([createEntityVar(entity, state), `${state.host}.componentView;`]));
 
                 if (state.usedStore.size) {
                     entity.push(subscribeStore(state));
@@ -98,20 +97,19 @@ const baseVisitors = {
             // Edge case: element with single text child
             const firstChild = node.body[0];
             if (!state.isComponent(node) && node.body.length === 1 && isLiteral(firstChild)) {
-                entity.mount = createElement(node, state, firstChild);
+                entity.mount(() => createElement(node, state, firstChild));
             } else {
                 // Generate contents
-                const entities = flatten(node.attributes.map(next))
-                    .concat(flatten(node.body.map(next)))
-                    .filter(Boolean);
-
-                // We’ve used injector for current element content: mount it
-                if (ctx.usesInjector) {
-                    entities.unshift(createInjector(entity.symbol, ctx, state));
-                }
+                const injector = ctx.usesInjector;
+                const entities = flatten(
+                    injector && createInjector(entity.symbol, ctx, state),
+                    node.ref && refEntity(node.ref, state),
+                    node.attributes.map(next),
+                    flatten(node.body.map(next))
+                ) as Entity[];
 
                 // Attach created entities
-                attachEntities(entities, ctx, state, entity);
+                attachEntities(entity, entities, state, injector);
 
                 if (node.component) {
                     // TODO Mount component
@@ -123,43 +121,28 @@ const baseVisitors = {
     },
 
     ENDAttribute(attr: Ast.ENDAttribute, state) {
-        const entity = state.entity('attribute', isIdentifier(attr.name)
-            ? `${attr.name.name}Attr` : 'exprAttr');
+        const { element } = state.blockContext;
+        const inComponent = element.node.type === 'ENDElement' && state.isComponent(element.node);
 
-        if (isRef(attr)) {
-            // Element reference: ref="name"
-            // TODO support static refs
-            entity.mount = state.mount(() => ref(attr, state));
-            entity.update = state.update(() => ref(attr, state));
-        } else {
-            const { element } = state.blockContext;
-            const inComponent = element.node.type === 'ENDElement' && state.isComponent(element.node);
+        // Dynamic attributes must be handled by runtime and re-rendered on update
+        const isDynamic = element.isDynamicAttribute(attr) || inComponent;
 
-            // Dynamic attributes must be handled by runtime and re-rendered on update
-            const isDynamic = element.isDynamicAttribute(attr) || inComponent;
-
-            entity.mount = state.mount(() => isDynamic ? dynamicAttr(attr, state) : staticAttr(attr, state));
-            entity.update = state.update(() => isDynamic ? dynamicAttr(attr, state) : staticAttr(attr, state));
-        }
-
-        return entity;
+        return attributeEntity(attr, state, isDynamic);
     },
 
     Literal(node: Ast.Literal, state) {
         if (node.value != null) {
-            const entity = state.entity('text');
-            entity.mount = sn(`${state.runtime('text')}(${qStr(node.value as string)})`, node);
-            return entity;
+            return state.entity('text')
+                .mount(() => sn(`${state.runtime('text')}(${qStr(node.value as string)})`, node));
         }
     },
 
     Program(node: Ast.Program, state) {
         // NB `Program` is used as expression for text node
-        const entity = state.entity('text');
-        // TODO create shared rendering context, for both mount and update
-        entity.mount = state.mount(() => sn([`${state.runtime('text')}(`, generateExpression(node, state), ')'], node));
-        entity.update = state.update(() => sn([`${state.runtime('updateText')}(${entity.symbol}, `, generateExpression(node, state), ');'], node));
-        return entity;
+        const expr = state.shared(() => generateExpression(node, state));
+        return state.entity('text')
+            .mount(() => sn([`${state.runtime('text')}(`, expr, ')'], node))
+            .update(entity => sn([`${state.runtime('updateText')}(${entity.symbol}, `, expr, ');'], node));
     }
 } as AstVisitorMap;
 
@@ -202,39 +185,39 @@ function subscribeStore(state: CompileState): Chunk {
 function createInjector(symbol: string, ctx: ElementContext, state: CompileState): Entity {
     const injector = state.entity('block', ctx.injector);
 
-    injector.mount = state.mount(() => sn([
+    injector.mount(() => sn([
         createVar(ctx.injector, ctx.usage, state),
         `${state.runtime('createInjector')}(${symbol});`
     ]));
 
     if (ctx.usage.update || ctx.usage.unmount) {
-        injector.unmount = state.unmount(() => `${state.scope}.${ctx.injector} = null;`);
+        injector.unmount(() => `${state.scope}.${ctx.injector} = null;`);
     }
 
     return injector;
 }
 
-function attachEntities(entities: Entity[], ctx: ElementContext, state: CompileState, entity: Entity) {
-    entities.forEach(childEntity => {
-        if (childEntity.mount) {
+function attachEntities(entity: Entity, children: Entity[], state: CompileState, useInjector?: boolean) {
+    children.forEach(childEntity => {
+        if (childEntity.mountCode) {
             let insert: SourceNode;
             if (childEntity.type === 'element' || childEntity.type === 'text') {
                 // Attach child element
-                insert = ctx.usesInjector
-                    ? sn([`${state.runtime('insert')}(${state.injector}, `, childEntity.mount, `);`])
-                    : sn([`${entity.symbol}.appendChild(`, childEntity.mount, `);`]);
+                insert = useInjector
+                    ? sn([`${state.runtime('insert')}(${state.injector}, `, childEntity.mountCode, `);`])
+                    : sn([`${entity.symbol}.appendChild(`, childEntity.mountCode, `);`]);
             }
             else {
-                insert = sn(childEntity.mount);
+                insert = sn(childEntity.mountCode);
             }
             // Do we need entity reference?
             insert.prepend(createEntityVar(childEntity, state));
             entity.push(insert);
         }
 
-        entity.push(childEntity.fill);
-        childEntity.mount = null;
-        childEntity.fill.length = 0;
+        entity.push(childEntity.content);
+        childEntity.mountCode = null;
+        childEntity.content.length = 0;
     });
 }
 
@@ -270,34 +253,10 @@ function createEntityVar(entity: Entity, state: CompileState): string {
     return createVar(entity, entity.usage, state);
 }
 
-function ref(attr: Ast.ENDAttribute, state: CompileState): Chunk {
-    const refName = compileAttributeValue(attr.value, state);
-    return sn([`${state.runtime('setRef')}(${state.host}, `, refName, `, ${state.element});`]);
-}
-
-function staticAttr(attr: Ast.ENDAttribute, state: CompileState): Chunk {
-    const ns = getAttributeNS(attr, state);
-
-    return ns
-        ? sn([`${state.element}.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr)
-        : sn([`${state.element}.setAttribute(`, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr);
-}
-
-function dynamicAttr(attr: Ast.ENDAttribute, state: CompileState): Chunk {
-    const ns = getAttributeNS(attr, state);
-
-    return ns
-        ? sn([`${state.runtime('setAttributeNS')}(${state.injector}, ${state.namespace(ns.ns)}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`])
-        : sn([`${state.runtime('setAttribute')}(${state.injector}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr);
-}
-
-function attrName(attr: Ast.ENDAttribute, state: CompileState): Chunk {
-    const ns = getAttributeNS(attr, state);
-    return compileAttributeName(ns ? ns.name : attr.name, state);
-}
-
-function attrValue(attr: Ast.ENDAttribute, state: CompileState): Chunk {
-    const { element } = state.blockContext;
-    const inComponent = element.node.type === 'ENDElement' && state.isComponent(element.node);
-    return compileAttributeValue(attr.value, state, inComponent);
+/**
+ * Creates element ref entity
+ */
+function refEntity(ref: string, state: CompileState): Entity {
+    return state.entity('block', 'ref')
+        .shared(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, ${state.element});`]));
 }

@@ -1,7 +1,7 @@
 import { ENDElement, ENDTemplate, Node, ENDAttributeStatement, ENDAttribute, ENDStatement } from "@endorphinjs/template-parser";
 import { SymbolGenerator } from "./symbol-generator";
 import Entity from "./entity";
-import { usageStats, isLiteral, isRef, isExpression, isIdentifier } from "./utils";
+import { usageStats, isLiteral, isExpression, isIdentifier } from "./utils";
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -42,7 +42,7 @@ export default class ElementContext {
             node.attributes.forEach(attr => {
                 if (isExpression(attr.name)) {
                     this.attributeExpressions = true;
-                } else if (!isRef(attr) && attr.value && !isLiteral(attr.value)) {
+                } else if (attr.value && !isLiteral(attr.value)) {
                     this.dynamicAttributes.add(attr.name.name);
                 }
             });
@@ -140,7 +140,7 @@ function attributesStats(node: ENDAttributeStatement, state: ElementContext) {
     node.attributes.forEach(attr => {
         if (isExpression(attr.name)) {
             state.attributeExpressions = true;
-        } else if (!isRef(attr)) {
+        } else {
             state.dynamicAttributes.add(attr.name.name);
         }
     });

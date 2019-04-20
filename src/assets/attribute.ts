@@ -1,9 +1,44 @@
 import { SourceNode } from "source-map";
-import { ENDAttributeName, ENDAttributeValue, Program, ENDAttribute } from "@endorphinjs/template-parser";
+import { ENDAttributeName, ENDAttributeValue, Program, ENDAttribute, Literal } from "@endorphinjs/template-parser";
 import compileExpression from "../expression";
-import { qStr, isLiteral, isIdentifier } from "../utils";
+import { qStr, isLiteral, isIdentifier, sn, isExpression } from "../utils";
 import CompileState from "../compile-state";
 import { Chunk } from "../types";
+import Entity from "../entity";
+
+export function attributeEntity(attr: ENDAttribute, state: CompileState, isDynamic?: boolean): Entity {
+    const symbol = isIdentifier(attr.name) ? `${attr.name.name}Attr` : 'exprAttr';
+    return state.entity('attribute', symbol)
+        .shared(() => isDynamic ? dynamicAttr(attr, state) : staticAttr(attr, state));
+}
+
+function staticAttr(attr: ENDAttribute, state: CompileState): Chunk {
+    const ns = getAttributeNS(attr, state);
+
+    return ns
+        ? sn([`${state.element}.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr)
+        : sn([`${state.element}.setAttribute(`, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr);
+}
+
+function dynamicAttr(attr: ENDAttribute, state: CompileState): Chunk {
+    const ns = getAttributeNS(attr, state);
+
+    return ns
+        ? sn([`${state.runtime('setAttributeNS')}(${state.injector}, ${state.namespace(ns.ns)}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`])
+        : sn([`${state.runtime('setAttribute')}(${state.injector}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr);
+}
+
+function attrName(attr: ENDAttribute, state: CompileState): Chunk {
+    const ns = getAttributeNS(attr, state);
+    return compileAttributeName(ns ? ns.name : attr.name, state);
+}
+
+function attrValue(attr: ENDAttribute, state: CompileState): Chunk {
+    const { element } = state.blockContext;
+    const inComponent = element.node.type === 'ENDElement' && state.isComponent(element.node);
+    return compileAttributeValue(attr.value, state, inComponent);
+}
+
 
 export function compileAttributeName(name: ENDAttributeName | string, state: CompileState): Chunk {
     if (typeof name === 'string') {
@@ -30,39 +65,41 @@ export function compileAttributeValue(value: ENDAttributeValue, state: CompileSt
         return qStr(String(value.value != null ? value.value : ''));
     }
 
-    if (value.type === 'Program') {
+    if (isExpression(value)) {
         // Dynamic expression, must be compiled to function
         return compileExpression(value, state);
     }
 
     if (value.type === 'ENDAttributeValueExpression') {
         // List of static and dynamic tokens, must be compiled to function
-        const fnName = createConcatFunction('attrValue', state,
-            value.elements.map(elem => isLiteral(elem) ? String(elem.value) : elem))
+        const fnName = createConcatFunction('attrValue', state, value.elements);
         return `${fnName}(${state.host}, ${state.scope})`;
     }
 }
 
-export function createConcatFunction(prefix: string, state: CompileState, tokens: Array<string | Program>): string {
+export function createConcatFunction(prefix: string, state: CompileState, tokens: Array<string | Literal | Program>): string {
     return state.runBlock(prefix, () => {
-        const entity = state.entity('block');
-        const body = entity.mount = new SourceNode();
+        return state.entity('block')
+            .mount(() => {
+                const body = new SourceNode();
 
-        body.add('return ');
-        tokens.forEach((token, i) => {
-            if (i !== 0) {
-                body.add(' + ');
-            }
+                body.add('return ');
+                tokens.forEach((token, i) => {
+                    if (i !== 0) {
+                        body.add(' + ');
+                    }
 
-            if (typeof token === 'string') {
-                body.add(qStr(token));
-            } else {
-                body.add(['(', compileExpression(token, state), ')']);
-            }
-        });
-        body.add(';');
-
-        return [entity];
+                    if (typeof token === 'string') {
+                        body.add(qStr(token));
+                    } else if (isLiteral(token)) {
+                        body.add(qStr(token.value as string));
+                    } else {
+                        body.add(['(', compileExpression(token, state), ')']);
+                    }
+                });
+                body.add(';');
+                return body;
+            });
     });
 }
 

@@ -1,32 +1,80 @@
 import { Chunk, ChunkList, EntityType } from "./types";
-import { usageStats } from "./utils";
+import { usageStats, markUsed } from "./utils";
+import CompileState from "./compile-state";
+
+type RenderChunk = (entity: Entity) => Chunk;
 
 export default class Entity {
-    mount?: Chunk;
-    update?: Chunk;
-    unmount?: Chunk;
-    fill: ChunkList = [];
+    mountCode?: Chunk;
+    updateCode?: Chunk;
+    unmountCode?: Chunk;
+    content: ChunkList = [];
 
     /** Entity usage stats in different contexts */
     readonly usage = usageStats();
 
-    constructor(readonly type: EntityType, private symbolGetter: string | {(): string}) {}
+    private _symbol: string;
+
+    constructor(readonly type: EntityType, symbol: string, readonly state?: CompileState) {
+        this._symbol = symbol;
+    }
 
     get symbol(): string {
-        return typeof this.symbolGetter === 'string'
-            ? this.symbolGetter
-            : this.symbolGetter();
+        if (this.state) {
+            markUsed(this.usage, this.state.renderContext);
+        }
+        return this._symbol;
+    }
+
+    /**
+     * Set mount code for given entity
+     */
+    mount(fn: RenderChunk): this {
+        this.mountCode = this.state
+            ? this.state.mount(() => fn(this))
+            : fn(this);
+        return this;
+    }
+
+    /**
+     * Set update code for given entity
+     */
+    update(fn: RenderChunk): this {
+        this.updateCode = this.state
+            ? this.state.update(() => fn(this))
+            : fn(this);
+        return this;
+    }
+
+    /**
+     * Set unmount code for given entity
+     */
+    unmount(fn: RenderChunk): this {
+        this.unmountCode = this.state
+            ? this.state.unmount(() => fn(this))
+            : fn(this);
+        return this;
+    }
+
+    /**
+     * Set shared (mount and update) code for given entity
+     */
+    shared(fn: RenderChunk): this {
+        this.mountCode = this.updateCode = this.state
+            ? this.state.shared(() => fn(this))
+            : fn(this);
+        return this;
     }
 
     /**
      * Adds given chunks to entity content fill section
      */
     push(...items: Array<Chunk | ChunkList>): ChunkList {
-        return this.fill = this.fill.concat(...items);
+        return this.content = this.content.concat(...items);
     }
 
     prepend(chunk: Chunk) {
-        this.fill.unshift(chunk);
+        this.content.unshift(chunk);
     }
 
     toString() {
