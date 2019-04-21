@@ -1,37 +1,41 @@
+import { ENDAttribute, ENDAttributeName, ENDAttributeValue, Literal, Program } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
-import { ENDAttributeName, ENDAttributeValue, Program, ENDAttribute, Literal } from "@endorphinjs/template-parser";
+import Entity from "./entity";
 import compileExpression from "../expression";
-import { qStr, isLiteral, isIdentifier, sn, isExpression } from "../utils";
 import CompileState from "../compile-state";
 import { Chunk } from "../types";
-import Entity from "../entity";
+import { isIdentifier, isExpression, sn, qStr, isLiteral } from "../utils";
 
-export function attributeEntity(attr: ENDAttribute, state: CompileState, isDynamic?: boolean): Entity {
-    const symbol = isIdentifier(attr.name) ? `${attr.name.name}Attr` : 'exprAttr';
-    const entity = state.entity('attribute', symbol);
+export default class AttributeEntity extends Entity {
+    constructor(node: ENDAttribute, state: CompileState) {
+        super(isIdentifier(node.name) ? `${node.name.name}Attr` : 'exprAttr', state);
+        const { element } = state;
+        const isDynamic = element.isDynamicAttribute(node) || element.isComponent;
+        const ns = getAttributeNS(node, state);
 
-    if (!isDynamic && !isExpression(attr.value)) {
-        // Attribute with literal value: set only once, no need to update
-        return entity.mount(() => staticAttr(attr, state));
+        if (!isDynamic && !isExpression(node.value)) {
+            // Attribute with literal value: set only once, no need to update
+            return this.setMount(() => {
+                return ns
+                    ? sn([element.getSymbol(), `.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(node, state), ', ', attrValue(node, state), `)`], node)
+                    : sn([element.getSymbol(), `.setAttribute(`, attrName(node, state), ', ', attrValue(node, state), `)`], node);
+            });
+        }
+
+        // Generate attribute which should be updated in runtime.
+        // We should generate fragments in shared state since expression will
+        // be used both in mount and update state, but will attach same code in
+        // separate `mount` and `update` contexts to properly use symbol references
+        const name = state.shared(() => attrName(node, state));
+        const value = state.shared(() => attrValue(node, state));
+        if (ns) {
+            this.setMount(() => sn([`${state.runtime('setAttributeNS')}(`, element.injector, `, ${state.namespace(ns.ns)}, `, name, ', ', value, `)`]));
+            this.setUpdate(() => sn([`${state.runtime('setAttributeNS')}(`, element.injector, `, ${state.namespace(ns.ns)}, `, name, ', ', value, `)`]));
+        } else {
+            this.setMount(() => sn([element.getSymbol(), `.setAttribute(`, name, ', ', value, `)`], node));
+            this.setUpdate(() => sn([element.getSymbol(), `.setAttribute(`, name, ', ', value, `)`], node));
+        }
     }
-
-    return entity.shared(() => isDynamic ? dynamicAttr(attr, state) : staticAttr(attr, state));
-}
-
-function staticAttr(attr: ENDAttribute, state: CompileState): Chunk {
-    const ns = getAttributeNS(attr, state);
-
-    return ns
-        ? sn([`${state.element}.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr)
-        : sn([`${state.element}.setAttribute(`, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr);
-}
-
-function dynamicAttr(attr: ENDAttribute, state: CompileState): Chunk {
-    const ns = getAttributeNS(attr, state);
-
-    return ns
-        ? sn([`${state.runtime('setAttributeNS')}(${state.injector}, ${state.namespace(ns.ns)}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`])
-        : sn([`${state.runtime('setAttribute')}(${state.injector}, `, attrName(attr, state), ', ', attrValue(attr, state), `);`], attr);
 }
 
 function attrName(attr: ENDAttribute, state: CompileState): Chunk {
@@ -51,9 +55,7 @@ export function compileAttributeName(name: ENDAttributeName | string, state: Com
         return qStr(name);
     }
 
-    return name.type === 'Program'
-        ? compileExpression(name, state)
-        : qStr(name.name);
+    return isExpression(name) ? compileExpression(name, state) : qStr(name.name);
 }
 
 export function compileAttributeValue(value: ENDAttributeValue, state: CompileState, forComponent?: boolean): Chunk {
@@ -85,8 +87,8 @@ export function compileAttributeValue(value: ENDAttributeValue, state: CompileSt
 
 export function createConcatFunction(prefix: string, state: CompileState, tokens: Array<string | Literal | Program>): string {
     return state.runBlock(prefix, () => {
-        return state.entity('block')
-            .mount(() => {
+        return new Entity('concat', state)
+            .setMount(() => {
                 const body = new SourceNode();
 
                 body.add('return ');

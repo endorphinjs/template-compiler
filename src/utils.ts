@@ -28,7 +28,7 @@ export function nameToJS(name: string, capitalize: boolean = false): string {
  * Factory function for creating source node with given chunks and location of
  * given node
  */
-export function sn(chunks: Chunk | ChunkList, node?: Node, name?: string): SourceNode {
+export function sn(chunks?: Chunk | ChunkList, node?: Node, name?: string): SourceNode {
     const result = new SourceNode();
     if (name) {
         result.name = name;
@@ -79,6 +79,13 @@ export function isLiteral(node: Node): node is Literal {
  */
 export function isExpression(node: Node): node is Program {
     return node.type === 'Program';
+}
+
+/**
+ * Check if given AST node is element
+ */
+export function isElement(node: Node): node is ENDElement {
+    return node.type === 'ENDElement';
 }
 
 /**
@@ -180,16 +187,12 @@ export function flatten<T>(...arr: Array<T | T[] | void>): T[] {
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
     const result: ChunkList = [];
 
-    chunks.filter(isValidChunk).forEach((chunk, i, arr) => {
+    chunks.filter(isValidChunk).forEach((chunk, i) => {
         if (i !== 0) {
             result.push(prefix);
         }
 
-        result.push(chunk);
-
-        if (i !== arr.length - 1) {
-            result.push(suffix);
-        }
+        result.push(chunk, suffix);
     });
     return result;
 }

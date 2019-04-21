@@ -2,11 +2,11 @@ import { SourceNode } from "source-map";
 import { ENDElement, ENDImport, ENDTemplate } from "@endorphinjs/template-parser";
 import { RuntimeSymbols } from "./symbols";
 import BlockContext from "./block-context";
-import ElementContext from "./element-context";
-import Entity from "./entity";
+import Entity from "./assets/Entity";
 import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { nameToJS, propGetter, isIdentifier, isLiteral, flatten } from "./utils";
-import { Chunk, RenderContext, EntityType, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
+import { nameToJS, propGetter, isIdentifier, isLiteral } from "./utils";
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
+import ElementEntity from "./assets/ElementEntity";
 
 type PlainObject = { [key: string]: string };
 type NamespaceMap = { [prefix: string]: string };
@@ -70,7 +70,7 @@ export default class CompileState {
         [name: string]: string;
     }
 
-    readonly _warned: Set<string> = new Set();
+    private _warned: Set<string> = new Set();
 
     constructor(options?: CompileStateOptions) {
         this.options = Object.assign({}, defaultOptions, options);
@@ -108,15 +108,14 @@ export default class CompileState {
     }
 
     /** Symbol for referencing current element’s injector */
-    get injector(): string {
-        return this.blockContext.injector;
+    get injector() {
+        return this.element.injector;
     }
 
-    /** Symbol for referencing current element */
-    get element(): string {
+    /** Context element */
+    get element(): ElementEntity {
         return this.blockContext
-            && this.blockContext.element
-            && this.blockContext.element.symbol;
+            && this.blockContext.element;
     }
 
     /** Current rendering context */
@@ -131,14 +130,6 @@ export default class CompileState {
     runtime(symbol: RuntimeSymbols): RuntimeSymbols {
         this.usedRuntime.add(symbol);
         return symbol;
-    }
-
-    /**
-     * Creates entity symbol getter for given context
-     */
-    entity(type: EntityType, name?: string): Entity {
-        const symbol = this.scopeSymbol(nameToJS(name || type));
-        return new Entity(type, symbol, this);
     }
 
     /**
@@ -181,9 +172,7 @@ export default class CompileState {
     /**
      * Runs given `fn` function in context of `node` element
      */
-    runElement(node: ENDTemplate | ENDElement, fn: (element: ElementContext, entity: Entity) => Entity[]): Entity[] {
-        const elemName = node.type === 'ENDTemplate' ? 'target' : node.name.name;
-        const entity = this.entity('element', elemName);
+    runElement(node: ENDTemplate | ENDElement | null, fn: (entity: ElementEntity) => void): ElementEntity {
         const { blockContext } = this;
 
         if (!blockContext) {
@@ -192,20 +181,20 @@ export default class CompileState {
 
         const prevElem = blockContext.element;
         const prevNsMap = this.namespaceMap;
-        const elemCtx = blockContext.element = new ElementContext(node, entity, this);
+        const entity = blockContext.element = new ElementEntity(node, this);
 
-        if (node.type === 'ENDElement') {
+        if (node && node.type === 'ENDElement') {
             this.namespaceMap = {
                 ...prevNsMap,
                 ...collectNamespaces(node)
             };
         }
 
-        const childEntities = fn(elemCtx, entity);
+        fn(entity);
 
         this.namespaceMap = prevNsMap;
         blockContext.element = prevElem;
-        return flatten(entity, childEntities);
+        return entity;
     }
 
     /**

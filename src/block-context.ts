@@ -1,16 +1,18 @@
-import ElementContext from "./element-context";
-import { usageStats, markUsed, sn, format } from "./utils";
+import { sn, format } from "./utils";
 import CompileState from "./compile-state";
 import { ChunkList, Chunk } from "./types";
-import Entity from "./entity";
+import Entity from "./assets/Entity";
+import ElementEntity from "./assets/ElementEntity";
+import UsageStats from "./assets/UsageStats";
 
 const injectorArg = 'injector';
 
 export default class BlockContext {
-    element?: ElementContext;
-    scopeUsage = usageStats();
+    element?: ElementEntity;
+    scopeUsage = new UsageStats();
 
-    usesInjector?: boolean;
+    /** Should block use injector as argument */
+    useInjector?: boolean;
 
     /**
      * @param name Name of the block, will be used as suffix in generated function
@@ -22,7 +24,7 @@ export default class BlockContext {
      * Variable reference to component scope
      */
     get scope(): string {
-        markUsed(this.scopeUsage, this.state.renderContext);
+        this.scopeUsage.use(this.state.renderContext);
         return this.rawScope;
     }
 
@@ -31,16 +33,6 @@ export default class BlockContext {
      */
     get rawScope(): string {
         return this.state.options.scope;
-    }
-
-    get injector(): string {
-        if (this.element) {
-            return this.element.injector;
-        }
-
-        // Assume that block should receive injector as argument
-        this.usesInjector = true;
-        return injectorArg;
     }
 
     /**
@@ -57,52 +49,60 @@ export default class BlockContext {
 
         // List of entities that must be explicitly nulled because of absent unmount code
         const toNull: Entity[] = [];
+        let mount: Chunk | void;
+        let update: Chunk | void;
+        let unmount: Chunk | void;
 
-        entities.forEach(entity => {
-            if (entity.mountCode) {
-                mountChunks.push(entity.mountCode);
-            }
+        const output = (entities: Entity[]) => {
+            entities.forEach(entity => {
+                if (mount = entity.getMount()) {
+                    mountChunks.push(mount);
+                }
 
-            mountChunks = mountChunks.concat(entity.content);
+                output(entity.children);
 
-            if (entity.updateCode) {
-                updateChunks.push(entity.updateCode);
-            }
+                if (update = entity.getUpdate()) {
+                    updateChunks.push(update);
+                }
 
-            if (entity.unmountCode) {
-                unmountChunks.push(entity.unmountCode);
-            } else if (entity.usage.update) {
-                // Entity was used in update code, which means it’s in component scope.
-                // We have to reset it
-                toNull.push(entity);
-            }
+                if (unmount = entity.getUnmount()) {
+                    unmountChunks.push(unmount);
+                } else if (entity.symbolUsage.update) {
+                    // Entity was used in update code, which means it’s in component scope.
+                    // We have to reset it
+                    toNull.push(entity);
+                }
 
-            if (entity.usage.update) {
-                updateRefs.push(entity.symbol);
-            }
-        });
+                // Destructure element refs for smaller code
+                if (entity.symbolUsage.update > 1) {
+                    updateRefs.push(entity.name);
+                }
+            });
+        };
+
+        output(entities);
 
         if (toNull.length) {
-            markUsed(scopeUsage, 'unmount');
-            unmountChunks.push(toNull.map(entity => `${scope}.${entity.symbol} = `).join('') + 'null;');
+            scopeUsage.use('unmount');
+            unmountChunks.push(toNull.map(entity => `${scope}.${entity.name} = `).join('') + 'null');
         }
 
         if (updateRefs.length) {
-            markUsed(scopeUsage, 'update');
-            updateChunks.unshift(`const { ${updateRefs.join(', ')} } = ${scope};`);
+            scopeUsage.use('update');
+            updateChunks.unshift(`const { ${updateRefs.join(', ')} } = ${scope}`);
         }
 
         if (unmountChunks.length) {
-            mountChunks.push(`${state.runtime('addDisposeCallback')}(${state.host}, ${name}Unmount);`);
+            mountChunks.push(`${state.runtime('addDisposeCallback')}(${state.host}, ${name}Unmount)`);
         }
 
         if (updateChunks.length) {
-            mountChunks.push(`return ${name}Update;`);
+            mountChunks.push(`return ${name}Update`);
         }
 
         const { indent } = state;
         return [
-            createFunction(name, `${state.host}${this.usesInjector ? ', ' + injectorArg : ''}${scopeArg(scopeUsage.mount)}`, mountChunks, indent),
+            createFunction(name, `${state.host}${this.useInjector ? ', ' + injectorArg : ''}${scopeArg(scopeUsage.mount)}`, mountChunks, indent),
             createFunction(`${name}Update`, `${state.host}${scopeArg(scopeUsage.update)}`, updateChunks, indent),
             createFunction(`${name}Unmount`, scopeArg(scopeUsage.unmount, true), unmountChunks, indent)
         ];
@@ -116,8 +116,8 @@ function createFunction(name: string, args: string, chunks: ChunkList, indent: s
     if(chunks && chunks.length) {
         return sn([
             `\nfunction ${name}(${args}) {\n${indent}`,
-            ...format(chunks, indent),
-            '\n}'
+            ...format(chunks, indent, ';\n'),
+            '}'
         ]);
     }
 }

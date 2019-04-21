@@ -1,121 +1,100 @@
 import * as Ast from '@endorphinjs/template-parser';
-import Entity from './entity';
 import CompileState from './compile-state';
-import { flatten, sn, isLiteral, qStr } from './utils';
-import { createElement } from './assets/element';
-import { attributeEntity } from './assets/attribute';
-import generateExpression from './expression';
-import { Chunk } from './types';
-import { conditionEntity } from './assets/condition';
+import Entity from './assets/Entity';
+import ElementEntity, { getNodeName, cssScopeArg } from './assets/ElementEntity';
+import AttributeEntity from './assets/AttributeEntity';
+import TextEntity from './assets/TextEntity';
+import ConditionEntity from './assets/ConditionEntity';
+import { sn, isLiteral, qStr } from './utils';
 
-export type AstContinue = (node: Ast.Node) => Entity | Entity[] | void;
-export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | Entity[] | void;
+export type AstContinue = (node: Ast.Node) => Entity | void;
+export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
 export type AstVisitorMap = { [name: string]: AstVisitor };
 
 export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
         const name = state.runBlock('template', () => {
-            return state.runElement(node, (ctx, entity) => {
-                const entities = flatten(node.body.map(next)) as Entity[];
-
-                if (ctx.usesInjector) {
-                    entities.unshift(ctx.createInjector());
-                }
-
-                // Attach created entities
-                ctx.attachEntities(entities);
-
-                entity.mount(() => sn([entity.createVar(), `${state.host}.componentView;`]));
+            return state.runElement(node, element => {
+                element.setContent(node.body, next);
 
                 if (state.usedStore.size) {
-                    entity.push(subscribeStore(state));
+                    element.add(subscribeStore(state));
                 }
-
-                return entities;
             });
         });
         state.pushOutput(`\nexport default ${name};`);
     },
 
     ENDElement(node: Ast.ENDElement, state, next) {
-        return state.runElement(node, (ctx, entity) => {
+        return state.runElement(node, element => {
+            if (node.ref) {
+                element.add(refEntity(node.ref, element, state));
+            }
+
             // Edge case: element with single text child
             const firstChild = node.body[0];
             if (!state.isComponent(node) && node.body.length === 1 && isLiteral(firstChild)) {
-                entity.mount(() => createElement(node, state, firstChild));
+                element.setMount(() => {
+                    // Create plain DOM element
+                    const nodeName = getNodeName(element.rawName);
+                    const nsSymbol = state.namespace(nodeName.ns);
+
+                    const textValue = qStr(firstChild.value as string);
+                    return nsSymbol
+                        ? sn(`${state.runtime('elemNSWithText')}(${qStr(nodeName.name)}, ${textValue}, ${nsSymbol}${cssScopeArg(state)})`, element.node)
+                        : sn(`${state.runtime('elemWithText')}(${qStr(element.rawName)}, ${textValue}${cssScopeArg(state)})`, element.node);
+                });
             } else {
-                entity.mount(() => createElement(node, state));
-
-                // Generate contents
-                const entities = flatten(
-                    node.ref && refEntity(node.ref, state),
-                    node.attributes.map(next),
-                    flatten(node.body.map(next))
-                ) as Entity[];
-
-                if (ctx.usesInjector) {
-                    entities.unshift(ctx.createInjector());
-                }
-
-                // Attach created entities
-                ctx.attachEntities(entities);
+                element.setContent(node.attributes, next);
+                element.setContent(node.body, next);
 
                 if (node.component) {
                     // TODO Mount component
                 }
-
-                return entities;
             }
         });
     },
 
     ENDAttribute(attr: Ast.ENDAttribute, state) {
-        const { element } = state.blockContext;
-        const inComponent = element.node.type === 'ENDElement' && state.isComponent(element.node);
-
-        // Dynamic attributes must be handled by runtime and re-rendered on update
-        const isDynamic = element.isDynamicAttribute(attr) || inComponent;
-
-        return attributeEntity(attr, state, isDynamic);
+        return new AttributeEntity(attr, state);
     },
 
     Literal(node: Ast.Literal, state) {
         if (node.value != null) {
-            return state.entity('text')
-                .mount(() => sn(`${state.runtime('text')}(${qStr(node.value as string)})`, node));
+            return new TextEntity(node, state);
         }
     },
 
     Program(node: Ast.Program, state) {
         // NB `Program` is used as expression for text node
-        const expr = state.shared(() => generateExpression(node, state));
-        return state.entity('text')
-            .mount(() => sn([`${state.runtime('text')}(`, expr, ')'], node))
-            .update(entity => sn([`${state.runtime('updateText')}(${entity.symbol}, `, expr, ');'], node));
+        return new TextEntity(node, state);
     },
 
     ENDIfStatement(node: Ast.ENDIfStatement, state, next) {
-        return conditionEntity(node, state, next);
+        return new ConditionEntity(node, state)
+            .setContent([node], next);
     },
 
     ENDChooseStatement(node: Ast.ENDChooseStatement, state, next) {
-        return conditionEntity(node, state, next);
+        return new ConditionEntity(node, state)
+            .setContent(node.cases, next);
     }
 } as AstVisitorMap;
 
 /**
  * Creates element ref entity
  */
-function refEntity(ref: string, state: CompileState): Entity {
-    return state.entity('block', 'ref')
-        .shared(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, ${state.element});`]));
+function refEntity(ref: string, element: ElementEntity, state: CompileState): Entity {
+    return new Entity('ref', state)
+        .setMount(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, `, element.getSymbol(), `);`]))
+        .setUpdate(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, `, element.getSymbol(), `);`]));
 }
 
 /**
  * Returns code for subscribing to store updates
  * @param state
  */
-function subscribeStore(state: CompileState): Chunk {
+function subscribeStore(state: CompileState): Entity {
     let storeKeys = '';
 
     // Without partials, we can safely assume that we know about
@@ -124,5 +103,6 @@ function subscribeStore(state: CompileState): Chunk {
         storeKeys = `, [${Array.from(state.usedStore).map(qStr).join(', ')}]`;
     }
 
-    return `${state.runtime('subscribeStore')}(${state.host}${storeKeys});`;
+    return new Entity('store', state)
+        .setMount(() => `${state.runtime('subscribeStore')}(${state.host}${storeKeys});`);
 }

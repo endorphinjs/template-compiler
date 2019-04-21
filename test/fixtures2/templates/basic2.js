@@ -1,4 +1,4 @@
-import { elemWithText, elem, text, updateText, addDisposeCallback } from "@endorphinjs/endorphin";
+import { elem, elemWithText, text, updateText, addDisposeCallback } from "@endorphinjs/endorphin";
 
 function template$0(host, scope) {
 	const target$0 = host.componentView;
@@ -13,8 +13,7 @@ function template$0(host, scope) {
 }
 
 function template$0Update(host, scope) {
-	const { text$1 } = scope;
-	updateText(text$1, host.props.bar);
+	updateText(scope.text$1, host.props.bar);
 }
 
 function template$0Unmount(scope) {
