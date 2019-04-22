@@ -1,8 +1,8 @@
 import { SourceNode } from 'source-map';
 import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
 import generateExpression from './expression';
-import CompileState from './compile-state';
-import { Chunk, ChunkList, UsageStats, RenderContext } from './types';
+import CompileState from './assets/CompileState';
+import { Chunk, ChunkList } from './types';
 
 /**
  * A prefix for Endorphin element and attribute names
@@ -89,29 +89,6 @@ export function isElement(node: Node): node is ENDElement {
 }
 
 /**
- * Creates usage stats object
- */
-export function usageStats(): UsageStats {
-    return {
-        mount: 0,
-        update: 0,
-        unmount: 0
-    };
-}
-
-/**
- * Marks given context in usage stats as used
- */
-export function markUsed(stats: UsageStats, ctx: RenderContext): void {
-    if (ctx === 'shared') {
-        stats.mount++;
-        stats.update++;
-    } else {
-        stats[ctx]++;
-    }
-}
-
-/**
  * Returns attribute with given name from tag name definition, if any
  */
 export function getAttr(elem: ENDElement | ENDAttributeStatement, name: string): ENDAttribute {
@@ -171,19 +148,6 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
     return isPropKey(node.name) ? node.name : qStr(node.name)
 }
 
-export function flatten<T>(...arr: Array<T | T[] | void>): T[] {
-    let result: T[] = [];
-    arr.forEach(arg => {
-        if (Array.isArray(arg)) {
-            result = result.concat(flatten(...arg));
-        } else if (arg) {
-            result.push(arg);
-        }
-    });
-
-    return result;
-}
-
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
     const result: ChunkList = [];
 
@@ -218,23 +182,6 @@ function needSemicolon(chunk: Chunk): boolean {
     }
 
     return needSemicolon(chunk.children[chunk.children.length - 1]);
-}
-
-/**
- * Returns code for referencing entity by symbol depending on its usage stats
- */
-export function createVar(symbol: { toString(): string }, usage: UsageStats, state: CompileState): string {
-    let result = '';
-
-    if (usage.mount) {
-        result += `const ${symbol} = `;
-    }
-
-    if (usage.update || usage.unmount) {
-        result += `${state.scope}.${symbol} = `;
-    }
-
-    return result;
 }
 
 function isValidChunk(chunk: Chunk): boolean {

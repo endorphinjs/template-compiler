@@ -1,6 +1,6 @@
 import { ENDProgram } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import CompileState from "./compile-state";
+import CompileState from "./assets/CompileState";
 import { sn, qStr, format } from './utils';
 import { CompileStateOptions, ChunkList } from './types';
 import { ENDCompileError } from './error';
@@ -23,7 +23,7 @@ export default function generateTemplate(ast: ENDProgram, options?: CompileState
     }
 
     // Import helpers
-    state.getUsedHelpers().forEach((helpers, url) => {
+    getUsedHelpers(state).forEach((helpers, url) => {
         body.push(`import { ${helpers.join(', ')} } from ${qStr(url)};`);
     });
 
@@ -83,4 +83,22 @@ function registerComponents(ast: ENDProgram, state: CompileState) {
             state.registerComponent(node);
         }
     });
+}
+
+/**
+     * Returns map of used helpers and their URLs
+     */
+function getUsedHelpers(state: CompileState): Map <string, string[]> {
+    const result: Map<string, string[]> = new Map();
+
+    state.usedHelpers.forEach(helper => {
+        const url = state.helpers[helper];
+        if (result.has(url)) {
+            result.get(url).push(helper);
+        } else {
+            result.set(url, [helper]);
+        }
+    });
+
+    return result;
 }

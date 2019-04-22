@@ -1,9 +1,9 @@
-import { sn, format } from "./utils";
-import CompileState from "./compile-state";
-import { ChunkList, Chunk } from "./types";
-import Entity from "./assets/Entity";
-import ElementEntity from "./assets/ElementEntity";
-import UsageStats from "./assets/UsageStats";
+import CompileState from "./CompileState";
+import { ChunkList, Chunk } from "../types";
+import Entity from "./Entity";
+import ElementEntity from "./ElementEntity";
+import UsageStats from "./UsageStats";
+import { sn, format } from "../utils";
 
 const injectorArg = 'injector';
 

@@ -1,12 +1,11 @@
 import { SourceNode } from "source-map";
 import { ENDElement, ENDImport, ENDTemplate } from "@endorphinjs/template-parser";
-import { RuntimeSymbols } from "./symbols";
-import BlockContext from "./block-context";
-import Entity from "./assets/Entity";
-import createSymbolGenerator, { SymbolGenerator } from "./symbol-generator";
-import { nameToJS, propGetter, isIdentifier, isLiteral } from "./utils";
-import { Chunk, RenderContext, ComponentImport, CompileStateOptions, HelpersMap } from "./types";
-import ElementEntity from "./assets/ElementEntity";
+import BlockContext from "./BlockContext";
+import Entity from "./Entity";
+import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
+import { nameToJS, propGetter, isIdentifier, isLiteral } from "../utils";
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, HelpersMap, RuntimeSymbols } from "../types";
+import ElementEntity from "./ElementEntity";
 
 type PlainObject = { [key: string]: string };
 type NamespaceMap = { [prefix: string]: string };
@@ -33,7 +32,7 @@ export default class CompileState {
     usedRuntime: Set<RuntimeSymbols> = new Set();
 
     /** List of helpers used in compiled template */
-    private usedHelpers: Set<string> = new Set();
+    usedHelpers: Set<string> = new Set();
 
     /** List of symbols used for store access in template */
     usedStore: Set<string> = new Set();
@@ -299,24 +298,6 @@ export default class CompileState {
             this.output.add(chunk);
             this.output.add('\n');
         }
-    }
-
-    /**
-     * Returns map of used helpers and their URLs
-     */
-    getUsedHelpers(): Map<string, string[]> {
-        const result: Map<string, string[]> = new Map();
-
-        this.usedHelpers.forEach(helper => {
-            const url = this.helpers[helper];
-            if (result.has(url)) {
-                result.get(url).push(helper);
-            } else {
-                result.set(url, [helper]);
-            }
-        });
-
-        return result;
     }
 
     /**

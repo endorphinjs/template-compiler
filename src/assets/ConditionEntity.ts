@@ -1,6 +1,6 @@
 import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement } from "@endorphinjs/template-parser";
 import Entity from "./entity";
-import CompileState from "../compile-state";
+import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
 import { sn } from "../utils";
 import generateExpression from "../expression";

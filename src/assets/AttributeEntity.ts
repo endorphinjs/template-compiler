@@ -2,7 +2,7 @@ import { ENDAttribute, ENDAttributeName, ENDAttributeValue, Literal, Program } f
 import { SourceNode } from "source-map";
 import Entity from "./entity";
 import compileExpression from "../expression";
-import CompileState from "../compile-state";
+import CompileState from "./CompileState";
 import { Chunk } from "../types";
 import { isIdentifier, isExpression, sn, qStr, isLiteral } from "../utils";
 

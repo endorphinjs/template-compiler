@@ -1,6 +1,6 @@
 import { Literal, Program } from "@endorphinjs/template-parser";
 import Entity from "./entity";
-import CompileState from "../compile-state";
+import CompileState from "./CompileState";
 import generateExpression from "../expression";
 import { isExpression, sn, qStr } from "../utils";
 

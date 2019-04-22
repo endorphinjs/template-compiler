@@ -1,14 +1,28 @@
 import { SourceNode } from "source-map";
-import CompileState from "./compile-state";
+import CompileState from "./assets/CompileState";
 import { ENDImport, ENDProgram } from "@endorphinjs/template-parser";
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
 export type UsageContext = 'mount' | 'update' | 'unmount';
-export type UsageStats = { [K in UsageContext]: number };
 export type RenderContext = UsageContext | 'shared';
 export type EntityType = 'element' | 'attribute' | 'text' | 'directive' | 'variable' | 'block';
 export type HelpersMap = { [url: string]: string[] };
+
+/** Endorphin runtime functions */
+export type RuntimeSymbols = 'mountBlock' | 'updateBlock' | 'unmountBlock'
+    | 'mountIterator' | 'updateIterator' | 'unmountIterator'
+    | 'mountKeyIterator' | 'updateKeyIterator' | 'unmountKeyIterator'
+    | 'mountComponent' | 'updateComponent' | 'unmountComponent'
+    | 'mountInnerHTML' | 'updateInnerHTML' | 'unmountInnerHTML'
+    | 'mountPartial' | 'updatePartial' | 'unmountPartial'
+    | 'mountSlot' | 'unmountSlot' | 'markSlotUpdate'
+    | 'createInjector' | 'block' | 'setAttribute' | 'setAttributeNS' | 'addClass'
+    | 'finalizeAttributes' | 'addEvent' | 'addStaticEvent' | 'finalizeEvents'
+    | 'setRef' | 'finalizeRefs' | 'createComponent' | 'updateText' | 'addDisposeCallback'
+    | 'insert' | 'get' | 'call' | 'assign' | 'elem' | 'elemWithText' | 'elemNS'
+    | 'elemNSWithText' | 'text' | 'filter' | 'subscribeStore'
+    | 'animateIn' | 'animateOut';
 
 export interface ParsedTemplate {
     /** Original template source code */

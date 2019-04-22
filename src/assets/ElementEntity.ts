@@ -2,7 +2,7 @@ import { ENDElement, ENDTemplate, ENDAttributeStatement, ENDStatement, ENDAttrib
 import { SourceNode } from 'source-map';
 import Entity from './Entity';
 import UsageStats from './UsageStats';
-import CompileState from '../compile-state';
+import CompileState from './CompileState';
 import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName } from '../utils';
 import TextEntity from './TextEntity';
 import { Chunk } from '../types';

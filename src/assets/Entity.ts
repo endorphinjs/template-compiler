@@ -1,8 +1,8 @@
 import { SourceNode } from "source-map";
+import CompileState from "./CompileState";
+import UsageStats from "./UsageStats";
 import { Chunk, UsageContext } from "../types";
 import { sn } from "../utils";
-import CompileState from "../compile-state";
-import UsageStats from "./UsageStats";
 
 type RenderChunk = (entity: Entity) => Chunk;
 type SymbolType = UsageContext | 'ref';
@@ -123,7 +123,9 @@ export default class Entity {
      * Set shared (mount and update) code for given entity
      */
     setShared(fn: RenderChunk): this {
-        this.code.mount = this.code.update = this.state.shared(() => fn(this));
+        // NB run code twice to properly mark items usage in different render contexts
+        this.setMount(fn);
+        this.setUpdate(fn);
         return this;
     }
 

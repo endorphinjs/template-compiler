@@ -1,5 +1,5 @@
 import * as Ast from '@endorphinjs/template-parser';
-import CompileState from './compile-state';
+import CompileState from './assets/CompileState';
 import Entity from './assets/Entity';
 import ElementEntity, { createElement } from './assets/ElementEntity';
 import AttributeEntity from './assets/AttributeEntity';
@@ -80,8 +80,7 @@ export default {
  */
 function refEntity(ref: string, element: ElementEntity, state: CompileState): Entity {
     return new Entity('ref', state)
-        .setMount(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, `, element.getSymbol(), `);`]))
-        .setUpdate(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, `, element.getSymbol(), `);`]));
+        .setShared(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, `, element.getSymbol(), `);`]));
 }
 
 /**
@@ -89,14 +88,14 @@ function refEntity(ref: string, element: ElementEntity, state: CompileState): En
  * @param state
  */
 function subscribeStore(state: CompileState): Entity {
-    let storeKeys = '';
+    let storeKeysArg = '';
 
     // Without partials, we can safely assume that we know about
     // all used store keys
     if (!state.hasPartials) {
-        storeKeys = `, [${Array.from(state.usedStore).map(qStr).join(', ')}]`;
+        storeKeysArg = `, [${Array.from(state.usedStore).map(qStr).join(', ')}]`;
     }
 
     return new Entity('store', state)
-        .setMount(() => `${state.runtime('subscribeStore')}(${state.host}${storeKeys});`);
+        .setMount(() => `${state.runtime('subscribeStore')}(${state.host}${storeKeysArg});`);
 }
