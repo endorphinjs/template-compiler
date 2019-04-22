@@ -1,4 +1,4 @@
-import { ENDElement, ENDTemplate, ENDAttributeStatement, ENDStatement, ENDAttribute, Node } from '@endorphinjs/template-parser';
+import { ENDElement, ENDTemplate, ENDAttributeStatement, ENDStatement, ENDAttribute, Node, Literal } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
 import Entity from './Entity';
 import UsageStats from './UsageStats';
@@ -35,16 +35,10 @@ export default class ElementEntity extends Entity {
         super(node && isElement(node) ? node.name.name : 'target', state);
         if (node) {
             this.collectStats(node);
-
-            if (isElement(node)) {
-                this.setMount(() => createElement(node, state));
-            } else {
-                this.setMount(() => `${state.host}.componentView`);
-            }
         } else {
             // Empty node means we’re in element defined in outer block
             // (for example, in conditional content block). In this case,
-            // we should always use injector to fill  contents, which shall be
+            // we should always use injector to fill contents, which shall be
             // passed as argument to block function
             this._injector = new Entity('injector', state);
             this._injector.name = 'injector';
@@ -188,7 +182,7 @@ function walk(elem: ENDStatement | ENDTemplate, callback: (node: ENDStatement) =
 /**
  * Generates element create code
  */
-export function createElement(node: ENDElement, state: CompileState): Chunk {
+export function createElement(node: ENDElement, state: CompileState, text?: Literal): Chunk {
     const elemName = node.name.name;
     const srcNode = node.name;
 
@@ -205,6 +199,13 @@ export function createElement(node: ENDElement, state: CompileState): Chunk {
     // Create plain DOM element
     const nodeName = getNodeName(elemName);
     const nsSymbol = state.namespace(nodeName.ns);
+
+    if (text) {
+        const textValue = qStr(text.value as string);
+        return nsSymbol
+            ? sn(`${state.runtime('elemNSWithText')}(${qStr(nodeName.name)}, ${textValue}, ${nsSymbol}${cssScopeArg(state)})`, srcNode)
+            : sn(`${state.runtime('elemWithText')}(${qStr(elemName)}, ${textValue}${cssScopeArg(state)})`, srcNode);
+    }
 
     return nsSymbol
         ? sn(`${state.runtime('elemNS')}(${qStr(nodeName.name)}, ${nsSymbol}${cssScopeArg(state)})`, srcNode)

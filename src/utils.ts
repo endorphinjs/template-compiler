@@ -187,14 +187,37 @@ export function flatten<T>(...arr: Array<T | T[] | void>): T[] {
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
     const result: ChunkList = [];
 
-    chunks.filter(isValidChunk).forEach((chunk, i) => {
+    chunks.filter(isValidChunk).forEach((chunk, i, arr) => {
         if (i !== 0) {
             result.push(prefix);
         }
 
-        result.push(chunk, suffix);
+        result.push(chunk);
+        if (needSemicolon(chunk)) {
+            result.push(';');
+        }
+
+        if (i !== arr.length - 1) {
+            result.push(suffix);
+        }
     });
     return result;
+}
+
+/**
+ * Check if semicolon is required for given chunk
+ * @param chunk
+ */
+function needSemicolon(chunk: Chunk): boolean {
+    if (!chunk) {
+        return false;
+    }
+
+    if (typeof chunk === 'string') {
+        return /\S/.test(chunk) && !/[;}]\s*$/.test(chunk);
+    }
+
+    return needSemicolon(chunk.children[chunk.children.length - 1]);
 }
 
 /**

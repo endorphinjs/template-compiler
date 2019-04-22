@@ -1,7 +1,7 @@
 import * as Ast from '@endorphinjs/template-parser';
 import CompileState from './compile-state';
 import Entity from './assets/Entity';
-import ElementEntity, { getNodeName, cssScopeArg } from './assets/ElementEntity';
+import ElementEntity, { createElement } from './assets/ElementEntity';
 import AttributeEntity from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
@@ -15,6 +15,7 @@ export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
         const name = state.runBlock('template', () => {
             return state.runElement(node, element => {
+                element.setMount(() => `${state.host}.componentView`);
                 element.setContent(node.body, next);
 
                 if (state.usedStore.size) {
@@ -31,26 +32,19 @@ export default {
                 element.add(refEntity(node.ref, element, state));
             }
 
-            // Edge case: element with single text child
+            element.setContent(node.attributes, next);
+
+            // Check edge case: element with single text child
             const firstChild = node.body[0];
             if (!state.isComponent(node) && node.body.length === 1 && isLiteral(firstChild)) {
-                element.setMount(() => {
-                    // Create plain DOM element
-                    const nodeName = getNodeName(element.rawName);
-                    const nsSymbol = state.namespace(nodeName.ns);
-
-                    const textValue = qStr(firstChild.value as string);
-                    return nsSymbol
-                        ? sn(`${state.runtime('elemNSWithText')}(${qStr(nodeName.name)}, ${textValue}, ${nsSymbol}${cssScopeArg(state)})`, element.node)
-                        : sn(`${state.runtime('elemWithText')}(${qStr(element.rawName)}, ${textValue}${cssScopeArg(state)})`, element.node);
-                });
+                element.setMount(() => createElement(node, state, firstChild));
             } else {
-                element.setContent(node.attributes, next);
+                element.setMount(() => createElement(node, state));
                 element.setContent(node.body, next);
+            }
 
-                if (node.component) {
-                    // TODO Mount component
-                }
+            if (node.component) {
+                // TODO Mount component
             }
         });
     },

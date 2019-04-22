@@ -12,7 +12,7 @@ export default class ConditionEntity extends Entity {
 
     setContent(statements: Array<ENDIfStatement | ENDChooseCase>, next: AstContinue): this {
         const { state } = this;
-        this.setMount(() => sn([`${state.runtime('mountBlock')}(${state.host}, `, state.injector, `, ${conditionEntry(this.name, statements, state, next)});`]))
+        this.setMount(() => sn([`${state.runtime('mountBlock')}(${state.host}, `, state.injector, `, ${conditionEntry(this.name, statements, state, next)})`]))
             .setUpdate(() => sn([`${state.runtime('updateBlock')}(`, this.getSymbol(), `)`]))
             .setUnmount(() => sn([`${state.runtime('unmountBlock')}(`, this.getSymbol(), `)`]));
 

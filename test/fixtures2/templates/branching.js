@@ -1,4 +1,4 @@
-import { elem, elemWithText, mountBlock, createInjector, insert, updateBlock, unmountBlock, text, addDisposeCallback } from "@endorphinjs/endorphin";
+import { elemWithText, mountBlock, createInjector, elem, insert, updateBlock, unmountBlock, text, addDisposeCallback } from "@endorphinjs/endorphin";
 
 function if$1Body$0(host, injector) {
 	insert(injector, elemWithText("div", "top 2"));
@@ -7,7 +7,7 @@ function if$1Body$0(host, injector) {
 function if$1Entry$0(host) {
 	if (host.props.expr2) {
 		return if$1Body$0;
-	};
+	}
 }
 
 function if$2Body$0(host, injector) {
@@ -18,14 +18,14 @@ function if$2Body$0(host, injector) {
 function if$2Entry$0(host) {
 	if (host.props.expr3) {
 		return if$2Body$0;
-	};
+	}
 }
 
 function if$0Body$0(host, injector, scope) {
 	const p$0 = insert(injector, elem("p"));
 	p$0.appendChild(elemWithText("strong", "top 1"));
-	scope.if$1 = mountBlock(host, injector, if$1Entry$0);;
-	scope.if$2 = mountBlock(host, injector, if$2Entry$0);;
+	scope.if$1 = mountBlock(host, injector, if$1Entry$0);
+	scope.if$2 = mountBlock(host, injector, if$2Entry$0);
 	addDisposeCallback(host, if$0Body$0Unmount);
 	return if$0Body$0Update;
 }
@@ -43,7 +43,7 @@ function if$0Body$0Unmount(scope) {
 function if$0Entry$0(host) {
 	if (host.props.expr1) {
 		return if$0Body$0;
-	};
+	}
 }
 
 function choose$0Body$0(host, injector) {
@@ -65,18 +65,18 @@ function choose$0Entry$0(host) {
 		return choose$0Body$1;
 	} else {
 		return choose$0Body$2;
-	};
+	}
 }
 
 function template$0(host, scope) {
 	const target$0 = host.componentView;
 	const inj$0$0 = createInjector(target$0);
 	target$0.appendChild(elemWithText("h1", "Hello world"));
-	scope.if$0 = mountBlock(host, inj$0$0, if$0Entry$0);;
+	scope.if$0 = mountBlock(host, inj$0$0, if$0Entry$0);
 	const blockquote$0 = insert(inj$0$0, elem("blockquote"));
 	const inj$1$0 = createInjector(blockquote$0);
 	blockquote$0.appendChild(elemWithText("p", "Lorem ipsum 1"));
-	scope.choose$0 = mountBlock(host, inj$1$0, choose$0Entry$0);;
+	scope.choose$0 = mountBlock(host, inj$1$0, choose$0Entry$0);
 	insert(inj$1$0, elemWithText("p", "Lorem ipsum 2"));
 	addDisposeCallback(host, template$0Unmount);
 	return template$0Update;

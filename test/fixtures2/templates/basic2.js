@@ -1,4 +1,4 @@
-import { elem, elemWithText, text, updateText, addDisposeCallback } from "@endorphinjs/endorphin";
+import { elemWithText, elem, text, updateText, addDisposeCallback } from "@endorphinjs/endorphin";
 
 function template$0(host, scope) {
 	const target$0 = host.componentView;

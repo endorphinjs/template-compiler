@@ -1,4 +1,4 @@
-import { elem, elemWithText } from "@endorphinjs/endorphin";
+import { elemWithText } from "@endorphinjs/endorphin";
 
 function template$0(host) {
 	const target$0 = host.componentView;

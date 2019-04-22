@@ -116,8 +116,8 @@ function createFunction(name: string, args: string, chunks: ChunkList, indent: s
     if(chunks && chunks.length) {
         return sn([
             `\nfunction ${name}(${args}) {\n${indent}`,
-            ...format(chunks, indent, ';\n'),
-            '}'
+            ...format(chunks, indent),
+            '\n}'
         ]);
     }
 }
