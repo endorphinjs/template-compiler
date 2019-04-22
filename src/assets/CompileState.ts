@@ -197,6 +197,18 @@ export default class CompileState {
     }
 
     /**
+     * Runs given function in context of child block. A child block is a block
+     * which updates contents of element in outer block. It always works via
+     * injector, which must be passed as function argument
+     */
+    runChildBlock(name: string, fn: (block: BlockContext, element: ElementEntity) => void): string {
+        return this.runBlock(name, block => {
+            block.useInjector = true;
+            return this.runElement(null, element => fn(block, element));
+        });
+    }
+
+    /**
      * Marks given helper symbol as used
      */
     helper(symbol: string): string {

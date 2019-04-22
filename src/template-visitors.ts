@@ -6,6 +6,7 @@ import AttributeEntity from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import { sn, isLiteral, qStr } from './utils';
+import IteratorEntity from './assets/IteratorEntity';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -72,6 +73,11 @@ export default {
     ENDChooseStatement(node: Ast.ENDChooseStatement, state, next) {
         return new ConditionEntity(node, state)
             .setContent(node.cases, next);
+    },
+
+    ENDForEachStatement(node: Ast.ENDForEachStatement, state, next) {
+        return new IteratorEntity(node, state)
+            .setContent(node.body, next);
     }
 } as AstVisitorMap;
 

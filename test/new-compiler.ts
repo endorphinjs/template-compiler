@@ -8,7 +8,10 @@ describe('New compiler', () => {
     }
 
     it.only('debug', () => {
-        const files = ['templates/basic1.html', 'templates/basic2.html', 'templates/branching.html'];
+        const files = [
+            'templates/basic1.html', 'templates/basic2.html', 'templates/branching.html',
+            'templates/iterate.html', 'templates/key-iterate.html'
+        ];
 
         files.forEach(file => {
             const { code } = compile(read(`./samples/${file}`), file);

@@ -1,4 +1,4 @@
-import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement } from "@endorphinjs/template-parser";
+import { ENDIfStatement, ENDChooseStatement, ENDChooseCase } from "@endorphinjs/template-parser";
 import Entity from "./entity";
 import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
@@ -41,23 +41,14 @@ function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChoo
                     body.add(' else ');
                 }
 
-                const blockContent = conditionContent(`${name}Body`, state, block.consequent, next);
+                const blockContent = state.runChildBlock(`${name}Body`, (ctx, element) =>
+                    element.setContent(block.consequent, next));
+
+                // const blockContent = conditionContent(`${name}Body`, state, block.consequent, next);
                 body.add(`{\n${innerIndent}return ${blockContent};\n${indent}}`);
             });
 
             return body;
         });
-    });
-}
-
-/**
- * Generates contents of condition function and returns name of this function
- */
-function conditionContent(name: string, state: CompileState, statements: ENDStatement[], next: AstContinue): string {
-    return state.runBlock(name, block => {
-        block.useInjector = true;
-
-        return state.runElement(null, element =>
-            element.setContent(statements, next));
     });
 }
