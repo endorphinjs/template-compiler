@@ -1,7 +1,7 @@
 import { Node } from "@endorphinjs/template-parser";
+import { SourceNode } from "source-map";
 import CompileState from "../assets/CompileState";
 import { Chunk, ChunkList } from "../types";
-import { SourceNode } from "source-map";
 import { ENDCompileError } from "../error";
 
 export type WalkContinue = (node: Node) => SourceNode;

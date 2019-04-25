@@ -21,7 +21,7 @@ export type RuntimeSymbols = 'mountBlock' | 'updateBlock' | 'unmountBlock'
     | 'finalizeAttributes' | 'addEvent' | 'addStaticEvent' | 'finalizeEvents'
     | 'setRef' | 'finalizeRefs' | 'createComponent' | 'updateText' | 'addDisposeCallback'
     | 'insert' | 'get' | 'call' | 'assign' | 'elem' | 'elemWithText' | 'elemNS'
-    | 'elemNSWithText' | 'text' | 'filter' | 'filterAll' | 'subscribeStore'
+    | 'elemNSWithText' | 'text' | 'filter' | 'find' | 'subscribeStore'
     | 'animateIn' | 'animateOut';
 
 export interface ParsedTemplate {

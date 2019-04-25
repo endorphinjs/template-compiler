@@ -1,15 +1,15 @@
-import { WalkVisitorMap, getPrefix, commaChunks, WalkContinue } from "./utils";
 import {
     Program, Identifier, Literal, ConditionalExpression, ArrayExpression,
     BinaryExpression, LogicalExpression, ExpressionStatement, ObjectExpression,
     Property, RegExpLiteral, SequenceExpression, UnaryExpression, CallExpression,
     EmptyStatement, ThisExpression, MemberExpression, ReturnStatement,
-    ArrowFunctionExpression, BlockStatement, ObjectPattern
+    ArrowFunctionExpression, BlockStatement, ObjectPattern, TemplateLiteral,
+    TaggedTemplateExpression, ENDCaller, ENDGetter, ENDGetterPrefix, ENDFilter, ArrayPattern
 } from "@endorphinjs/template-parser";
-import { sn, propGetter, qStr, isIdentifier } from "../utils";
-import { Chunk, ChunkList } from "../types";
-import { ENDGetterPrefix, ENDGetter, ENDCaller, ENDFilter } from "./getter";
 import { SourceNode } from "source-map";
+import { Chunk, ChunkList } from "../types";
+import { sn, propGetter, qStr, isIdentifier } from "../utils";
+import { WalkVisitorMap, getPrefix, commaChunks, WalkContinue } from "./utils";
 
 export default {
     Program(node: Program, state, next) {
@@ -38,6 +38,9 @@ export default {
     },
     ArrayExpression(node: ArrayExpression, state, next) {
         return sn(commaChunks(node.elements.map(next), '[', ']'), node);
+    },
+    ArrayPattern(node: ArrayPattern, state, next) {
+        return sn(commaChunks(node.elements.map(elem => next(elem)), '[ ', ' ]'), node);
     },
     BinaryExpression(node: BinaryExpression, state, next) {
         // TODO check if parentheses are required here
@@ -96,6 +99,20 @@ export default {
             ? sn(['return ', next(node.argument)], node)
             : sn('return', node);
     },
+    TemplateLiteral(node: TemplateLiteral, state, next) {
+        const { quasis, expressions } = node;
+        const chunks: ChunkList = ['`'];
+
+        expressions.forEach((expr, i) => {
+            chunks.push(quasis[i].value.raw, '${', next(expr), '}');
+        });
+        chunks.push(quasis[quasis.length - 1].value.raw, '`');
+
+        return sn(chunks, node);
+    },
+    TaggedTemplateExpression(node: TaggedTemplateExpression, state, next) {
+        return sn([next(node.tag), next(node.quasi)], node);
+    },
 
     // Endorphin addons
     ENDGetterPrefix(node: ENDGetterPrefix, state) {
@@ -127,7 +144,7 @@ export default {
     },
 
     ENDFilter(node: ENDFilter, state, next) {
-        return sn([state.runtime(node.multiple ? 'filterAll' : 'filter'), '(', next(node.object), ', ', next(node.expression), ')']);
+        return sn([state.runtime(node.multiple ? 'filter' : 'find'), '(', next(node.object), ', ', next(node.expression), ')']);
     }
 } as WalkVisitorMap;
 

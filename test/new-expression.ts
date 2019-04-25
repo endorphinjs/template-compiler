@@ -40,21 +40,14 @@ describe.only('New Expression', () => {
         assert.equal(compile('@foo-bar'), 'scope["foo-bar"]');
     });
 
-    it.only('should generate filters', () => {
+    it('should generate filters', () => {
         // Ensure filter arguments are not rewritten to props
-        assert.equal(compile('a[b => b === 1]'), 'filter(host.props.a, b => (b === 1))');
-        assert.equal(compile('a.b[c => c === 1].d.e'), 'get(filter(get(host.props.a, "b"), c => (c === 1)), "d", "e")');
+        assert.equal(compile('a[b => b === 1]'), 'find(host.props.a, b => (b === 1))');
+        assert.equal(compile('a.b[c => c === 1].d.e'), 'get(find(get(host.props.a, "b"), c => (c === 1)), "d", "e")');
 
         // Support destructuring in arguments
-        assert.equal(compile('a.b[({ c }) => c === foo]'), 'filter(get(host.props.a, "b"), ({ c }) => (c === foo))');
-
-        // result = compile('a.b[({ c }) => c === foo]', scope = new CompileState());
-        // assert.equal(result, 'filter(host, get(host.props.a, "b"), $$filter0)');
-        // // assert.equal(toString(scope), read('fixtures/filters/filter2.txt'));
-
-        // result = compile('a.b[([c]) => c === foo]', scope = new CompileState());
-        // assert.equal(result, 'filter(host, get(host.props.a, "b"), $$filter0)');
-        // assert.equal(toString(scope), read('fixtures/filters/filter3.txt'));
+        assert.equal(compile('a.b[({ c }) => c === foo]'), 'find(get(host.props.a, "b"), ({ c }) => (c === host.props.foo))');
+        assert.equal(compile('a.b[([c]) => c === foo]'), 'find(get(host.props.a, "b"), ([ c ]) => (c === host.props.foo))');
     });
 
     it('should resolve globals', () => {
@@ -76,8 +69,8 @@ describe.only('New Expression', () => {
         });
 
         assert.equal(compile('setState()', state), 'setState(host)');
-        assert.equal(compile('setState({ enabled: !#enabled })', state), 'setState(host, {enabled: !host.state.enabled})');
-        assert.equal(compile('setState({ modal: null })', state), 'setState(host, {modal: null})');
+        assert.equal(compile('setState({ enabled: !#enabled })', state), 'setState(host, { enabled: !host.state.enabled })');
+        assert.equal(compile('setState({ modal: null })', state), 'setState(host, { modal: null })');
         const helpers = state.usedHelpers;
         assert.equal(helpers.size, 1);
         assert(helpers.has('setState'));
