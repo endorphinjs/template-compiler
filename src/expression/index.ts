@@ -3,20 +3,20 @@ import { SourceNode } from "source-map";
 import CompileState from "../assets/CompileState";
 import { WalkVisitorMap, walk } from "./utils";
 import baseVisitors from "./baseVisitors";
-import { createGetter, createCaller } from "./getter";
+import { convert } from "./getter";
 
 const expressionVisitors: WalkVisitorMap = {
     ...baseVisitors,
     MemberExpression(node: MemberExpression, state, next) {
-        const getter = createGetter(node);
-        if (getter.type === 'ENDGetter') {
+        const getter = convert(node);
+        if (getter.type === 'ENDGetter' || getter.type === 'ENDFilter') {
             return next(getter);
         }
 
         return baseVisitors.MemberExpression(getter, state, next);
     },
     CallExpression(node: CallExpression, state, next) {
-        const caller = createCaller(node);
+        const caller = convert(node);
         if (caller.type === 'ENDCaller') {
             return next(caller);
         }

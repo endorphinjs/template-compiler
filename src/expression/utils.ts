@@ -14,7 +14,7 @@ export function walk(node: Node, state: CompileState, visitors: WalkVisitorMap):
             return visitors[node.type](node, state, next);
         }
 
-        throw new ENDCompileError(`${node.type} is not supported in getter expressions`, node);
+        throw new ENDCompileError(`${node.type} is not supported in template expressions`, node);
     }
 
     return next(node);

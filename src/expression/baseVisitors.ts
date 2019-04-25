@@ -1,14 +1,15 @@
-import { WalkVisitorMap, getPrefix, commaChunks } from "./utils";
+import { WalkVisitorMap, getPrefix, commaChunks, WalkContinue } from "./utils";
 import {
     Program, Identifier, Literal, ConditionalExpression, ArrayExpression,
     BinaryExpression, LogicalExpression, ExpressionStatement, ObjectExpression,
     Property, RegExpLiteral, SequenceExpression, UnaryExpression, CallExpression,
     EmptyStatement, ThisExpression, MemberExpression, ReturnStatement,
-    ArrowFunctionExpression, BlockStatement
+    ArrowFunctionExpression, BlockStatement, ObjectPattern
 } from "@endorphinjs/template-parser";
 import { sn, propGetter, qStr, isIdentifier } from "../utils";
 import { Chunk, ChunkList } from "../types";
-import { ENDGetterPrefix, ENDGetter, ENDCaller } from "./getter";
+import { ENDGetterPrefix, ENDGetter, ENDCaller, ENDFilter } from "./getter";
+import { SourceNode } from "source-map";
 
 export default {
     Program(node: Program, state, next) {
@@ -50,20 +51,13 @@ export default {
         return next(node.expression);
     },
     ObjectExpression(node: ObjectExpression, state, next) {
-        return sn(commaChunks(node.properties.map(next), '{', '}'), node);
+        return sn(commaChunks(node.properties.map(prop => property(prop, false, next)), '{ ', ' }'), node);
+    },
+    ObjectPattern(node: ObjectPattern, state, next) {
+        return sn(commaChunks(node.properties.map(prop => property(prop, true, next)), '{ ', ' }'), node);
     },
     Property(node: Property, state, next) {
-        const key: Chunk = isIdentifier(node.key) ? node.key.name : next(node.key);
-
-        if (node.computed) {
-            return sn(['[', key, ']: ', next(node.value)], node);
-        }
-
-        if (node.shorthand) {
-            return sn([key, ': ', next(node.value)], node);
-        }
-
-        return sn([key, ': ', next(node.value)], node);
+        return property(node, false, next);
     },
     RegExpLiteral(node: RegExpLiteral) {
         return sn(`${node.regex.pattern}/${node.regex.flags}`, node);
@@ -130,5 +124,25 @@ export default {
         }
 
         return sn([state.runtime('call'), ...commaChunks(chunks, '(', ')')]);
+    },
+
+    ENDFilter(node: ENDFilter, state, next) {
+        return sn([state.runtime(node.multiple ? 'filterAll' : 'filter'), '(', next(node.object), ', ', next(node.expression), ')']);
     }
 } as WalkVisitorMap;
+
+function property(node: Property, isPattern: boolean, next: WalkContinue): SourceNode {
+    const key: Chunk = isIdentifier(node.key) ? node.key.name : next(node.key);
+
+    if (node.computed) {
+        return sn(['[', key, ']: ', next(node.value)], node);
+    }
+
+    if (node.shorthand) {
+        return isPattern
+            ? sn(key, node)
+            : sn([key, ': ', next(node.value)], node);
+    }
+
+    return sn([key, ': ', next(node.value)], node);
+}

@@ -1,24 +1,45 @@
-import { Node, MemberExpression, ArgumentListElement, Expression, CallExpression } from "@endorphinjs/template-parser";
+import { MemberExpression, ArgumentListElement, Expression, CallExpression, ArrowFunctionExpression, ArrayExpression, JSNode } from "@endorphinjs/template-parser";
 import { isIdentifier } from "../utils";
 
-type GetterPathFragment = Expression | ENDGetter | ENDCaller;
+type GetterPathFragment = Expression | ENDGetter | ENDCaller | ENDFilter;
 type GetterPath = GetterPathFragment[];
 
-export interface ENDGetterPrefix extends Node {
+export interface ENDGetterPrefix extends JSNode {
     type: 'ENDGetterPrefix';
     context: string;
 }
 
-export interface ENDGetter extends Node {
+export interface ENDGetter extends JSNode {
     type: 'ENDGetter';
     path: GetterPath;
 }
 
-export interface ENDCaller extends Node {
+export interface ENDCaller extends JSNode {
     type: 'ENDCaller';
     object: GetterPathFragment | ENDGetterPrefix;
     property: GetterPathFragment | ENDGetterPrefix;
     arguments: ArgumentListElement[];
+}
+
+export interface ENDFilter extends JSNode {
+    type: 'ENDFilter';
+    object: GetterPathFragment;
+    expression: ArrowFunctionExpression;
+    multiple: boolean;
+}
+
+export function convert(node: Expression): GetterPathFragment {
+    if (isMemberExpression(node)) {
+        return isFilter(node)
+            ? createFilter(node)
+            : createGetter(node);
+    }
+
+    if (isCallExpression(node)) {
+        return createCaller(node);
+    }
+
+    return node;
 }
 
 /**
@@ -33,6 +54,11 @@ export function createGetter(expr: MemberExpression): ENDGetter | MemberExpressi
     let ctx: Expression = expr;
     while (ctx) {
         if (isMemberExpression(ctx)) {
+            if (isFilter(ctx)) {
+                result.path.unshift(createFilter(ctx));
+                break;
+            }
+
             result.path.unshift(convert(ctx.property));
             ctx = ctx.object;
         } else {
@@ -89,24 +115,38 @@ export function createCaller(expr: CallExpression): ENDCaller | CallExpression {
     return expr;
 }
 
-export function convert(node: Expression): Expression | ENDCaller | ENDGetter {
-    if (isMemberExpression(node)) {
-        return createGetter(node);
-    }
+function createFilter(expr: MemberExpression): ENDFilter {
+    const { property, object } = expr;
+    const filter = (isArray(property) ? property.elements[0] : property) as ArrowFunctionExpression;
 
-    if (isCallExpression(node)) {
-        return createCaller(node);
+    return {
+        type: 'ENDFilter',
+        object: convert(object),
+        expression: filter,
+        multiple: isArray(property)
     }
-
-    return node;
 }
 
-function isMemberExpression(node: Node): node is MemberExpression {
+function isFilter(expr: MemberExpression): boolean {
+    return isFunction(expr.property)
+        || isArray(expr.property) && expr.property.elements.length
+            && isFunction(expr.property.elements[0]);
+}
+
+function isMemberExpression(node: JSNode): node is MemberExpression {
     return node.type === 'MemberExpression';
 }
 
-function isCallExpression(node: Node): node is CallExpression {
+function isCallExpression(node: JSNode): node is CallExpression {
     return node.type === 'CallExpression';
+}
+
+function isFunction(node: JSNode): node is ArrowFunctionExpression {
+    return node.type === 'ArrowFunctionExpression';
+}
+
+function isArray(node: JSNode): node is ArrayExpression {
+    return node.type === 'ArrayExpression';
 }
 
 function getterPrefix(context: string): ENDGetterPrefix {
