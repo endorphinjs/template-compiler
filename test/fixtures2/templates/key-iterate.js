@@ -61,7 +61,7 @@ function if$0Entry$0(host) {
 	}
 }
 
-function template$0(host, scope) {
+export default function template$0(host, scope) {
 	const target$0 = host.componentView;
 	const inj$0 = createInjector(target$0);
 	insert(inj$0, elemWithText("h1", "Hello world"));
@@ -77,5 +77,3 @@ function template$0Update(host, scope) {
 function template$0Unmount(scope) {
 	unmountBlock(scope.if$0);
 }
-
-export default template$0;

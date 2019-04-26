@@ -55,7 +55,7 @@ export default function generateTemplate(ast: ENDProgram, options?: CompileState
         }
     });
 
-    body.push('', template);
+    body.push('\n', template);
 
     return sn(format(body));
 }

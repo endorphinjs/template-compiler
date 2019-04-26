@@ -14,7 +14,9 @@ export type AstVisitorMap = { [name: string]: AstVisitor };
 
 export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
-        const name = state.runBlock('template', () => {
+        state.runBlock('template', block => {
+            block.exports = 'default';
+
             return state.runElement(node, element => {
                 element.setMount(() => `${state.host}.componentView`);
                 element.setContent(node.body, next);
@@ -22,9 +24,14 @@ export default {
                 if (state.usedStore.size) {
                     element.add(subscribeStore(state));
                 }
+
+                if (state.usedRuntime.has('setRef') || state.usedRuntime.has('mountPartial')) {
+                    // Template sets refs, finalize them
+                    element.add(new Entity('refs', state)
+                        .setShared(() => `${state.runtime('finalizeRefs')}(${state.host})`));
+                }
             });
         });
-        state.pushOutput(`\nexport default ${name};`);
     },
 
     ENDElement(node: Ast.ENDElement, state, next) {

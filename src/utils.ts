@@ -161,7 +161,7 @@ export function format(chunks: ChunkList, prefix: string = '', suffix: string = 
             result.push(';');
         }
 
-        if (i !== arr.length - 1) {
+        if (i !== arr.length - 1 && chunk !== suffix) {
             result.push(suffix);
         }
     });

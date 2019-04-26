@@ -1,5 +1,6 @@
-import CompileState from "./CompileState";
+import { SourceNode } from "source-map";
 import { ChunkList, Chunk } from "../types";
+import CompileState from "./CompileState";
 import Entity from "./Entity";
 import ElementEntity from "./ElementEntity";
 import UsageStats from "./UsageStats";
@@ -13,6 +14,9 @@ export default class BlockContext {
 
     /** Should block use injector as argument */
     useInjector?: boolean;
+
+    /** Should block mount function export itself? */
+    exports?: boolean | 'default';
 
     /**
      * @param name Name of the block, will be used as suffix in generated function
@@ -101,8 +105,14 @@ export default class BlockContext {
         }
 
         const { indent } = state;
+        const mountFn = createFunction(name, `${state.host}${this.useInjector ? ', ' + injectorArg : ''}${scopeArg(scopeUsage.mount)}`, mountChunks, indent);
+
+        if (this.exports) {
+            mountFn.prepend([`export `, this.exports === 'default' ? 'default ' : '']);
+        }
+
         return [
-            createFunction(name, `${state.host}${this.useInjector ? ', ' + injectorArg : ''}${scopeArg(scopeUsage.mount)}`, mountChunks, indent),
+            mountFn,
             createFunction(`${name}Update`, `${state.host}${scopeArg(scopeUsage.update)}`, updateChunks, indent),
             createFunction(`${name}Unmount`, scopeArg(scopeUsage.unmount, true), unmountChunks, indent)
         ];
@@ -112,12 +122,12 @@ export default class BlockContext {
 /**
  * Generates function from given fragments
  */
-function createFunction(name: string, args: string, chunks: ChunkList, indent: string = '\t'): Chunk {
+function createFunction(name: string, args: string, chunks: ChunkList, indent: string = '\t'): SourceNode {
     if(chunks && chunks.length) {
         return sn([
-            `\nfunction ${name}(${args}) {\n${indent}`,
+            `function ${name}(${args}) {\n${indent}`,
             ...format(chunks, indent),
-            '\n}'
+            '\n}\n'
         ]);
     }
 }
