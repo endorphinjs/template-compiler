@@ -7,7 +7,7 @@ describe('New compiler', () => {
         return fs.readFileSync(path.resolve(__dirname, fileName), 'utf8').trim();
     }
 
-    it.skip('debug', () => {
+    it.only('debug', () => {
         const files = [
             'templates/basic1.html', 'templates/basic2.html', 'templates/branching.html',
             'templates/iterate.html', 'templates/key-iterate.html'

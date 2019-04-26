@@ -10,7 +10,7 @@ function compile(code: string, state: CompileState = new CompileState()): string
     return expression(ast, state).toString();
 }
 
-describe.only('New Expression', () => {
+describe('New Expression', () => {
     it('should generate primitives', () => {
         // Primitives
         assert.equal(compile('1'), '1');

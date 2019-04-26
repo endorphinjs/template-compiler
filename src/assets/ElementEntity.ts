@@ -52,7 +52,7 @@ export default class ElementEntity extends Entity {
 
         if (!this._injector) {
             // First time injector usage. Create entity which will mount it
-            this._injector = new Entity(this.state.scopeSymbol('inj'), this.state);
+            this._injector = new Entity('inj', this.state);
             this._injector.setMount(() => sn([`${this.state.runtime('createInjector')}(`, this.getSymbol(), `)`]));
             this.children.unshift(this._injector);
         }
@@ -102,10 +102,9 @@ export default class ElementEntity extends Entity {
      * Sets current entity content by receiving entities from given AST nodes
      */
     setContent(nodes: Node[], next: AstContinue): this {
-        nodes.forEach(statement => {
-            const entity = next(statement);
-            entity && this.add(entity);
-        });
+        // Collect contents in two passes: convert nodes to entities to collect
+        // injector usage, then attach it to element
+        nodes.map(next).forEach(entity => entity && this.add(entity));
         return this;
     }
 

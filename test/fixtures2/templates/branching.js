@@ -70,14 +70,14 @@ function choose$0Entry$0(host) {
 
 function template$0(host, scope) {
 	const target$0 = host.componentView;
-	const inj$0$0 = createInjector(target$0);
-	target$0.appendChild(elemWithText("h1", "Hello world"));
-	scope.if$0 = mountBlock(host, inj$0$0, if$0Entry$0);
-	const blockquote$0 = insert(inj$0$0, elem("blockquote"));
-	const inj$1$0 = createInjector(blockquote$0);
-	blockquote$0.appendChild(elemWithText("p", "Lorem ipsum 1"));
-	scope.choose$0 = mountBlock(host, inj$1$0, choose$0Entry$0);
-	insert(inj$1$0, elemWithText("p", "Lorem ipsum 2"));
+	const inj$0 = createInjector(target$0);
+	insert(inj$0, elemWithText("h1", "Hello world"));
+	scope.if$0 = mountBlock(host, inj$0, if$0Entry$0);
+	const blockquote$0 = insert(inj$0, elem("blockquote"));
+	const inj$1 = createInjector(blockquote$0);
+	insert(inj$1, elemWithText("p", "Lorem ipsum 1"));
+	scope.choose$0 = mountBlock(host, inj$1, choose$0Entry$0);
+	insert(inj$1, elemWithText("p", "Lorem ipsum 2"));
 	addDisposeCallback(host, template$0Unmount);
 	return template$0Update;
 }
