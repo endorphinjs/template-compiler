@@ -1,4 +1,4 @@
-import { ENDIfStatement, ENDChooseStatement, ENDChooseCase } from "@endorphinjs/template-parser";
+import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Program } from "@endorphinjs/template-parser";
 import Entity from "./entity";
 import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
@@ -17,6 +17,13 @@ export default class ConditionEntity extends Entity {
             .setUnmount(() => sn([`${state.runtime('unmountBlock')}(`, this.getSymbol(), `)`]));
 
         return this;
+    }
+
+    setSimple(test: Program, statements: ENDStatement[], next: AstContinue) {
+        this.setMount(() => {
+            const fn = ifAttr(test, statements, this.state, next);
+            return sn([`${fn}(${this.state.host}, `, this.state.injector, ')']);
+        });
     }
 }
 
@@ -47,6 +54,27 @@ function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChoo
                 // const blockContent = conditionContent(`${name}Body`, state, block.consequent, next);
                 body.add(`{\n${innerIndent}return ${blockContent};\n${indent}}`);
             });
+
+            return body;
+        });
+    });
+}
+
+function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, next: AstContinue): string {
+    return state.runChildBlock('ifAttr', () => {
+        return new Entity('block', state).setMount(() => {
+            const body = sn();
+            const indent = state.indent.repeat(2);
+
+            body.add([`if (`, generateExpression(test, state), ') {']);
+            statements.forEach(child => {
+                const childEntity = next(child);
+                if (childEntity) {
+                    body.add(['\n', indent, childEntity.getMount()]);
+                }
+            });
+            body.add(`\n${state.indent}}`);
+            body.add(`\n${state.indent}return 0;`)
 
             return body;
         });

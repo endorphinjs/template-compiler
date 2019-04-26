@@ -8,6 +8,7 @@ import ConditionEntity from './assets/ConditionEntity';
 import { sn, isLiteral, qStr } from './utils';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
+import { ENDStatement } from '@endorphinjs/template-parser';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -74,8 +75,13 @@ export default {
     },
 
     ENDIfStatement(node: Ast.ENDIfStatement, state, next) {
-        return new ConditionEntity(node, state)
-            .setContent([node], next);
+        const entity = new ConditionEntity(node, state);
+        if (node.consequent.every(isSimpleConditionContent)) {
+            entity.setSimple(node.test, node.consequent, next);
+        } else {
+            entity.setContent([node], next);
+        }
+        return entity;
     },
 
     ENDChooseStatement(node: Ast.ENDChooseStatement, state, next) {
@@ -116,4 +122,12 @@ function subscribeStore(state: CompileState): Entity {
 
     return new Entity('store', state)
         .setMount(() => `${state.runtime('subscribeStore')}(${state.host}${storeKeysArg});`);
+}
+
+function isSimpleConditionContent(node: ENDStatement): boolean {
+    if (node.type === 'ENDAttributeStatement') {
+        return node.directives.filter(dir => dir.prefix === 'on').length === 0;
+    }
+
+    return node.type === 'ENDAddClassStatement';
 }
