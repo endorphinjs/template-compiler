@@ -10,7 +10,7 @@ describe('New compiler', () => {
     it.only('debug', () => {
         const files = [
             'templates/basic1.html', 'templates/basic2.html', 'templates/branching.html',
-            'templates/iterate.html', 'templates/key-iterate.html'
+            'templates/iterate.html', 'templates/key-iterate.html', 'templates/inner-html.html'
         ];
 
         files.forEach(file => {

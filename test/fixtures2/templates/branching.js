@@ -1,70 +1,70 @@
 import { elemWithText, mountBlock, createInjector, elem, insert, updateBlock, unmountBlock, text, addDisposeCallback } from "@endorphinjs/endorphin";
 
-function if$1Body$0(host, injector) {
+function ifBody$1(host, injector) {
 	insert(injector, elemWithText("div", "top 2"));
 }
 
-function if$1Entry$0(host) {
+function ifEntry$1(host) {
 	if (host.props.expr2) {
-		return if$1Body$0;
+		return ifBody$1;
 	}
 }
 
-function if$2Body$0(host, injector) {
+function ifBody$2(host, injector) {
 	insert(injector, elemWithText("div", "top 3"));
 	insert(injector, text("\n            top 3.1\n        "));
 }
 
-function if$2Entry$0(host) {
+function ifEntry$2(host) {
 	if (host.props.expr3) {
-		return if$2Body$0;
+		return ifBody$2;
 	}
 }
 
-function if$0Body$0(host, injector, scope) {
+function ifBody$0(host, injector, scope) {
 	const p$0 = insert(injector, elem("p"));
 	p$0.appendChild(elemWithText("strong", "top 1"));
-	scope.if$1 = mountBlock(host, injector, if$1Entry$0);
-	scope.if$2 = mountBlock(host, injector, if$2Entry$0);
-	addDisposeCallback(host, if$0Body$0Unmount);
-	return if$0Body$0Update;
+	scope.if$1 = mountBlock(host, injector, ifEntry$1);
+	scope.if$2 = mountBlock(host, injector, ifEntry$2);
+	addDisposeCallback(host, ifBody$0Unmount);
+	return ifBody$0Update;
 }
 
-function if$0Body$0Update(host, scope) {
+function ifBody$0Update(host, scope) {
 	updateBlock(scope.if$1);
 	updateBlock(scope.if$2);
 }
 
-function if$0Body$0Unmount(scope) {
+function ifBody$0Unmount(scope) {
 	unmountBlock(scope.if$1);
 	unmountBlock(scope.if$2);
 }
 
-function if$0Entry$0(host) {
+function ifEntry$0(host) {
 	if (host.props.expr1) {
-		return if$0Body$0;
+		return ifBody$0;
 	}
 }
 
-function choose$0Body$0(host, injector) {
+function chooseBody$0(host, injector) {
 	insert(injector, elemWithText("div", "sub 1"));
 }
 
-function choose$0Body$1(host, injector) {
+function chooseBody$1(host, injector) {
 	insert(injector, elemWithText("div", "sub 2"));
 }
 
-function choose$0Body$2(host, injector) {
+function chooseBody$2(host, injector) {
 	insert(injector, elemWithText("div", "sub 3"));
 }
 
-function choose$0Entry$0(host) {
+function chooseEntry$0(host) {
 	if ((host.props.expr1 === 1)) {
-		return choose$0Body$0;
+		return chooseBody$0;
 	} else if ((host.props.expr1 === 2)) {
-		return choose$0Body$1;
+		return chooseBody$1;
 	} else {
-		return choose$0Body$2;
+		return chooseBody$2;
 	}
 }
 
@@ -72,11 +72,11 @@ export default function template$0(host, scope) {
 	const target$0 = host.componentView;
 	const inj$0 = createInjector(target$0);
 	insert(inj$0, elemWithText("h1", "Hello world"));
-	scope.if$0 = mountBlock(host, inj$0, if$0Entry$0);
+	scope.if$0 = mountBlock(host, inj$0, ifEntry$0);
 	const blockquote$0 = insert(inj$0, elem("blockquote"));
 	const inj$1 = createInjector(blockquote$0);
 	insert(inj$1, elemWithText("p", "Lorem ipsum 1"));
-	scope.choose$0 = mountBlock(host, inj$1, choose$0Entry$0);
+	scope.choose$0 = mountBlock(host, inj$1, chooseEntry$0);
 	insert(inj$1, elemWithText("p", "Lorem ipsum 2"));
 	addDisposeCallback(host, template$0Unmount);
 	return template$0Update;

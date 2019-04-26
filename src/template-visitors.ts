@@ -7,6 +7,7 @@ import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import { sn, isLiteral, qStr } from './utils';
 import IteratorEntity from './assets/IteratorEntity';
+import InnerHTMLEntity from './assets/InnerHTMLEntity';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -67,8 +68,8 @@ export default {
         }
     },
 
+    // NB `Program` is used as expression for text node
     Program(node: Ast.Program, state) {
-        // NB `Program` is used as expression for text node
         return new TextEntity(node, state);
     },
 
@@ -85,6 +86,10 @@ export default {
     ENDForEachStatement(node: Ast.ENDForEachStatement, state, next) {
         return new IteratorEntity(node, state)
             .setContent(node.body, next);
+    },
+
+    ENDInnerHTML(node: Ast.ENDInnerHTML, state) {
+        return new InnerHTMLEntity(node, state);
     }
 } as AstVisitorMap;
 
