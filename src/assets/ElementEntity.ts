@@ -3,7 +3,7 @@ import { SourceNode } from 'source-map';
 import Entity from './Entity';
 import UsageStats from './UsageStats';
 import CompileState from './CompileState';
-import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName } from '../utils';
+import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue } from '../utils';
 import TextEntity from './TextEntity';
 import { Chunk } from '../types';
 import { AstContinue } from '../template-visitors';
@@ -13,6 +13,9 @@ const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForE
 export default class ElementEntity extends Entity {
     private _injector: Entity;
     readonly injectorUsage = new UsageStats();
+
+    /** Indicates current entity is a *registered* DOM component */
+    isComponent: boolean = false;
 
     /** Whether element contains partials */
     hasPartials: boolean;
@@ -35,6 +38,7 @@ export default class ElementEntity extends Entity {
         super(node && isElement(node) ? node.name.name : 'target', state);
         if (node) {
             this.collectStats(node);
+            this.isComponent = isElement(node) && state.isComponent(node);
         } else {
             // Empty node means we’re in element defined in outer block
             // (for example, in conditional content block). In this case,
@@ -53,7 +57,12 @@ export default class ElementEntity extends Entity {
         if (!this._injector) {
             // First time injector usage. Create entity which will mount it
             this._injector = new Entity('inj', this.state);
-            this._injector.setMount(() => sn([`${this.state.runtime('createInjector')}(`, this.getSymbol(), `)`]));
+            this._injector.setMount(() =>
+                this.isComponent
+                    // For components, contents must be redirected into inner input injector
+                    ? sn([this.getSymbol(), '.componentModel.input'])
+                    : sn([`${this.state.runtime('createInjector')}(`, this.getSymbol(), `)`])
+            );
             this.children.unshift(this._injector);
         }
 
@@ -63,11 +72,6 @@ export default class ElementEntity extends Entity {
     /** Indicates that element context should use injector to operate */
     get usesInjector(): boolean {
         return this._injector != null;
-    }
-
-    /** Indicates that current element is a component */
-    get isComponent(): boolean {
-        return isElement(this.node) && this.state.isComponent(this.node);
     }
 
     /**
@@ -88,11 +92,8 @@ export default class ElementEntity extends Entity {
 
     add(entity: Entity) {
         if ((entity instanceof ElementEntity || entity instanceof TextEntity) && entity.code.mount) {
-            entity.setMount(() => {
-                return this.usesInjector
-                    ? sn([`${this.state.runtime('insert')}(`, this.injector, `, `, entity.code.mount, `)`])
-                    : sn([this.getSymbol(), `.appendChild(`, entity.code.mount, `)`]);
-            });
+            entity.setMount(() =>
+                this.usesInjector ? this.addInjector(entity) : this.addDOM(entity));
         }
 
         super.add(entity);
@@ -106,6 +107,28 @@ export default class ElementEntity extends Entity {
         // injector usage, then attach it to element
         nodes.map(next).forEach(entity => entity && this.add(entity));
         return this;
+    }
+
+    /**
+     * Attaches given DOM entity to current element via DOM
+     */
+    private addDOM(entity: ElementEntity | TextEntity): SourceNode {
+        return sn([this.getSymbol(), `.appendChild(`, entity.code.mount, `)`]);
+    }
+
+    /**
+     * Attaches given DOM entity to current element via injector
+     */
+    private addInjector(entity: ElementEntity | TextEntity): SourceNode {
+        const args = sn([this.injector, entity.code.mount]);
+        if (this.isComponent) {
+            let slotName = '';
+            if (entity instanceof ElementEntity && isElement(entity.node)) {
+                slotName = getAttrValue(entity.node, 'slot') as string || '';
+            }
+            args.add(qStr(slotName));
+        }
+        return sn([`${this.state.runtime('insert')}(`, args.join(', '), ')']);
     }
 
     private collectStats(elem: ENDElement | ENDTemplate) {

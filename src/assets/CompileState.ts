@@ -95,11 +95,6 @@ export default class CompileState {
         return this.options.host;
     }
 
-    // TODO implement
-    get hasPartials(): boolean {
-        return false;
-    }
-
     /** Symbol for referencing runtime scope */
     get scope(): string {
         const { blockContext } = this;
@@ -115,6 +110,16 @@ export default class CompileState {
     get element(): ElementEntity {
         return this.blockContext
             && this.blockContext.element;
+    }
+
+    // TODO implement
+    get hasPartials(): boolean {
+        return false;
+    }
+
+    /** Symbol for referencing partials */
+    get partials(): string {
+        return this.options.partials;
     }
 
     /** Current rendering context */

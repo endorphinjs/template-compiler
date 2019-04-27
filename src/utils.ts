@@ -140,9 +140,7 @@ export function propGetter(name: string): string {
  */
 export function propSetter(node: Identifier | Program, state: CompileState): Chunk {
     if (isExpression(node)) {
-        const result = new SourceNode();
-        result.add(['[', generateExpression(node, state), ']']);
-        return result;
+        return sn(['[', generateExpression(node, state), ']']);
     }
 
     return isPropKey(node.name) ? node.name : qStr(node.name)

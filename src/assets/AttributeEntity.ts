@@ -49,7 +49,6 @@ function attrValue(attr: ENDAttribute, state: CompileState): Chunk {
     return compileAttributeValue(attr.value, state, inComponent);
 }
 
-
 export function compileAttributeName(name: ENDAttributeName | string, state: CompileState): Chunk {
     if (typeof name === 'string') {
         return qStr(name);

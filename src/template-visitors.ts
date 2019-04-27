@@ -2,13 +2,14 @@ import * as Ast from '@endorphinjs/template-parser';
 import CompileState from './assets/CompileState';
 import Entity from './assets/Entity';
 import ElementEntity, { createElement } from './assets/ElementEntity';
-import AttributeEntity from './assets/AttributeEntity';
+import AttributeEntity, { compileAttributeValue } from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
-import { sn, isLiteral, qStr } from './utils';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
-import { ENDStatement } from '@endorphinjs/template-parser';
+import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter } from './utils';
+import { Chunk } from './types';
+import { toObjectLiteral } from './assets/object';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -28,7 +29,8 @@ export default {
                 }
 
                 if (state.usedRuntime.has('setRef') || state.usedRuntime.has('mountPartial')) {
-                    // Template sets refs, finalize them
+                    // Template sets refs or contains partials which may set
+                    // refs as well
                     element.add(new Entity('refs', state)
                         .setShared(() => `${state.runtime('finalizeRefs')}(${state.host})`));
                 }
@@ -42,19 +44,40 @@ export default {
                 element.add(refEntity(node.ref, element, state));
             }
 
-            element.setContent(node.attributes, next);
+            let attrs = node.attributes;
+            if (element.isComponent) {
+                // In component, static attributes/props (e.g. ones which won’t change
+                // in runtime) must be added during component mount. Thus, we should
+                // process dynamic attributes only
+                attrs = attrs.filter(attr => isDynamicAttribute(attr, state));
+            }
+
+            element.setContent(attrs, next);
 
             // Check edge case: element with single text child
             const firstChild = node.body[0];
-            if (!state.isComponent(node) && node.body.length === 1 && isLiteral(firstChild)) {
+            if (!element.isComponent && node.body.length === 1 && isLiteral(firstChild)) {
                 element.setMount(() => createElement(node, state, firstChild));
             } else {
                 element.setMount(() => createElement(node, state));
                 element.setContent(node.body, next);
             }
 
-            if (node.component) {
-                // TODO Mount component
+            if (element.isComponent) {
+                // Add code to mount, update and unmount component
+                const component = new Entity('component', state)
+                    .setMount(() => {
+                        const args = sn(element.getSymbol());
+                        const staticProps = collectStaticProps(node, state);
+                        if (staticProps.size) {
+                            args.add(toObjectLiteral(staticProps, state, 1))
+                        }
+
+                        return sn([`${state.runtime('mountComponent')}(`, args.join(', '), `)`]);
+                    })
+                    .setUpdate(() => sn([`${state.runtime('updateComponent')}(`, element.getSymbol(), ')']))
+                    .setUnmount(() => sn([`${state.runtime('unmountComponent')}(`, element.getSymbol(), ')']))
+                element.add(component);
             }
         });
     },
@@ -124,10 +147,53 @@ function subscribeStore(state: CompileState): Entity {
         .setMount(() => `${state.runtime('subscribeStore')}(${state.host}${storeKeysArg});`);
 }
 
-function isSimpleConditionContent(node: ENDStatement): boolean {
+function isSimpleConditionContent(node: Ast.ENDStatement): boolean {
     if (node.type === 'ENDAttributeStatement') {
         return node.directives.filter(dir => dir.prefix === 'on').length === 0;
     }
 
     return node.type === 'ENDAddClassStatement';
+}
+
+/**
+ * Check if given attribute is dynamic, e.g. it’s value will be changed in runtime
+ */
+function isDynamicAttribute(attr: Ast.ENDAttribute, state: CompileState): boolean {
+    const { element } = state;
+    if (!element || !element.node || element.hasPartials || element.attributeExpressions) {
+        // * no element context
+        // * in child block context
+        // * element contains entities which may affect any attribute
+        return true;
+    }
+
+    if (isIdentifier(attr.name)) {
+        return element.dynamicAttributes.has(attr.name.name);
+    }
+
+    return isExpression(attr.name)
+        || isExpression(attr.value)
+        || attr.value && attr.value.type === 'ENDAttributeValueExpression';
+}
+
+function collectStaticProps(elem: Ast.ENDElement, state: CompileState): Map<Chunk, Chunk> {
+    const attrs: Map<Chunk, Chunk> = new Map();
+
+    elem.attributes.forEach(attr => {
+        if (!isDynamicAttribute(attr, state)) {
+            attrs.set(propSetter(attr.name, state), compileAttributeValue(attr.value, state, true));
+        }
+    });
+
+    elem.directives.forEach(dir => {
+        if (dir.prefix === 'partial') {
+            attrs.set(qStr(`${dir.prefix}:${dir.name}`), sn([
+                `${state.runtime('assign')}({ ${state.host} }, `,
+                `${state.partials}[`,
+                compileAttributeValue(dir.value, state, true),
+            '])']));
+        }
+    });
+
+    return attrs;
 }
