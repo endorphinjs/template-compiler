@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
 import generateExpression from './expression';
 import CompileState from './assets/CompileState';
-import { Chunk, ChunkList } from './types';
+import { Chunk, ChunkList, RuntimeSymbols } from './types';
 
 /**
  * A prefix for Endorphin element and attribute names
@@ -144,6 +144,13 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
     }
 
     return isPropKey(node.name) ? node.name : qStr(node.name)
+}
+
+/**
+ * Creates code chunk that invokes given runtime function with arguments
+ */
+export function runtime(symbol: RuntimeSymbols, args: ChunkList, state: CompileState): SourceNode {
+    return sn([`${state.runtime(symbol)}(`, sn(args).join(', '), ')']);
 }
 
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {

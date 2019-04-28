@@ -1,13 +1,13 @@
 import * as Ast from '@endorphinjs/template-parser';
 import CompileState from './assets/CompileState';
-import Entity from './assets/Entity';
+import Entity, { entity } from './assets/Entity';
 import ElementEntity, { createElement } from './assets/ElementEntity';
 import AttributeEntity, { compileAttributeValue } from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
-import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter } from './utils';
+import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime } from './utils';
 import { Chunk } from './types';
 import { toObjectLiteral } from './assets/object';
 
@@ -31,8 +31,9 @@ export default {
                 if (state.usedRuntime.has('setRef') || state.usedRuntime.has('mountPartial')) {
                     // Template sets refs or contains partials which may set
                     // refs as well
-                    element.add(new Entity('refs', state)
-                        .setShared(() => `${state.runtime('finalizeRefs')}(${state.host})`));
+                    element.add(entity('refs', state, {
+                        shared: () => runtime('finalizeRefs', [state.host], state)
+                    }));
                 }
             });
         });
@@ -54,9 +55,20 @@ export default {
 
             element.setContent(attrs, next);
 
-            // Check edge case: element with single text child
+            // TODO set directives
+
             const firstChild = node.body[0];
-            if (!element.isComponent && node.body.length === 1 && isLiteral(firstChild)) {
+            if (node.name.name === 'slot') {
+                // Default slot content must be generated as child block
+                // to mount it only if there’s no incoming slot content
+                const slotName = String(getAttrValue(node, 'name') || '');
+                const contentArg = defaultSlot(node, state, next);
+                element.add(entity('slotMount', state, {
+                    mount: () => runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg], state),
+                    unmount: slot => runtime('unmountSlot', [slot.getSymbol()], state)
+                }));
+            } else if (!element.isComponent && node.body.length === 1 && isLiteral(firstChild)) {
+                // Edge case: element with single text child
                 element.setMount(() => createElement(node, state, firstChild));
             } else {
                 element.setMount(() => createElement(node, state));
@@ -65,19 +77,16 @@ export default {
 
             if (element.isComponent) {
                 // Add code to mount, update and unmount component
-                const component = new Entity('component', state)
-                    .setMount(() => {
-                        const args = sn(element.getSymbol());
+                element.add(entity('component', state, {
+                    mount: () => {
                         const staticProps = collectStaticProps(node, state);
-                        if (staticProps.size) {
-                            args.add(toObjectLiteral(staticProps, state, 1))
-                        }
-
-                        return sn([`${state.runtime('mountComponent')}(`, args.join(', '), `)`]);
-                    })
-                    .setUpdate(() => sn([`${state.runtime('updateComponent')}(`, element.getSymbol(), ')']))
-                    .setUnmount(() => sn([`${state.runtime('unmountComponent')}(`, element.getSymbol(), ')']))
-                element.add(component);
+                        const staticPropsArg = staticProps.size
+                            ? toObjectLiteral(staticProps, state, 1) : null;
+                        return runtime('mountComponent', [element.getSymbol(), staticPropsArg], state);
+                    },
+                    update: () => runtime('updateComponent', [element.getSymbol()], state),
+                    unmount: () => runtime('unmountComponent', [element.getSymbol()], state)
+                }))
             }
         });
     },
@@ -126,8 +135,9 @@ export default {
  * Creates element ref entity
  */
 function refEntity(ref: string, element: ElementEntity, state: CompileState): Entity {
-    return new Entity('ref', state)
-        .setShared(() => sn([`${state.runtime('setRef')}(${state.host}, `, ref, `, `, element.getSymbol(), `);`]));
+    return entity('ref', state, {
+        shared: () => runtime('setRef', [state.host, ref, element.getSymbol()], state)
+    });
 }
 
 /**
@@ -135,16 +145,15 @@ function refEntity(ref: string, element: ElementEntity, state: CompileState): En
  * @param state
  */
 function subscribeStore(state: CompileState): Entity {
-    let storeKeysArg = '';
-
     // Without partials, we can safely assume that we know about
     // all used store keys
-    if (!state.hasPartials) {
-        storeKeysArg = `, [${Array.from(state.usedStore).map(qStr).join(', ')}]`;
-    }
+    const storeKeysArg = state.hasPartials
+        ? `[${Array.from(state.usedStore).map(qStr).join(', ')}]`
+        : '';
 
-    return new Entity('store', state)
-        .setMount(() => `${state.runtime('subscribeStore')}(${state.host}${storeKeysArg});`);
+    return entity('store', state, {
+        mount: () => runtime('subscribeStore', [state.host, storeKeysArg], state)
+    });
 }
 
 function isSimpleConditionContent(node: Ast.ENDStatement): boolean {
@@ -187,13 +196,25 @@ function collectStaticProps(elem: Ast.ENDElement, state: CompileState): Map<Chun
 
     elem.directives.forEach(dir => {
         if (dir.prefix === 'partial') {
-            attrs.set(qStr(`${dir.prefix}:${dir.name}`), sn([
-                `${state.runtime('assign')}({ ${state.host} }, `,
-                `${state.partials}[`,
-                compileAttributeValue(dir.value, state, true),
-            '])']));
+            const value = compileAttributeValue(dir.value, state, true);
+            attrs.set(
+                qStr(`${dir.prefix}:${dir.name}`),
+                runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])], state)
+            );
         }
     });
 
     return attrs;
+}
+
+/**
+ * Generates function with default content of given slot. If slot is empty,
+ * no function is generated
+ */
+function defaultSlot(node: Ast.ENDElement, state: CompileState, next: AstContinue): string | null {
+    const slotName = String(getAttrValue(node, 'name') || '');
+    return node.body.length
+        ? state.runChildBlock(`slot${nameToJS(slotName, true)}`,
+            (child, slot) => slot.setContent(node.body, next))
+        : null;
 }

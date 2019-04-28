@@ -4,8 +4,23 @@ import UsageStats from "./UsageStats";
 import { Chunk, UsageContext } from "../types";
 import { sn } from "../utils";
 
+type RenderContext = UsageContext | 'shared';
 type RenderChunk = (entity: Entity) => Chunk;
 type SymbolType = UsageContext | 'ref';
+
+/**
+ * Factory function for shorter entity instance code
+ */
+export function entity(name: string, state: CompileState, render?: { [K in RenderContext]?: RenderChunk }): Entity {
+    const ent = new Entity(name, state);
+    if (render) {
+        render.mount && ent.setMount(render.mount);
+        render.update && ent.setUpdate(render.update);
+        render.unmount && ent.setUnmount(render.unmount)
+        render.shared && ent.setShared(render.shared)
+    }
+    return ent;
+}
 
 export default class Entity {
     children: Entity[] = [];
