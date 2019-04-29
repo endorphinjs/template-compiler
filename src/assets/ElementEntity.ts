@@ -21,6 +21,9 @@ export default class ElementEntity extends Entity {
     /** Whether element contains partials */
     hasPartials: boolean;
 
+    /** Whether element contents is static */
+    isStaticContent: boolean = true;
+
     /**
      * List of element’s attribute names whose values are expressions,
      * e.g. `attr={foo}` or `attr="foo {bar}"`
@@ -40,6 +43,7 @@ export default class ElementEntity extends Entity {
     constructor(readonly node: ENDElement | ENDTemplate | null, readonly state: CompileState) {
         super(node && isElement(node) ? node.name.name : 'target', state);
         if (node) {
+            this.isStaticContent = true;
             this.collectStats(node);
             this.isComponent = isElement(node) && state.isComponent(node);
         } else {
@@ -47,6 +51,7 @@ export default class ElementEntity extends Entity {
             // (for example, in conditional content block). In this case,
             // we should always use injector to fill contents, which shall be
             // passed as argument to block function
+            this.isStaticContent = false;
             this._injector = entity('injector', state);
             this._injector.name = 'injector';
         }
@@ -95,7 +100,7 @@ export default class ElementEntity extends Entity {
     add(entity: Entity) {
         if ((entity instanceof ElementEntity || entity instanceof TextEntity) && entity.code.mount) {
             entity.setMount(() =>
-                this.usesInjector ? this.addInjector(entity) : this.addDOM(entity));
+                this.isStaticContent ? this.addDOM(entity) : this.addInjector(entity));
         }
 
         super.add(entity);
@@ -179,6 +184,7 @@ export default class ElementEntity extends Entity {
         walk(elem, node => {
             if (node.type === 'ENDPartialStatement') {
                 this.hasPartials = true;
+                this.isStaticContent = false;
             } else if (node.type === 'ENDAddClassStatement') {
                 this.dynamicAttributes.add('class');
             } else if (node.type === 'ENDAttributeStatement') {
@@ -187,7 +193,10 @@ export default class ElementEntity extends Entity {
                 this.attributesStats(node);
             }
 
-            return dynamicContent.has(node.type);
+            if (dynamicContent.has(node.type)) {
+                this.isStaticContent = false;
+                return true;
+            }
         });
     }
 
