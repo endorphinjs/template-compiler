@@ -1,4 +1,7 @@
 import * as Ast from '@endorphinjs/template-parser';
+import { SourceNode } from 'source-map';
+import { Chunk, ChunkList } from './types';
+import generateExpression from './expression';
 import CompileState from './assets/CompileState';
 import Entity, { entity } from './assets/Entity';
 import ElementEntity, { createElement } from './assets/ElementEntity';
@@ -7,11 +10,9 @@ import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
-import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime } from './utils';
-import { Chunk, ChunkList } from './types';
 import { toObjectLiteral } from './assets/object';
-import generateExpression from './expression';
-import { SourceNode } from 'source-map';
+import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime } from './utils';
+import VariableEntity from './assets/VariableEntity';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -167,6 +168,10 @@ export default {
 
     ENDInnerHTML(node: Ast.ENDInnerHTML, state) {
         return new InnerHTMLEntity(node, state);
+    },
+
+    ENDVariableStatement(node: Ast.ENDVariableStatement, state) {
+        return new VariableEntity(node, state);
     }
 } as AstVisitorMap;
 
