@@ -263,8 +263,9 @@ export default class CompileState {
      */
     isComponent(elem: ENDElement): boolean {
         const elemName = elem.name.name;
-        if (this.componentsMap.has(elem.name.name)) {
-            return true;
+        const component = this.componentsMap.get(elemName);
+        if (component) {
+            return component.used = true;
         }
 
         if (elem.component) {

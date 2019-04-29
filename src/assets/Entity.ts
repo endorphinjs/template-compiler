@@ -1,11 +1,10 @@
 import { SourceNode } from "source-map";
 import CompileState from "./CompileState";
 import UsageStats from "./UsageStats";
-import { Chunk, UsageContext } from "../types";
-import { sn } from "../utils";
+import { Chunk, RenderChunk, UsageContext } from "../types";
+import { sn, nameToJS } from "../utils";
 
 type RenderContext = UsageContext | 'shared';
-type RenderChunk = (entity: Entity) => Chunk;
 type SymbolType = UsageContext | 'ref';
 
 /**
@@ -33,7 +32,7 @@ export default class Entity {
 
     constructor(readonly rawName: string, readonly state: CompileState) {
         // NB `ref` is a variable declaration in mount scope
-        this.name = state.scopeSymbol(rawName);
+        this.name = state.scopeSymbol(nameToJS(rawName));
         this.code = {
             mount: null,
             update: null,

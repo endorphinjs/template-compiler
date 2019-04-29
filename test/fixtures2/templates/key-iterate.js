@@ -1,4 +1,4 @@
-import { elemWithText, createInjector, elem, setAttribute, text, get, insert, mountBlock, updateBlock, unmountBlock, addDisposeCallback, mountKeyIterator, updateKeyIterator, unmountKeyIterator } from "@endorphinjs/endorphin";
+import { elemWithText, createInjector, elem, setAttribute, text, get, insert, mountBlock, updateBlock, unmountBlock, finalizeAttributes, addDisposeCallback, mountKeyIterator, updateKeyIterator, unmountKeyIterator } from "@endorphinjs/endorphin";
 
 function forSelect$0(host) {
 	return host.props.items;
@@ -24,13 +24,16 @@ function forContent$0(host, injector, scope) {
 	setAttribute(inj$1, "id", host.props.id);
 	insert(inj$1, text("\n                    item\n                    "));
 	scope.if$1 = mountBlock(host, inj$1, ifEntry$1);
+	finalizeAttributes(inj$1);
 	addDisposeCallback(host, forContent$0Unmount);
 	return forContent$0Update;
 }
 
 function forContent$0Update(host, scope) {
-	setAttribute(scope.inj$1, "id", host.props.id);
+	const { inj$1 } = scope;
+	setAttribute(inj$1, "id", host.props.id);
 	updateBlock(scope.if$1);
+	finalizeAttributes(inj$1);
 }
 
 function forContent$0Unmount(scope) {

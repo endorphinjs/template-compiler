@@ -1,11 +1,13 @@
 import { SourceNode } from "source-map";
 import CompileState from "./assets/CompileState";
 import { ENDImport, ENDProgram } from "@endorphinjs/template-parser";
+import Entity from "./assets/Entity";
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
 export type UsageContext = 'mount' | 'update' | 'unmount';
 export type RenderContext = UsageContext | 'shared';
+export type RenderChunk = (entity: Entity) => Chunk;
 export type EntityType = 'element' | 'attribute' | 'text' | 'directive' | 'variable' | 'block';
 export type HelpersMap = { [url: string]: string[] };
 

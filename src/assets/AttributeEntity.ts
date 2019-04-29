@@ -3,31 +3,45 @@ import { SourceNode } from "source-map";
 import Entity from "./entity";
 import compileExpression from "../expression";
 import CompileState from "./CompileState";
-import { Chunk } from "../types";
+import { Chunk, RenderChunk } from "../types";
 import { isIdentifier, isExpression, sn, qStr, isLiteral, runtime } from "../utils";
 
 export default class AttributeEntity extends Entity {
-    constructor(node: ENDAttribute, state: CompileState) {
+    constructor(readonly node: ENDAttribute, readonly state: CompileState) {
         super(isIdentifier(node.name) ? `${node.name.name}Attr` : 'exprAttr', state);
         const { element } = state;
-        const ns = getAttributeNS(node, state);
-        const isDynamic = element.isComponent
-            || element.isDynamicAttribute(node)
-            || isExpression(node.value);
 
-        if (!isDynamic) {
-            // Attribute with literal value: set only once, no need to update
-            this.setMount(() => {
-                return ns
-                    ? sn([element.getSymbol(), `.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(node, state), ', ', attrValue(node, state), `)`], node)
-                    : sn([element.getSymbol(), `.setAttribute(`, attrName(node, state), ', ', attrValue(node, state), `)`], node);
-            });
-        } else if (ns) {
-            this.setShared(() => runtime('setAttributeNS', [element.injector, state.namespace(ns.ns), attrName(node, state), attrValue(node, state)], state));
+        if (!element.node) {
+            // Set attribute in child block
+            this.setMount(mountDynamicAttribute)
+        } else if (element.isComponent || element.isDynamicAttribute(node) || isExpression(node.value)) {
+            // Attribute must be updates in runtime
+            this.setShared(mountDynamicAttribute);
         } else {
-            this.setShared(() => runtime('setAttribute', [element.injector, attrName(node, state), attrValue(node, state)], state));
+            // Attribute with literal value: set only once, no need to update
+            this.setMount(mountStaticAttribute);
         }
     }
+}
+
+export const mountStaticAttribute: RenderChunk = (attr: AttributeEntity) => {
+    const { node, state } = attr;
+    const elem = state.element.getSymbol();
+    const ns = getAttributeNS(node, state);
+
+    return ns
+        ? sn([elem, `.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(node, state), ', ', attrValue(node, state), `)`], node)
+        : sn([elem, `.setAttribute(`, attrName(node, state), ', ', attrValue(node, state), `)`], node);
+};
+
+export const mountDynamicAttribute: RenderChunk = (attr: AttributeEntity) => {
+    const { node, state } = attr;
+    const { injector } = state.element;
+    const ns = getAttributeNS(node, state);
+
+    return ns
+        ? runtime('setAttributeNS', [injector, state.namespace(ns.ns), attrName(node, state), attrValue(node, state)], state)
+        : runtime('setAttribute', [injector, attrName(node, state), attrValue(node, state)], state);
 }
 
 function attrName(attr: ENDAttribute, state: CompileState): Chunk {
@@ -36,8 +50,7 @@ function attrName(attr: ENDAttribute, state: CompileState): Chunk {
 }
 
 function attrValue(attr: ENDAttribute, state: CompileState): Chunk {
-    const { element } = state.blockContext;
-    const inComponent = element.node.type === 'ENDElement' && state.isComponent(element.node);
+    const inComponent = state.element && state.element.isComponent;
     return compileAttributeValue(attr.value, state, inComponent);
 }
 

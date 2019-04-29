@@ -8,8 +8,10 @@ import ConditionEntity from './assets/ConditionEntity';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
 import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime } from './utils';
-import { Chunk } from './types';
+import { Chunk, ChunkList } from './types';
 import { toObjectLiteral } from './assets/object';
+import generateExpression from './expression';
+import { SourceNode } from 'source-map';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -76,8 +78,17 @@ export default {
             }
 
             if (element.isComponent) {
+                // Mark updated slots
+                Object.keys(element.slotUpdate).forEach(slotName => {
+                    element.add(entity('block', state, {
+                        update() {
+                            return runtime('markSlotUpdate', [element.getSymbol(), qStr(slotName), element.slotUpdate[slotName]], state);
+                        }
+                    }))
+                });
+
                 // Add code to mount, update and unmount component
-                element.add(entity('component', state, {
+                element.add(entity('block', state, {
                     mount: () => {
                         const staticProps = collectStaticProps(node, state);
                         const staticPropsArg = staticProps.size
@@ -87,12 +98,40 @@ export default {
                     update: () => runtime('updateComponent', [element.getSymbol()], state),
                     unmount: () => runtime('unmountComponent', [element.getSymbol()], state)
                 }))
+            } else if (element.dynamicAttributes.size || element.hasPartials) {
+                // Should finalize attributes
+                element.add(entity('block', state, {
+                    shared: () => runtime('finalizeAttributes', [element.injector], state)
+                }));
             }
         });
     },
 
+    ENDAttributeStatement(node: Ast.ENDAttributeStatement, state, next) {
+        const block = entity('block', state);
+        node.attributes.forEach(attr => {
+            const child = next(attr);
+            child && block.add(child)
+        });
+
+        // TODO add directives
+        return block;
+    },
+
     ENDAttribute(attr: Ast.ENDAttribute, state) {
         return new AttributeEntity(attr, state);
+    },
+
+    ENDAddClassStatement(node: Ast.ENDAddClassStatement, state, next) {
+        const block = entity('block', state);
+
+        block.setMount(() => mountAddClass(node, state));
+        if (state.element && state.element.node) {
+            // Running inside element
+            block.setUpdate(() => mountAddClass(node, state));
+        }
+
+        return block;
     },
 
     Literal(node: Ast.Literal, state) {
@@ -217,4 +256,13 @@ function defaultSlot(node: Ast.ENDElement, state: CompileState, next: AstContinu
         ? state.runChildBlock(`slot${nameToJS(slotName, true)}`,
             (child, slot) => slot.setContent(node.body, next))
         : null;
+}
+
+function mountAddClass(node: Ast.ENDAddClassStatement, state: CompileState): SourceNode {
+    const chunks: ChunkList = node.tokens.map(token => {
+        return isLiteral(token)
+            ? qStr(token.value as string)
+            : generateExpression(token, state);
+    });
+    return runtime('addClass', [state.injector, sn(chunks).join(' + ')], state, node);
 }

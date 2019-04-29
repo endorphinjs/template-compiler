@@ -7,6 +7,7 @@ import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlN
 import TextEntity from './TextEntity';
 import { Chunk } from '../types';
 import { AstContinue } from '../template-visitors';
+import VariableEntity from './VariableEntity';
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -33,6 +34,8 @@ export default class ElementEntity extends Entity {
     attributeExpressions: boolean;
 
     hasAnimationOut: boolean;
+
+    slotUpdate: { [slotName: string]: string } = {}
 
     constructor(readonly node: ENDElement | ENDTemplate | null, readonly state: CompileState) {
         super(node && isElement(node) ? node.name.name : 'target', state);
@@ -104,8 +107,37 @@ export default class ElementEntity extends Entity {
     setContent(nodes: Node[], next: AstContinue): this {
         // Collect contents in two passes: convert nodes to entities to collect
         // injector usage, then attach it to element
-        nodes.map(next).forEach(entity => entity && this.add(entity));
+        nodes.map(next).forEach(entity => {
+            if (entity) {
+                this.add(entity);
+                if (this.isComponent) {
+                    // Adding content entity into component: we should collect
+                    // slot update stats
+                    this.markSlotUpdate(entity);
+                }
+            }
+        });
         return this;
+    }
+
+    private markSlotUpdate(entity: Entity) {
+        if (!(entity instanceof VariableEntity) && entity.code.update) {
+            const slotName = getDestSlotName(entity);
+            entity.setUpdate(() => sn([this.getSlotMark(slotName), ' |= ', entity.getUpdate()]));
+        }
+
+        for (let i = 0; i < entity.children.length; i++) {
+            this.markSlotUpdate(entity.children[i]);
+        }
+    }
+
+    private getSlotMark(slotName: string): string {
+        if (!(slotName in this.slotUpdate)) {
+            const varName = this.state.globalSymbol('su');
+            this.slotUpdate[slotName] = this.state.blockContext.declareVar(varName, '0');
+        }
+
+        return this.slotUpdate[slotName];
     }
 
     /**
@@ -248,4 +280,15 @@ export function getNodeName(localName: string): { ns?: string, name: string } {
     }
 
     return { ns, name };
+}
+
+/**
+ * Returns destination slot name from given entity
+ */
+function getDestSlotName(entity: Entity): string {
+    if (entity instanceof ElementEntity && entity.node.type === 'ENDElement') {
+        return getAttrValue(entity.node, 'slot') as string || '';
+    }
+
+    return '';
 }
