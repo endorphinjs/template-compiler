@@ -4,36 +4,28 @@ import Entity from "./entity";
 import compileExpression from "../expression";
 import CompileState from "./CompileState";
 import { Chunk } from "../types";
-import { isIdentifier, isExpression, sn, qStr, isLiteral } from "../utils";
+import { isIdentifier, isExpression, sn, qStr, isLiteral, runtime } from "../utils";
 
 export default class AttributeEntity extends Entity {
     constructor(node: ENDAttribute, state: CompileState) {
         super(isIdentifier(node.name) ? `${node.name.name}Attr` : 'exprAttr', state);
         const { element } = state;
-        const isDynamic = element.isDynamicAttribute(node) || element.isComponent;
         const ns = getAttributeNS(node, state);
+        const isDynamic = element.isComponent
+            || element.isDynamicAttribute(node)
+            || isExpression(node.value);
 
-        if (!isDynamic && !isExpression(node.value)) {
+        if (!isDynamic) {
             // Attribute with literal value: set only once, no need to update
-            return this.setMount(() => {
+            this.setMount(() => {
                 return ns
                     ? sn([element.getSymbol(), `.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(node, state), ', ', attrValue(node, state), `)`], node)
                     : sn([element.getSymbol(), `.setAttribute(`, attrName(node, state), ', ', attrValue(node, state), `)`], node);
             });
-        }
-
-        // Generate attribute which should be updated in runtime.
-        // We should generate fragments in shared state since expression will
-        // be used both in mount and update state, but will attach same code in
-        // separate `mount` and `update` contexts to properly use symbol references
-        const name = state.shared(() => attrName(node, state));
-        const value = state.shared(() => attrValue(node, state));
-        if (ns) {
-            this.setMount(() => sn([`${state.runtime('setAttributeNS')}(`, element.injector, `, ${state.namespace(ns.ns)}, `, name, ', ', value, `)`]));
-            this.setUpdate(() => sn([`${state.runtime('setAttributeNS')}(`, element.injector, `, ${state.namespace(ns.ns)}, `, name, ', ', value, `)`]));
+        } else if (ns) {
+            this.setShared(() => runtime('setAttributeNS', [element.injector, state.namespace(ns.ns), attrName(node, state), attrValue(node, state)], state));
         } else {
-            this.setMount(() => sn([element.getSymbol(), `.setAttribute(`, name, ', ', value, `)`], node));
-            this.setUpdate(() => sn([element.getSymbol(), `.setAttribute(`, name, ', ', value, `)`], node));
+            this.setShared(() => runtime('setAttribute', [element.injector, attrName(node, state), attrValue(node, state)], state));
         }
     }
 }

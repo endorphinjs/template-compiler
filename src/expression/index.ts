@@ -3,7 +3,7 @@ import { SourceNode } from "source-map";
 import CompileState from "../assets/CompileState";
 import { WalkVisitorMap, walk } from "./utils";
 import baseVisitors from "./baseVisitors";
-import Entity from "../assets/Entity";
+import { entity } from "../assets/Entity";
 import { sn } from "../utils";
 
 export default function generateExpression(expr: Program, state: CompileState, visitors: WalkVisitorMap = {}): SourceNode {
@@ -18,6 +18,7 @@ export default function generateExpression(expr: Program, state: CompileState, v
  */
 export function fn(prefix: string, state: CompileState, value: Program): string {
     return state.runBlock(prefix, () =>
-        new Entity('block', state).setMount(() =>
-            sn(['return ', generateExpression(value, state)])));
+        entity('block', state, {
+            mount: () => sn(['return ', generateExpression(value, state)])
+        }));
 }

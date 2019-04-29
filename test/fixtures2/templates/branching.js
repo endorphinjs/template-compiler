@@ -1,4 +1,4 @@
-import { elemWithText, mountBlock, createInjector, elem, insert, updateBlock, unmountBlock, text, addDisposeCallback } from "@endorphinjs/endorphin";
+import { elemWithText, createInjector, elem, insert, mountBlock, updateBlock, unmountBlock, text, addDisposeCallback } from "@endorphinjs/endorphin";
 
 function ifBody$1(host, injector) {
 	insert(injector, elemWithText("div", "top 2"));

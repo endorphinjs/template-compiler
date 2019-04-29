@@ -149,8 +149,8 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
 /**
  * Creates code chunk that invokes given runtime function with arguments
  */
-export function runtime(symbol: RuntimeSymbols, args: ChunkList, state: CompileState): SourceNode {
-    return sn([`${state.runtime(symbol)}(`, sn(args).join(', '), ')']);
+export function runtime(symbol: RuntimeSymbols, args: ChunkList, state: CompileState, node?: Node): SourceNode {
+    return sn([`${state.runtime(symbol)}(`, sn(args).join(', '), ')'], node);
 }
 
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {

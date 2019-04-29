@@ -1,4 +1,4 @@
-import { elemWithText, mountBlock, createInjector, elem, text, get, insert, updateBlock, unmountBlock, addDisposeCallback, mountIterator, updateIterator, unmountIterator } from "@endorphinjs/endorphin";
+import { elemWithText, createInjector, elem, text, get, insert, mountBlock, updateBlock, unmountBlock, addDisposeCallback, mountIterator, updateIterator, unmountIterator } from "@endorphinjs/endorphin";
 
 function forSelect$0(host) {
 	return host.props.items;

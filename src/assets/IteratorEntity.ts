@@ -1,7 +1,7 @@
 import { ENDForEachStatement, Node } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
 import CompileState from "./CompileState";
-import { sn } from "../utils";
+import { runtime } from "../utils";
 import { fn } from "../expression";
 import { AstContinue } from "../template-visitors";
 
@@ -18,12 +18,10 @@ export default class IteratorEntity extends Entity {
             const content = state.runChildBlock(`${rawName}Content`, (ctx, element) =>
                 element.setContent(statements, next));
 
-            const args = sn([state.host, state.injector, select, key, content]);
-
-            return sn([`${state.runtime(key ? 'mountKeyIterator' : 'mountIterator')}(`, args.join(', '), `)`]);
+            return runtime(key ? 'mountKeyIterator' : 'mountIterator', [state.host, state.injector, select, key, content], state, node);
         });
-        this.setUpdate(() => sn([`${state.runtime(node.key ? 'updateKeyIterator' : 'updateIterator')}(`, this.getSymbol(), `)`]))
-        this.setUnmount(() => sn([`${state.runtime(node.key ? 'unmountKeyIterator' : 'unmountIterator')}(`, this.getSymbol(), `)`]));
+        this.setUpdate(() => runtime(node.key ? 'updateKeyIterator' : 'updateIterator', [this.getSymbol()], state, node))
+        this.setUnmount(() => runtime(node.key ? 'unmountKeyIterator' : 'unmountIterator', [this.getSymbol()], state, node));
 
         return this;
     }

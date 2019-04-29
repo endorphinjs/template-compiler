@@ -2,7 +2,7 @@ import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Progra
 import Entity from "./entity";
 import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
-import { sn } from "../utils";
+import { sn, runtime } from "../utils";
 import generateExpression from "../expression";
 
 export default class ConditionEntity extends Entity {
@@ -12,9 +12,9 @@ export default class ConditionEntity extends Entity {
 
     setContent(statements: Array<ENDIfStatement | ENDChooseCase>, next: AstContinue): this {
         const { state } = this;
-        this.setMount(() => sn([`${state.runtime('mountBlock')}(${state.host}, `, state.injector, `, ${conditionEntry(this.rawName, statements, state, next)})`]))
-            .setUpdate(() => sn([`${state.runtime('updateBlock')}(`, this.getSymbol(), `)`]))
-            .setUnmount(() => sn([`${state.runtime('unmountBlock')}(`, this.getSymbol(), `)`]));
+        this.setMount(() => runtime('mountBlock', [state.host, state.injector, conditionEntry(this.rawName, statements, state, next)], state))
+            .setUpdate(() => runtime('updateBlock', [this.getSymbol()], state))
+            .setUnmount(() => runtime('unmountBlock', [this.getSymbol()], state));
 
         return this;
     }

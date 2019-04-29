@@ -1,9 +1,9 @@
 import { ENDElement, ENDTemplate, ENDAttributeStatement, ENDStatement, ENDAttribute, Node, Literal } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import Entity from './Entity';
+import Entity, { entity } from './Entity';
 import UsageStats from './UsageStats';
 import CompileState from './CompileState';
-import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue } from '../utils';
+import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime } from '../utils';
 import TextEntity from './TextEntity';
 import { Chunk } from '../types';
 import { AstContinue } from '../template-visitors';
@@ -44,25 +44,24 @@ export default class ElementEntity extends Entity {
             // (for example, in conditional content block). In this case,
             // we should always use injector to fill contents, which shall be
             // passed as argument to block function
-            this._injector = new Entity('injector', state);
+            this._injector = entity('injector', state);
             this._injector.name = 'injector';
         }
     }
 
     /** Symbol for referencing element’s injector */
     get injector(): SourceNode {
-        const { renderContext } = this.state;
-        this.injectorUsage.use(renderContext);
+        const { state } = this;
+        this.injectorUsage.use(state.renderContext);
 
         if (!this._injector) {
             // First time injector usage. Create entity which will mount it
-            this._injector = new Entity('inj', this.state);
-            this._injector.setMount(() =>
-                this.isComponent
+            this._injector = entity('inj', state, {
+                mount: () => this.isComponent
                     // For components, contents must be redirected into inner input injector
                     ? sn([this.getSymbol(), '.componentModel.input'])
-                    : sn([`${this.state.runtime('createInjector')}(`, this.getSymbol(), `)`])
-            );
+                    : runtime('createInjector', [this.getSymbol()], state)
+            });
             this.children.unshift(this._injector);
         }
 
