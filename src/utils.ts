@@ -153,6 +153,13 @@ export function runtime(symbol: RuntimeSymbols, args: ChunkList, state: CompileS
     return sn([`${state.runtime(symbol)}(`, sn(args).join(', '), ')'], node);
 }
 
+/**
+ * Creates code chunk that unmounts given entity symbol
+ */
+export function unmount(runtimeSymbol: RuntimeSymbols, entitySymbol: Chunk, state: CompileState, node?: Node): SourceNode {
+    return sn([entitySymbol, ` = ${state.runtime(runtimeSymbol)}(`, entitySymbol, ')'], node);
+}
+
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
     const result: ChunkList = [];
 

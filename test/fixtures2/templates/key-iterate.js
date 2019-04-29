@@ -37,7 +37,7 @@ function forContent$0Update(host, scope) {
 }
 
 function forContent$0Unmount(scope) {
-	unmountBlock(scope.if$1);
+	scope.if$1 = unmountBlock(scope.if$1);
 	scope.inj$1 = null;
 }
 
@@ -55,7 +55,7 @@ function ifBody$0Update(host, scope) {
 }
 
 function ifBody$0Unmount(scope) {
-	unmountKeyIterator(scope.for$0);
+	scope.for$0 = unmountKeyIterator(scope.for$0);
 }
 
 function ifEntry$0(host) {
@@ -78,5 +78,5 @@ function template$0Update(host, scope) {
 }
 
 function template$0Unmount(scope) {
-	unmountBlock(scope.if$0);
+	scope.if$0 = unmountBlock(scope.if$0);
 }

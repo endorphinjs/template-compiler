@@ -10,8 +10,8 @@ import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
-import { toObjectLiteral } from './assets/object';
-import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime } from './utils';
+import generateObject, { toObjectLiteral } from './assets/object';
+import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime, propGetter, unmount } from './utils';
 import VariableEntity from './assets/VariableEntity';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
@@ -68,7 +68,7 @@ export default {
                 const contentArg = defaultSlot(node, state, next);
                 element.add(entity('slotMount', state, {
                     mount: () => runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg], state),
-                    unmount: slot => runtime('unmountSlot', [slot.getSymbol()], state)
+                    unmount: slot => unmount('unmountSlot', slot.getSymbol(), state)
                 }));
             } else if (!element.isComponent && node.body.length === 1 && isLiteral(firstChild)) {
                 // Edge case: element with single text child
@@ -89,6 +89,9 @@ export default {
                 });
 
                 // Add code to mount, update and unmount component
+                // Since component should be mounted and updated *after* it’s
+                // content was rendered, we should add mount and update code
+                // as a separate entity after element content
                 element.add(entity('block', state, {
                     mount: () => {
                         const staticProps = collectStaticProps(node, state);
@@ -96,9 +99,9 @@ export default {
                             ? toObjectLiteral(staticProps, state, 1) : null;
                         return runtime('mountComponent', [element.getSymbol(), staticPropsArg], state);
                     },
-                    update: () => runtime('updateComponent', [element.getSymbol()], state),
-                    unmount: () => runtime('unmountComponent', [element.getSymbol()], state)
-                }))
+                    update: () => runtime('updateComponent', [element.getSymbol()], state)
+                }));
+                element.setUnmount(() => unmount('unmountComponent', element.getSymbol(), state));
             } else if (element.dynamicAttributes.size || element.hasPartials) {
                 // Should finalize attributes
                 element.add(entity('block', state, {
@@ -172,6 +175,27 @@ export default {
 
     ENDVariableStatement(node: Ast.ENDVariableStatement, state) {
         return new VariableEntity(node, state);
+    },
+
+    ENDPartial(node: Ast.ENDPartial, state, next) {
+        const name = state.runChildBlock(`partial${nameToJS(node.id, true)}`, (block, elem) => {
+            elem.setContent(node.body, next);
+        });
+
+        state.partialsMap.set(node.id, {
+            name,
+            defaults: generateObject(node.params, state, 2)
+        });
+    },
+
+    ENDPartialStatement(node: Ast.ENDPartialStatement, state) {
+        const getter = `${state.host}.props['partial:${node.id}'] || ${state.partials}${propGetter(node.id)}`;
+
+        return entity('partial', state, {
+            mount: () => runtime('mountPartial', [state.host, state.injector, getter, generateObject(node.params, state, 1)], state),
+            update: ent => runtime('updatePartial', [ent.getSymbol(), getter, generateObject(node.params, state, 1)], state),
+            unmount: ent => unmount('unmountPartial', ent.getSymbol(), state)
+        });
     }
 } as AstVisitorMap;
 
@@ -234,13 +258,13 @@ function collectStaticProps(elem: Ast.ENDElement, state: CompileState): Map<Chun
 
     elem.attributes.forEach(attr => {
         if (!isDynamicAttribute(attr, state)) {
-            attrs.set(propSetter(attr.name, state), compileAttributeValue(attr.value, state, true));
+            attrs.set(propSetter(attr.name, state), compileAttributeValue(attr.value, state, 'params'));
         }
     });
 
     elem.directives.forEach(dir => {
         if (dir.prefix === 'partial') {
-            const value = compileAttributeValue(dir.value, state, true);
+            const value = compileAttributeValue(dir.value, state, 'component');
             attrs.set(
                 qStr(`${dir.prefix}:${dir.name}`),
                 runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])], state)

@@ -36,8 +36,8 @@ function ifBody$0Update(host, scope) {
 }
 
 function ifBody$0Unmount(scope) {
-	unmountBlock(scope.if$1);
-	unmountBlock(scope.if$2);
+	scope.if$1 = unmountBlock(scope.if$1);
+	scope.if$2 = unmountBlock(scope.if$2);
 }
 
 function ifEntry$0(host) {
@@ -88,6 +88,6 @@ function template$0Update(host, scope) {
 }
 
 function template$0Unmount(scope) {
-	unmountBlock(scope.if$0);
-	unmountBlock(scope.choose$0);
+	scope.if$0 = unmountBlock(scope.if$0);
+	scope.choose$0 = unmountBlock(scope.choose$0);
 }

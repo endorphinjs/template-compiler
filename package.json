@@ -27,7 +27,7 @@
     "typescript": "^3.4.5"
   },
   "dependencies": {
-    "@endorphinjs/template-parser": "^0.2.0",
+    "@endorphinjs/template-parser": "^0.2.1",
     "acorn": "^6.1.1",
     "acorn-walk": "^6.1.1",
     "source-map": "^0.7.3"

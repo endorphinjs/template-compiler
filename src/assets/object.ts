@@ -11,7 +11,7 @@ import { Chunk } from "../types";
 export default function generateObject(params: ENDAttribute[], scope: CompileState, level: number = 0): SourceNode {
     const map: Map<Chunk, Chunk> = new Map();
     params.forEach(param => {
-        map.set(propSetter(param.name, scope), compileAttributeValue(param.value, scope, true));
+        map.set(propSetter(param.name, scope), compileAttributeValue(param.value, scope, 'params'));
     });
 
     return toObjectLiteral(map, scope, level);

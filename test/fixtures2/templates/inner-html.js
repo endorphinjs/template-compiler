@@ -42,7 +42,7 @@ function template$0Update(host, scope) {
 }
 
 function template$0Unmount(scope) {
-	unmountBlock(scope.if$0);
-	unmountInnerHTML(scope.html$0);
-	unmountBlock(scope.if$1);
+	scope.if$0 = unmountBlock(scope.if$0);
+	scope.html$0 = unmountInnerHTML(scope.html$0);
+	scope.if$1 = unmountBlock(scope.if$1);
 }

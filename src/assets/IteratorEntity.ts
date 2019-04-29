@@ -1,7 +1,7 @@
 import { ENDForEachStatement, Node } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
 import CompileState from "./CompileState";
-import { runtime } from "../utils";
+import { runtime, unmount } from "../utils";
 import { fn } from "../expression";
 import { AstContinue } from "../template-visitors";
 
@@ -21,7 +21,7 @@ export default class IteratorEntity extends Entity {
             return runtime(key ? 'mountKeyIterator' : 'mountIterator', [state.host, state.injector, select, key, content], state, node);
         });
         this.setUpdate(() => runtime(node.key ? 'updateKeyIterator' : 'updateIterator', [this.getSymbol()], state, node))
-        this.setUnmount(() => runtime(node.key ? 'unmountKeyIterator' : 'unmountIterator', [this.getSymbol()], state, node));
+        this.setUnmount(() => unmount(node.key ? 'unmountKeyIterator' : 'unmountIterator', this.getSymbol(), state, node));
 
         return this;
     }

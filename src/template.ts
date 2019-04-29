@@ -1,7 +1,7 @@
 import { ENDProgram } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
 import CompileState from "./assets/CompileState";
-import { sn, qStr, format } from './utils';
+import { sn, qStr, format, isPropKey } from './utils';
 import { CompileStateOptions, ChunkList } from './types';
 import { ENDCompileError } from './error';
 import templateVisitors, { AstContinue, AstVisitorMap } from './template-visitors';
@@ -39,6 +39,30 @@ export default function generateTemplate(ast: ENDProgram, options?: CompileState
     // CSS scoping
     if (state.options.cssScope) {
         body.push(`export const cssScope = ${qStr(state.options.cssScope)};`);
+    }
+
+    // Partials declarations
+    if (state.partialsMap.size) {
+        const { indent } = state;
+        const innerIndent = indent.repeat(2);
+        let count = 0;
+
+        const partials = sn(`\nexport const ${state.partials} = {`);
+        state.partialsMap.forEach((partial, name) => {
+            if (count++) {
+                partials.add(',\n');
+            }
+
+            partials.add([
+                `\n${indent}${isPropKey(name) ? name : qStr(name)}: {\n`,
+                `${innerIndent}body: ${partial.name},\n`,
+                `${innerIndent}defaults: `, partial.defaults, '\n',
+                `${indent}}`
+            ]);
+        });
+
+        partials.add('\n};');
+        body.push(partials);
     }
 
     // Used namespaces

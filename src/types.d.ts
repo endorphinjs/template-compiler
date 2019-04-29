@@ -92,3 +92,8 @@ export interface CompileStateOptions {
     /** Called with warning messages */
     warn?(msg: string, pos?: number): void;
 }
+
+interface PartialDeclaration {
+    name: string;
+    defaults: Chunk
+}

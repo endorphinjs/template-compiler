@@ -2,7 +2,7 @@ import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Progra
 import Entity, { entity } from "./entity";
 import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
-import { sn, runtime } from "../utils";
+import { sn, runtime, unmount } from "../utils";
 import generateExpression from "../expression";
 import { SourceNode } from "source-map";
 
@@ -15,7 +15,7 @@ export default class ConditionEntity extends Entity {
         const { state } = this;
         this.setMount(() => runtime('mountBlock', [state.host, state.injector, conditionEntry(this.rawName, statements, state, next)], state))
             .setUpdate(() => runtime('updateBlock', [this.getSymbol()], state))
-            .setUnmount(() => runtime('unmountBlock', [this.getSymbol()], state));
+            .setUnmount(() => unmount('unmountBlock', this.getSymbol(), state));
 
         return this;
     }

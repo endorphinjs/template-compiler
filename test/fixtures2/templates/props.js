@@ -34,6 +34,6 @@ function template$0Update(host, scope) {
 }
 
 function template$0Unmount(scope) {
-	unmountComponent(scope.subComponent$0);
-	scope.inj$0 = scope.subComponent$0 = null;
+	scope.subComponent$0 = unmountComponent(scope.subComponent$0);
+	scope.inj$0 = null;
 }

@@ -4,7 +4,7 @@ import BlockContext from "./BlockContext";
 import Entity from "./Entity";
 import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
 import { nameToJS, propGetter, isIdentifier, isLiteral } from "../utils";
-import { Chunk, RenderContext, ComponentImport, CompileStateOptions, HelpersMap, RuntimeSymbols } from "../types";
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, HelpersMap, RuntimeSymbols, PartialDeclaration } from "../types";
 import ElementEntity from "./ElementEntity";
 
 type PlainObject = { [key: string]: string };
@@ -54,6 +54,9 @@ export default class CompileState {
 
     /** List of child components */
     readonly componentsMap: Map<string, ComponentImport> = new Map();
+
+    /** List of child components */
+    readonly partialsMap: Map<string, PartialDeclaration> = new Map();
 
     /** List of used namespaces and their JS symbols */
     namespaceSymbols: Map<string, string> = new Map();
@@ -112,9 +115,8 @@ export default class CompileState {
             && this.blockContext.element;
     }
 
-    // TODO implement
     get hasPartials(): boolean {
-        return false;
+        return this.partialsMap.size > 0;
     }
 
     /** Symbol for referencing partials */

@@ -51,7 +51,7 @@ function attrName(attr: ENDAttribute, state: CompileState): Chunk {
 
 function attrValue(attr: ENDAttribute, state: CompileState): Chunk {
     const inComponent = state.element && state.element.isComponent;
-    return compileAttributeValue(attr.value, state, inComponent);
+    return compileAttributeValue(attr.value, state, inComponent ? 'component' : null);
 }
 
 export function compileAttributeName(name: ENDAttributeName | string, state: CompileState): Chunk {
@@ -62,15 +62,23 @@ export function compileAttributeName(name: ENDAttributeName | string, state: Com
     return isExpression(name) ? compileExpression(name, state) : qStr(name.name);
 }
 
-export function compileAttributeValue(value: ENDAttributeValue, state: CompileState, forComponent?: boolean): Chunk {
+export function compileAttributeValue(value: ENDAttributeValue, state: CompileState, context?: 'component' | 'params'): Chunk {
     if (value === null) {
-        // Static boolean attribute
-        return forComponent ? 'true' : qStr('');
+        // Attribute without value, decide how to output
+        if (context === 'component') {
+            return 'true';
+        }
+
+        if (context === 'params') {
+            return 'null';
+        }
+
+        return qStr('');
     }
 
     if (isLiteral(value)) {
         // Static string attribute
-        if (forComponent && typeof value.value !== 'string') {
+        if (context && typeof value.value !== 'string') {
             return String(value.value);
         }
 
