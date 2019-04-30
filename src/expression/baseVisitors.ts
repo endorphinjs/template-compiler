@@ -15,7 +15,7 @@ export default {
     Program(node: Program, state, next) {
         return sn(node.body.map(next), node);
     },
-    Identifier(node: Identifier, state) {
+    Identifier(node: Identifier, state, next) {
         if (node.context === 'store') {
             return sn(state.store(node.name), node, node.raw);
         }
@@ -24,10 +24,16 @@ export default {
             state.helper(node.name);
         }
 
-        const prefix = getPrefix(node.context, state);
-        return prefix
-            ? sn([prefix, propGetter(node.name)], node, node.raw)
-            : sn(node.name, node, node.name);
+        if (node.context) {
+            const prefix = next({
+                type: 'ENDGetterPrefix',
+                context: node.context
+            } as ENDGetterPrefix);
+
+            return sn([prefix, propGetter(node.name)], node, node.raw);
+        }
+
+        return sn(node.name, node, node.name);
     },
     Literal(node: Literal) {
         return sn(typeof node.value === 'string' ? qStr(node.value) : String(node.value), node);

@@ -1,4 +1,4 @@
-import { Program } from "@endorphinjs/template-parser";
+import { Program, JSNode } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
 import CompileState from "../assets/CompileState";
 import { WalkVisitorMap, walk } from "./utils";
@@ -6,7 +6,7 @@ import baseVisitors from "./baseVisitors";
 import { entity } from "../assets/Entity";
 import { sn } from "../utils";
 
-export default function generateExpression(expr: Program, state: CompileState, visitors: WalkVisitorMap = {}): SourceNode {
+export default function generateExpression(expr: JSNode, state: CompileState, visitors: WalkVisitorMap = {}): SourceNode {
     return walk(expr, state, { ...baseVisitors, ...visitors });
 }
 
