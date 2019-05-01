@@ -4,10 +4,10 @@ import BlockContext from "./BlockContext";
 import Entity from "./Entity";
 import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
 import { nameToJS, propGetter, isIdentifier, isLiteral } from "../utils";
-import { Chunk, RenderContext, ComponentImport, CompileStateOptions, HelpersMap, RuntimeSymbols, PartialDeclaration } from "../types";
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration } from "../types";
 import ElementEntity from "./ElementEntity";
+import prepareHelpers from "./helpers";
 
-type PlainObject = { [key: string]: string };
 type NamespaceMap = { [prefix: string]: string };
 
 export const defaultOptions: CompileStateOptions = {
@@ -18,11 +18,8 @@ export const defaultOptions: CompileStateOptions = {
     prefix: '',
     suffix: '$',
     module: '@endorphinjs/endorphin',
-    component: '',
-    helpers: {
-        'endorphin/helpers.js': ['emit', 'setState', 'setStore']
-    }
-}
+    component: ''
+};
 
 export default class CompileState {
     /** Symbol for referencing CSS isolation scope */
@@ -76,11 +73,7 @@ export default class CompileState {
 
     constructor(options?: CompileStateOptions) {
         this.options = Object.assign({}, defaultOptions, options);
-
-        this.helpers = prepareHelpers({
-            ...(defaultOptions.helpers || {}),
-            ...(options && options.helpers || {})
-        });
+        this.helpers = prepareHelpers(options && options.helpers || {});
 
         const { prefix = '', suffix = '' } = this.options;
         const globalSuffix = nameToJS(this.options.component || '', true) + suffix;
@@ -330,20 +323,6 @@ export default class CompileState {
         this._renderContext = prev;
         return result;
     }
-}
-
-/**
- * Generates helpers lookup map
- */
-function prepareHelpers(...helpers: HelpersMap[]): PlainObject {
-    const result: PlainObject = {};
-    helpers.forEach(helper => {
-        Object.keys(helper).forEach(key => {
-            helper[key].forEach(value => result[value] = key);
-        });
-    });
-
-    return result;
 }
 
 /**

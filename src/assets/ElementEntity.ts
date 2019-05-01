@@ -5,7 +5,7 @@ import UsageStats from './UsageStats';
 import CompileState from './CompileState';
 import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime } from '../utils';
 import TextEntity from './TextEntity';
-import { Chunk } from '../types';
+import { Chunk, ChunkList } from '../types';
 import { AstContinue } from '../template-visitors';
 import VariableEntity from './VariableEntity';
 
@@ -73,7 +73,9 @@ export default class ElementEntity extends Entity {
             this.children.unshift(this._injector);
         }
 
-        return this._injector.getSymbol();
+        // In case of child block, we should keep symbol as standalone, e.g. create
+        // no local references c=since injector is an argument
+        return this._injector.getSymbol(!this.node);
     }
 
     /** Indicates that element context should use injector to operate */
@@ -97,13 +99,13 @@ export default class ElementEntity extends Entity {
         return false;
     }
 
-    add(entity: Entity) {
-        if ((entity instanceof ElementEntity || entity instanceof TextEntity) && entity.code.mount) {
-            entity.setMount(() =>
-                this.isStaticContent ? this.addDOM(entity) : this.addInjector(entity));
+    add(item: Entity) {
+        if ((item instanceof ElementEntity || item instanceof TextEntity) && item.code.mount) {
+            item.setMount(() =>
+                this.isStaticContent ? this.addDOM(item) : this.addInjector(item));
         }
 
-        super.add(entity);
+        super.add(item);
     }
 
     /**
@@ -156,15 +158,15 @@ export default class ElementEntity extends Entity {
      * Attaches given DOM entity to current element via injector
      */
     private addInjector(entity: ElementEntity | TextEntity): SourceNode {
-        const args = sn([this.injector, entity.code.mount]);
+        const args: ChunkList = [this.injector, entity.code.mount];
         if (this.isComponent) {
             let slotName = '';
             if (entity instanceof ElementEntity && isElement(entity.node)) {
                 slotName = getAttrValue(entity.node, 'slot') as string || '';
             }
-            args.add(qStr(slotName));
+            args.push(qStr(slotName));
         }
-        return sn([`${this.state.runtime('insert')}(`, args.join(', '), ')']);
+        return runtime('insert', args, this.state);
     }
 
     private collectStats(elem: ENDElement | ENDTemplate) {

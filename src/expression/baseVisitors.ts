@@ -21,7 +21,7 @@ export default {
         }
 
         if (node.context === 'helper') {
-            state.helper(node.name);
+            return state.helper(node.name);
         }
 
         if (node.context) {

@@ -13,6 +13,7 @@ import InnerHTMLEntity from './assets/InnerHTMLEntity';
 import generateObject, { toObjectLiteral } from './assets/object';
 import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime, propGetter, unmount } from './utils';
 import VariableEntity from './assets/VariableEntity';
+import EventEntity from './assets/EventEntity';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -57,8 +58,7 @@ export default {
             }
 
             element.setContent(attrs, next);
-
-            // TODO set directives
+            element.setContent(node.directives, next);
 
             const firstChild = node.body[0];
             if (node.name.name === 'slot') {
@@ -102,28 +102,38 @@ export default {
                     update: () => runtime('updateComponent', [element.getSymbol()], state)
                 }));
                 element.setUnmount(() => unmount('unmountComponent', element.getSymbol(), state));
-            } else if (element.dynamicAttributes.size || element.hasPartials) {
-                // Should finalize attributes
-                element.add(entity('block', state, {
-                    shared: () => runtime('finalizeAttributes', [element.injector], state)
-                }));
+            } else {
+                if (element.dynamicAttributes.size || element.hasPartials) {
+                    // Should finalize attributes
+                    element.add(entity('block', state, {
+                        shared: () => runtime('finalizeAttributes', [element.injector], state)
+                    }));
+                }
+
+                if (element.dynamicEvents.size || element.hasPartials) {
+                    // Should finalize events
+                    element.add(entity('block', state, {
+                        shared: () => runtime('finalizeEvents', [element.injector, state.host, state.scope], state)
+                    }));
+                }
             }
         });
     },
 
     ENDAttributeStatement(node: Ast.ENDAttributeStatement, state, next) {
-        const block = entity('block', state);
-        node.attributes.forEach(attr => {
-            const child = next(attr);
-            child && block.add(child)
-        });
-
-        // TODO add directives
-        return block;
+        return entity('block', state)
+            .setContent(node.attributes, next)
+            .setContent(node.directives, next);
     },
 
     ENDAttribute(attr: Ast.ENDAttribute, state) {
         return new AttributeEntity(attr, state);
+    },
+
+    ENDDirective(dir: Ast.ENDDirective, state) {
+        if (dir.prefix === 'on') {
+            return new EventEntity(dir, state);
+        }
     },
 
     ENDAddClassStatement(node: Ast.ENDAddClassStatement, state, next) {

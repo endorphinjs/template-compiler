@@ -1,10 +1,10 @@
 import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Program } from "@endorphinjs/template-parser";
+import { SourceNode } from "source-map";
 import Entity, { entity } from "./entity";
 import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
 import { sn, runtime, unmount } from "../utils";
 import generateExpression from "../expression";
-import { SourceNode } from "source-map";
 
 export default class ConditionEntity extends Entity {
     constructor(readonly node: ENDIfStatement | ENDChooseStatement, state: CompileState) {

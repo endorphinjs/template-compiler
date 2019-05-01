@@ -1,4 +1,4 @@
-import { elem, mountPartial, updatePartial, unmountPartial, addDisposeCallback, createInjector, mountIterator, updateIterator, unmountIterator, finalizeAttributes, finalizeRefs, addClass, text, updateText, insert } from "@endorphinjs/endorphin";
+import { elem, mountPartial, updatePartial, unmountPartial, addDisposeCallback, createInjector, mountIterator, updateIterator, unmountIterator, finalizeAttributes, finalizeEvents, finalizeRefs, addClass, text, updateText, insert } from "@endorphinjs/endorphin";
 
 export const partials = {
 	button: {
@@ -41,14 +41,17 @@ export default function template$0(host, scope) {
 	const inj$0 = scope.inj$0 = createInjector(ul$0);
 	scope.for$0 = mountIterator(host, inj$0, forSelect$0, forContent$0);
 	finalizeAttributes(inj$0);
+	finalizeEvents(inj$0, host, scope);
 	finalizeRefs(host);
 	addDisposeCallback(host, template$0Unmount);
 	return template$0Update;
 }
 
 function template$0Update(host, scope) {
+	const { inj$0 } = scope;
 	updateIterator(scope.for$0);
-	finalizeAttributes(scope.inj$0);
+	finalizeAttributes(inj$0);
+	finalizeEvents(inj$0, host, scope);
 	finalizeRefs(host);
 }
 

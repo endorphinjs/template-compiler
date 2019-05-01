@@ -40,6 +40,10 @@ export function getPrefix(context: string, state: CompileState): string {
         return `${state.host}.store.data`;
     }
 
+    if (context === 'definition') {
+        return `${state.host}.componentModel.definition`;
+    }
+
     return '';
 }
 

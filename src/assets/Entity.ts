@@ -1,8 +1,10 @@
+import { Node } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
 import CompileState from "./CompileState";
 import UsageStats from "./UsageStats";
 import { Chunk, RenderChunk, UsageContext } from "../types";
 import { sn, nameToJS } from "../utils";
+import { AstContinue } from "../template-visitors";
 
 type RenderContext = UsageContext | 'shared';
 type SymbolType = UsageContext | 'ref';
@@ -49,8 +51,10 @@ export default class Entity {
     /**
      * Symbol for referencing current entity in current render scope.
      * Note that node returned by current method is self-modified depending on entity usage
+     * @param standalone Keep symbol standalone, e.g. don’t create any scope references
+     * based on symbol usage
      */
-    getSymbol(): SourceNode {
+    getSymbol(standalone?: boolean): SourceNode {
         const { renderContext } = this.state;
         const { symbols, symbolUsage, name } = this;
 
@@ -58,14 +62,14 @@ export default class Entity {
 
         if (renderContext === 'mount') {
             // In `mount` context, we should always refer entity by local variable
-            if (symbolUsage.mount === 1) {
+            if (symbolUsage.mount === 1 && !standalone) {
                 symbols.ref.prepend(`const ${name} = `);
             }
             return symbols.mount || (symbols.mount = sn(name));
         }
 
-        if (symbolUsage.update + symbolUsage.unmount === 1) {
-            // First time use of entity in update of unmount scope:
+        if (symbolUsage.update + symbolUsage.unmount === 1 && !standalone) {
+            // First time use of entity in update or unmount scope:
             // create reference in component scope
             this.state.mount(() => symbols.ref.add(`${this.state.scope}.${name} = `));
         }
@@ -91,7 +95,7 @@ export default class Entity {
      */
     getMount(): SourceNode {
         if (this.code.mount) {
-            return sn([this.symbols.ref, this.code.mount])
+            return sn([this.symbols.ref, this.code.mount]);
         }
     }
 
@@ -148,5 +152,12 @@ export default class Entity {
      */
     add(entity: Entity) {
         this.children.push(entity);
+    }
+
+    setContent(nodes: Node[], next: AstContinue): this {
+        nodes.map(next).forEach(entity => {
+            entity && this.add(entity);
+        });
+        return this;
     }
 }

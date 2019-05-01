@@ -12,7 +12,8 @@ describe('New compiler', () => {
             'templates/basic1.html', 'templates/basic2.html', 'templates/branching.html',
             'templates/iterate.html', 'templates/key-iterate.html', 'templates/inner-html.html',
             'templates/attribute1.html', 'templates/attribute2.html', 'templates/props.html',
-            'templates/variables.html', 'templates/partials.html', 'templates/partials-override.html'
+            'templates/variables.html', 'templates/partials.html', 'templates/partials-override.html',
+            'templates/events.html', 'templates/events-loop.html'
         ];
 
         files.forEach(file => {

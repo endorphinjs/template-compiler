@@ -2,9 +2,11 @@ import parse from '@endorphinjs/template-parser';
 import generateTemplate from './template';
 import { ENDCompileError, ENDSyntaxError } from './error';
 import { CompileStateOptions, ParsedTemplate, CodeWithMap } from './types';
+import prepareHelpers from './assets/helpers';
 
 export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap {
-    return generate({ ast: parse(code, url), code, url }, options);
+    const helpers = prepareHelpers(options && options.helpers || {});
+    return generate({ ast: parse(code, url, { helpers: Object.keys(helpers) }), code, url }, options);
 }
 
 export function generate(parsed: ParsedTemplate, options?: CompileStateOptions): CodeWithMap {
