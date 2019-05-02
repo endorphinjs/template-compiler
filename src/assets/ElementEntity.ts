@@ -74,7 +74,7 @@ export default class ElementEntity extends Entity {
         }
 
         // In case of child block, we should keep symbol as standalone, e.g. create
-        // no local references c=since injector is an argument
+        // no local references since injector is an argument
         return this._injector.getSymbol(!this.node);
     }
 

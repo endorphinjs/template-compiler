@@ -9,6 +9,7 @@ import generateExpression from "../expression";
 import { WalkVisitorMap, getPrefix } from "../expression/utils";
 import { sn, nameToJS, isExpression, isIdentifier, isLiteral, runtime, qStr, unmount } from "../utils";
 import { ENDCompileError } from "../error";
+import baseVisitors from "../expression/baseVisitors";
 
 export default class EventEntity extends Entity {
     constructor(readonly node: ENDDirective, readonly state: CompileState) {
@@ -28,64 +29,52 @@ export default class EventEntity extends Entity {
     }
 }
 
-const eventVisitors = {
-    ENDGetterPrefix(node: ENDGetterPrefix, state) {
-        if (node.context !== 'helper') {
-            return sn(`this.${getPrefix(node.context, state)}`);
-        }
-
-        return sn();
-    },
-    ThisExpression() {
-        return sn('this.host');
-    }
-} as WalkVisitorMap;
-
-function compile(node: JSNode, state: CompileState) {
-    return generateExpression(node, state, eventVisitors);
-}
-
 function createEventHandler(node: ENDDirective, state: CompileState) {
     const [eventName, ...modifiers] = node.name.split(':');
     const handlerName = state.globalSymbol(`on${nameToJS(eventName, true)}`);
-    const handler = getHandler(node.value);
+    let handler = getHandler(node.value);
 
     if (!modifiers.length && !handler) {
         throw new ENDCompileError(`Event handler must be expression`, node.value);
     }
 
-    const { indent } = state;
+    const prefix = `\n${state.indent}`;
     const eventArg = getEventArgName(handler);
     const needEventArg = modifiers.length > 0 || handlerUsesEvent(handler);
-    const handlerFn = sn(`function ${handlerName}(${needEventArg ? eventArg : ''}) {\n`, node);
+    const handlerFn = sn(`function ${handlerName}(${needEventArg ? eventArg : ''}) {`, node);
 
     // Handle event modifiers
     modifiers.forEach(m => {
         if (m === 'stop') {
-            handlerFn.add(`${indent}${eventArg}.stopPropagation();\n`);
+            handlerFn.add(`${prefix}${eventArg}.stopPropagation();`);
         } else if (m === 'prevent') {
-            handlerFn.add(`${indent}${eventArg}.preventDefault();\n`);
+            handlerFn.add(`${prefix}${eventArg}.preventDefault();`);
         }
     });
+
+    const visitors = createVisitors(eventArg);
 
     if (handler) {
         if (isArrowFunction(handler)) {
             if (handler.body.type === 'BlockStatement') {
                 handler.body.body.forEach(expr => {
-                    handlerFn.add([indent, compile(expr, state)]);
+                    handlerFn.add([prefix, generateExpression(expr, state, visitors)]);
                     if (expr.type === 'ExpressionStatement') {
-                        handlerFn.add(';\n');
+                        handlerFn.add(';');
                     }
                 });
             } else {
-                handlerFn.add(compile(handler.body, state));
+                handlerFn.add([prefix, generateExpression(handler.body, state, visitors), ';']);
             }
         } else {
-            handlerFn.add([indent, compile(constructCall(handler, eventArg), state), ';']);
+            if (isIdentifier(handler)) {
+                handler = constructCall(handler, eventArg);
+            }
+            handlerFn.add([prefix, generateExpression(handler, state, visitors), ';']);
         }
     }
 
-    handlerFn.add('\n}');
+    handlerFn.add('\n}\n');
 
     state.pushOutput(handlerFn);
     return handlerName;
@@ -95,10 +84,6 @@ function getHandler(node: ENDAttributeValue | null): Expression {
     if (node && isExpression(node) && node.body.length) {
         return (node.body[0] as ExpressionStatement).expression;
     }
-}
-
-function isCaller(node: JSNode): node is ENDCaller {
-    return node.type === 'ENDCaller';
 }
 
 function isCallExpression(node: JSNode): node is CallExpression {
@@ -122,51 +107,31 @@ function getEventArgName(handler: Expression | void): string {
 }
 
 /**
- * Constructs handler caller AST node from given one, if required
+ * Constructs handler caller AST node from given shorthand identifier
  */
-function constructCall(node: JSNode, eventArg: string): JSNode {
+function constructCall(node: Identifier, eventArg: string): CallExpression {
+    const host = thisExpr();
     const evt = identifier(eventArg);
-    const host = { type: 'ThisExpression' } as ThisExpression;
-    const target = {
-        type: 'MemberExpression',
-        object: evt,
-        property: identifier('currentTarget')
-    } as MemberExpression;
+    const target = member(evt, identifier('currentTarget'));
 
-    if (isIdentifier(node)) {
-        return {
-            type: 'CallExpression',
-            callee: node,
-            arguments: [host, evt, target],
-            loc: node.loc
-        } as CallExpression;
-    }
+    return {
+        type: 'CallExpression',
+        callee: node,
+        arguments: [host, evt, target],
+        loc: node.loc
+    } as CallExpression;
+}
 
-    if (isCaller(node) && isPrefix(node.object) && isLiteral(node.property)) {
-        // Convert caller back to call expression to throw errors if
-        // callee doesn’t exists
-        const context: IdentifierContext = node.object.context === 'property'
-            ? 'definition' : node.object.context
-        return {
-            type: 'CallExpression',
-            callee: identifier(node.property.value as string, context),
-            arguments: [...node.arguments, host, evt, target],
-            loc: node.loc
-        } as CallExpression;
-    }
-
-    if (isCallExpression(node) && (!isIdentifier(node.callee) || node.callee.context !== 'helper')) {
-        return {
-            ...node,
-            arguments: [...node.arguments, host, evt, target]
-        } as CallExpression
-    }
-
-    return node;
+function thisExpr(): ThisExpression {
+    return { type: 'ThisExpression' };
 }
 
 function identifier(name: string, context?: IdentifierContext): Identifier {
     return { type: 'Identifier', name, context };
+}
+
+function member(object: Expression, property: Expression): MemberExpression {
+    return { type: 'MemberExpression', object, property };
 }
 
 function handlerUsesEvent(handler: Expression | void): boolean {
@@ -183,4 +148,49 @@ function handlerUsesEvent(handler: Expression | void): boolean {
     }
 
     return true;
+}
+
+function createVisitors(eventArg: string): WalkVisitorMap {
+    const host = thisExpr();
+    const evt = identifier(eventArg);
+    const target = member(evt, identifier('currentTarget'));
+
+    return {
+        ENDCaller(node: ENDCaller, state, next) {
+            if (isPrefix(node.object) && isLiteral(node.property)) {
+                // Convert caller back to call expression to throw errors if
+                // callee doesn’t exists
+                const context: IdentifierContext = node.object.context === 'property'
+                    ? 'definition' : node.object.context;
+                return this.CallExpression({
+                    type: 'CallExpression',
+                    callee: identifier(node.property.value as string, context),
+                    arguments: [...node.arguments, host, evt, target],
+                    loc: node.loc
+                } as CallExpression, state, next);
+            }
+
+            return baseVisitors.ENDCaller(node, state, next);
+        },
+        CallExpression(node: CallExpression, state, next) {
+            if (!isIdentifier(node.callee) || node.callee.context !== 'helper') {
+                node = {
+                    ...node,
+                    arguments: [...node.arguments, host, evt, target]
+                } as CallExpression;
+            }
+
+            return baseVisitors.CallExpression(node, state, next);
+        },
+        ENDGetterPrefix(node: ENDGetterPrefix, state) {
+            if (node.context !== 'helper') {
+                return sn(`this.${getPrefix(node.context, state)}`);
+            }
+
+            return sn();
+        },
+        ThisExpression() {
+            return sn('this.host');
+        }
+    };
 }
