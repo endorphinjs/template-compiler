@@ -3,11 +3,13 @@ import { SourceNode } from 'source-map';
 import Entity, { entity } from './Entity';
 import UsageStats from './UsageStats';
 import CompileState from './CompileState';
-import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime } from '../utils';
+import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime, propSetter, unmount } from '../utils';
 import TextEntity from './TextEntity';
 import { Chunk, ChunkList } from '../types';
 import VariableEntity from './VariableEntity';
 import { ENDCompileError } from '../error';
+import { compileAttributeValue } from './AttributeEntity';
+import { toObjectLiteral } from './object';
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -44,8 +46,10 @@ export default class ElementEntity extends Entity {
         super(node && isElement(node) ? node.name.name : 'target', state);
         if (node) {
             this.isStaticContent = true;
-            this.collectStats(node);
-            this.isComponent = isElement(node) && state.isComponent(node);
+            this.collectStats();
+            if (isElement(node)) {
+                this.isComponent = state.isComponent(node);
+            }
         } else {
             // Empty node means we’re in element defined in outer block
             // (for example, in conditional content block). In this case,
@@ -87,16 +91,18 @@ export default class ElementEntity extends Entity {
      * Check if given attribute name is dynamic, e.g. can be changed by nested
      * statements
      */
-    isDynamicAttribute(attr: string | ENDAttribute): boolean {
-        if (typeof attr === 'string') {
-            return this.dynamicAttributes.has(attr);
+    isDynamicAttribute(attr: ENDAttribute): boolean {
+        if (this.hasPartials || this.attributeExpressions) {
+            return true;
         }
 
         if (isIdentifier(attr.name)) {
             return this.dynamicAttributes.has(attr.name.name);
         }
 
-        return false;
+        return attr.value
+            ? isExpression(attr.value) || attr.value.type === 'ENDAttributeValueExpression'
+            : false;
     }
 
     add(item: Entity) {
@@ -112,6 +118,101 @@ export default class ElementEntity extends Entity {
             // slot update stats
             this.markSlotUpdate(item);
         }
+    }
+
+    /**
+     * Adds entity to mount, update and unmount component
+     * Since component should be mounted and updated *after* it’s
+     * content was rendered, we should add mount and update code
+     * as a separate entity after element content
+     */
+    mountComponent() {
+        const { state } = this;
+        this.add(state.entity({
+            mount: () => {
+                const staticProps = this.getStaticProps();
+                const staticPropsArg = staticProps.size
+                    ? toObjectLiteral(staticProps, state, 1) : null;
+                return runtime('mountComponent', [this.getSymbol(), staticPropsArg], state);
+            },
+            update: () => runtime('updateComponent', [this.getSymbol()], state),
+            unmount: () => unmount('unmountComponent', this.getSymbol(), state)
+        }));
+
+        // Add empty source node to skip automatic symbol nulling
+        // in unmount function
+        this.setUnmount(() => sn());
+    }
+
+    /**
+     * Adds entity to mark slot updates
+     */
+    markSlots() {
+        Object.keys(this.slotUpdate).forEach(slotName => {
+            this.add(this.state.entity({
+                update: () => runtime('markSlotUpdate', [this.getSymbol(), qStr(slotName), this.slotUpdate[slotName]], this.state)
+            }))
+        });
+    }
+
+    /**
+     * Adds entity to finalize attributes of current element
+     */
+    finalizeAttributes() {
+        const { state } = this;
+        this.add(state.entity('attr', {
+            shared: () => runtime('finalizeAttributes', [this.injector], state)
+        }));
+    }
+
+    /**
+     * Adds entity to finalize attributes of current element
+     */
+    finalizeEvents() {
+        const { state } = this;
+        this.add(state.entity({
+            shared: () => runtime('finalizeEvents', [this.injector, state.host, state.scope], state)
+        }));
+    }
+
+    /**
+     * Adds entity to set named ref to current element
+     */
+    setRef(refName: string) {
+        const { state } = this;
+        this.add(state.entity({
+            shared: () => runtime('setRef', [state.host, refName, this.getSymbol()], state)
+        }));
+    }
+
+    /**
+     * Returns map of static props of current element
+     */
+    getStaticProps(): Map<Chunk, Chunk> {
+        const props: Map<Chunk, Chunk> = new Map();
+
+        if (this.node.type === 'ENDElement') {
+            const { attributes, directives } = this.node;
+            const { state } = this;
+
+            attributes.forEach(attr => {
+                if (!this.isDynamicAttribute(attr)) {
+                    props.set(propSetter(attr.name, this.state), compileAttributeValue(attr.value, state, 'params'));
+                }
+            });
+
+            directives.forEach(dir => {
+                if (dir.prefix === 'partial') {
+                    const value = compileAttributeValue(dir.value, state, 'component');
+                    props.set(
+                        qStr(`${dir.prefix}:${dir.name}`),
+                        runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])], state)
+                    );
+                }
+            });
+        }
+
+        return props;
     }
 
     private markSlotUpdate(entity: Entity) {
@@ -156,14 +257,16 @@ export default class ElementEntity extends Entity {
         return runtime('insert', args, this.state);
     }
 
-    private collectStats(elem: ENDElement | ENDTemplate) {
+    private collectStats() {
         // Collect stats about given element
-        if (elem.type === 'ENDElement') {
-            this.attributesStats(elem.attributes, true);
-            this.directiveStats(elem.directives, true);
+        const { node } = this;
+
+        if (isElement(node)) {
+            this.attributesStats(node.attributes, true);
+            this.directiveStats(node.directives, true);
         }
 
-        walk(elem, node => {
+        walk(node, node => {
             if (node.type === 'ENDPartialStatement') {
                 this.hasPartials = true;
                 this.isStaticContent = false;
@@ -258,7 +361,7 @@ export function createElement(node: ENDElement, state: CompileState, text?: Lite
     }
 
     // Create plain DOM element
-    const cssScope = state.options.cssScope ? `, ${state.cssScopeSymbol}` : null;
+    const cssScope = state.options.cssScope ? state.cssScopeSymbol : null;
     const nodeName = getNodeName(elemName);
     const nsSymbol = state.namespace(nodeName.ns);
 

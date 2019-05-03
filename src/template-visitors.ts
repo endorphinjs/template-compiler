@@ -1,17 +1,17 @@
 import * as Ast from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import { Chunk, ChunkList } from './types';
+import { ChunkList } from './types';
 import generateExpression from './expression';
 import CompileState from './assets/CompileState';
 import Entity, { entity } from './assets/Entity';
-import ElementEntity, { createElement, cssScopeArg } from './assets/ElementEntity';
+import { createElement, cssScopeArg } from './assets/ElementEntity';
 import AttributeEntity, { compileAttributeValue } from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import IteratorEntity from './assets/IteratorEntity';
 import InnerHTMLEntity from './assets/InnerHTMLEntity';
-import generateObject, { toObjectLiteral } from './assets/object';
-import { sn, qStr, isLiteral, isIdentifier, isExpression, propSetter, getAttrValue, nameToJS, runtime, propGetter, unmount } from './utils';
+import generateObject from './assets/object';
+import { sn, qStr, isLiteral, getAttrValue, nameToJS, runtime, propGetter, unmount } from './utils';
 import VariableEntity from './assets/VariableEntity';
 import EventEntity from './assets/EventEntity';
 
@@ -46,7 +46,7 @@ export default {
     ENDElement(node: Ast.ENDElement, state, next) {
         return state.runElement(node, element => {
             if (node.ref) {
-                element.add(refEntity(node.ref, element, state));
+                element.setRef(node.ref);
             }
 
             let attrs = node.attributes;
@@ -54,7 +54,7 @@ export default {
                 // In component, static attributes/props (e.g. ones which won’t change
                 // in runtime) must be added during component mount. Thus, we should
                 // process dynamic attributes only
-                attrs = attrs.filter(attr => isDynamicAttribute(attr, state));
+                attrs = attrs.filter(attr => element.isDynamicAttribute(attr));
             }
 
             element.setContent(attrs, next);
@@ -79,45 +79,15 @@ export default {
             }
 
             if (element.isComponent) {
-                // Mark updated slots
-                Object.keys(element.slotUpdate).forEach(slotName => {
-                    element.add(state.entity({
-                        update() {
-                            return runtime('markSlotUpdate', [element.getSymbol(), qStr(slotName), element.slotUpdate[slotName]], state);
-                        }
-                    }))
-                });
-
-                // Add code to mount, update and unmount component
-                // Since component should be mounted and updated *after* it’s
-                // content was rendered, we should add mount and update code
-                // as a separate entity after element content
-                element.add(state.entity({
-                    mount: () => {
-                        const staticProps = collectStaticProps(node, state);
-                        const staticPropsArg = staticProps.size
-                            ? toObjectLiteral(staticProps, state, 1) : null;
-                        return runtime('mountComponent', [element.getSymbol(), staticPropsArg], state);
-                    },
-                    update: () => runtime('updateComponent', [element.getSymbol()], state),
-                    unmount: () => unmount('unmountComponent', element.getSymbol(), state)
-                }));
-                // Add empty source node to skip automatic symbol nulling
-                // in unmount function
-                element.setUnmount(() => sn());
+                element.markSlots();
+                element.mountComponent();
             } else {
                 if (element.dynamicAttributes.size || element.hasPartials) {
-                    // Should finalize attributes
-                    element.add(state.entity('attr', {
-                        shared: () => runtime('finalizeAttributes', [element.injector], state)
-                    }));
+                    element.finalizeAttributes();
                 }
 
                 if (element.dynamicEvents.size || element.hasPartials) {
-                    // Should finalize events
-                    element.add(state.entity({
-                        shared: () => runtime('finalizeEvents', [element.injector, state.host, state.scope], state)
-                    }));
+                    element.finalizeEvents();
                 }
             }
 
@@ -219,15 +189,6 @@ export default {
 } as AstVisitorMap;
 
 /**
- * Creates element ref entity
- */
-function refEntity(ref: string, element: ElementEntity, state: CompileState): Entity {
-    return entity('ref', state, {
-        shared: () => runtime('setRef', [state.host, ref, element.getSymbol()], state)
-    });
-}
-
-/**
  * Returns code for subscribing to store updates
  * @param state
  */
@@ -238,7 +199,7 @@ function subscribeStore(state: CompileState): Entity {
         ? `[${Array.from(state.usedStore).map(qStr).join(', ')}]`
         : '';
 
-    return entity('store', state, {
+    return state.entity({
         mount: () => runtime('subscribeStore', [state.host, storeKeysArg], state)
     });
 }
@@ -249,49 +210,6 @@ function isSimpleConditionContent(node: Ast.ENDStatement): boolean {
     }
 
     return node.type === 'ENDAddClassStatement';
-}
-
-/**
- * Check if given attribute is dynamic, e.g. it’s value will be changed in runtime
- */
-function isDynamicAttribute(attr: Ast.ENDAttribute, state: CompileState): boolean {
-    const { element } = state;
-    if (!element || !element.node || element.hasPartials || element.attributeExpressions) {
-        // * no element context
-        // * in child block context
-        // * element contains entities which may affect any attribute
-        return true;
-    }
-
-    if (isIdentifier(attr.name)) {
-        return element.dynamicAttributes.has(attr.name.name);
-    }
-
-    return isExpression(attr.name)
-        || isExpression(attr.value)
-        || attr.value && attr.value.type === 'ENDAttributeValueExpression';
-}
-
-function collectStaticProps(elem: Ast.ENDElement, state: CompileState): Map<Chunk, Chunk> {
-    const attrs: Map<Chunk, Chunk> = new Map();
-
-    elem.attributes.forEach(attr => {
-        if (!isDynamicAttribute(attr, state)) {
-            attrs.set(propSetter(attr.name, state), compileAttributeValue(attr.value, state, 'params'));
-        }
-    });
-
-    elem.directives.forEach(dir => {
-        if (dir.prefix === 'partial') {
-            const value = compileAttributeValue(dir.value, state, 'component');
-            attrs.set(
-                qStr(`${dir.prefix}:${dir.name}`),
-                runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])], state)
-            );
-        }
-    });
-
-    return attrs;
 }
 
 /**
