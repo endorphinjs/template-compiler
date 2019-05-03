@@ -6,13 +6,14 @@ import { Chunk, RenderChunk, UsageContext } from "../types";
 import { sn, nameToJS } from "../utils";
 import { AstContinue } from "../template-visitors";
 
+export type RenderOptions = { [K in RenderContext]?: RenderChunk };
 type RenderContext = UsageContext | 'shared';
 type SymbolType = UsageContext | 'ref';
 
 /**
  * Factory function for shorter entity instance code
  */
-export function entity(name: string, state: CompileState, render?: { [K in RenderContext]?: RenderChunk }): Entity {
+export function entity(name: string, state: CompileState, render?: RenderOptions): Entity {
     const ent = new Entity(name, state);
     if (render) {
         render.mount && ent.setMount(render.mount);
@@ -33,8 +34,7 @@ export default class Entity {
     code: { [K in UsageContext]?: Chunk };
 
     constructor(readonly rawName: string, readonly state: CompileState) {
-        // NB `ref` is a variable declaration in mount scope
-        this.name = state.scopeSymbol(nameToJS(rawName));
+        this.name = rawName ? state.scopeSymbol(nameToJS(rawName)) : '';
         this.code = {
             mount: null,
             update: null,
@@ -154,10 +154,13 @@ export default class Entity {
         this.children.push(entity);
     }
 
+    /**
+     * Sets current entity content by receiving entities from given AST nodes
+     */
     setContent(nodes: Node[], next: AstContinue): this {
-        nodes.map(next).forEach(entity => {
-            entity && this.add(entity);
-        });
+        // Collect contents in two passes: convert nodes to entities to collect
+        // injector usage, then attach it to element
+        nodes.map(next).forEach(entity => entity && this.add(entity));
         return this;
     }
 }

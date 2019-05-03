@@ -4,7 +4,7 @@ import { Chunk, ChunkList } from './types';
 import generateExpression from './expression';
 import CompileState from './assets/CompileState';
 import Entity, { entity } from './assets/Entity';
-import ElementEntity, { createElement } from './assets/ElementEntity';
+import ElementEntity, { createElement, cssScopeArg } from './assets/ElementEntity';
 import AttributeEntity, { compileAttributeValue } from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
@@ -66,7 +66,7 @@ export default {
                 // to mount it only if there’s no incoming slot content
                 const slotName = String(getAttrValue(node, 'name') || '');
                 const contentArg = defaultSlot(node, state, next);
-                element.add(entity('slotMount', state, {
+                element.add(state.entity({
                     mount: () => runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg], state),
                     unmount: slot => unmount('unmountSlot', slot.getSymbol(), state)
                 }));
@@ -81,7 +81,7 @@ export default {
             if (element.isComponent) {
                 // Mark updated slots
                 Object.keys(element.slotUpdate).forEach(slotName => {
-                    element.add(entity('block', state, {
+                    element.add(state.entity({
                         update() {
                             return runtime('markSlotUpdate', [element.getSymbol(), qStr(slotName), element.slotUpdate[slotName]], state);
                         }
@@ -92,30 +92,39 @@ export default {
                 // Since component should be mounted and updated *after* it’s
                 // content was rendered, we should add mount and update code
                 // as a separate entity after element content
-                element.add(entity('block', state, {
+                element.add(state.entity({
                     mount: () => {
                         const staticProps = collectStaticProps(node, state);
                         const staticPropsArg = staticProps.size
                             ? toObjectLiteral(staticProps, state, 1) : null;
                         return runtime('mountComponent', [element.getSymbol(), staticPropsArg], state);
                     },
-                    update: () => runtime('updateComponent', [element.getSymbol()], state)
+                    update: () => runtime('updateComponent', [element.getSymbol()], state),
+                    unmount: () => unmount('unmountComponent', element.getSymbol(), state)
                 }));
-                element.setUnmount(() => unmount('unmountComponent', element.getSymbol(), state));
+                // Add empty source node to skip automatic symbol nulling
+                // in unmount function
+                element.setUnmount(() => sn());
             } else {
                 if (element.dynamicAttributes.size || element.hasPartials) {
                     // Should finalize attributes
-                    element.add(entity('block', state, {
+                    element.add(state.entity('attr', {
                         shared: () => runtime('finalizeAttributes', [element.injector], state)
                     }));
                 }
 
                 if (element.dynamicEvents.size || element.hasPartials) {
                     // Should finalize events
-                    element.add(entity('block', state, {
+                    element.add(state.entity({
                         shared: () => runtime('finalizeEvents', [element.injector, state.host, state.scope], state)
                     }));
                 }
+            }
+
+            if (element.animateIn) {
+                element.add(state.entity({
+                    mount: () => runtime('animateIn', [element.getSymbol(), compileAttributeValue(element.animateIn, state), cssScopeArg(state)], state)
+                }))
             }
         });
     },

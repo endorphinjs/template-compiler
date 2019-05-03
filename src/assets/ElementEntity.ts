@@ -1,4 +1,4 @@
-import { ENDElement, ENDTemplate, ENDAttributeStatement, ENDStatement, ENDAttribute, Node, Literal } from '@endorphinjs/template-parser';
+import { ENDElement, ENDTemplate, ENDStatement, ENDAttribute, Literal, ENDAttributeValue, ENDDirective } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
 import Entity, { entity } from './Entity';
 import UsageStats from './UsageStats';
@@ -6,8 +6,8 @@ import CompileState from './CompileState';
 import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime } from '../utils';
 import TextEntity from './TextEntity';
 import { Chunk, ChunkList } from '../types';
-import { AstContinue } from '../template-visitors';
 import VariableEntity from './VariableEntity';
+import { ENDCompileError } from '../error';
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -36,8 +36,8 @@ export default class ElementEntity extends Entity {
     /** Whether element contains attribute expressions, e.g. `{foo}="bar"` */
     attributeExpressions: boolean;
 
-    hasAnimationOut: boolean;
-
+    animateIn?: ENDAttributeValue;
+    animateOut?: ENDAttributeValue;
     slotUpdate: { [slotName: string]: string } = {}
 
     constructor(readonly node: ENDElement | ENDTemplate | null, readonly state: CompileState) {
@@ -52,7 +52,7 @@ export default class ElementEntity extends Entity {
             // we should always use injector to fill contents, which shall be
             // passed as argument to block function
             this.isStaticContent = false;
-            this._injector = entity('injector', state);
+            this._injector = state.entity('injector');
             this._injector.name = 'injector';
         }
     }
@@ -106,25 +106,12 @@ export default class ElementEntity extends Entity {
         }
 
         super.add(item);
-    }
 
-    /**
-     * Sets current entity content by receiving entities from given AST nodes
-     */
-    setContent(nodes: Node[], next: AstContinue): this {
-        // Collect contents in two passes: convert nodes to entities to collect
-        // injector usage, then attach it to element
-        nodes.map(next).forEach(entity => {
-            if (entity) {
-                this.add(entity);
-                if (this.isComponent) {
-                    // Adding content entity into component: we should collect
-                    // slot update stats
-                    this.markSlotUpdate(entity);
-                }
-            }
-        });
-        return this;
+        if (this.isComponent && item.name) {
+            // Adding content entity into component: we should collect
+            // slot update stats
+            this.markSlotUpdate(item);
+        }
     }
 
     private markSlotUpdate(entity: Entity) {
@@ -172,15 +159,8 @@ export default class ElementEntity extends Entity {
     private collectStats(elem: ENDElement | ENDTemplate) {
         // Collect stats about given element
         if (elem.type === 'ENDElement') {
-            elem.attributes.forEach(attr => {
-                if (isExpression(attr.name)) {
-                    this.attributeExpressions = true;
-                } else if (attr.value && !isLiteral(attr.value)) {
-                    this.dynamicAttributes.add(attr.name.name);
-                }
-            });
-
-            this.hasAnimationOut = elem.directives.some(attr => attr.prefix === 'animate' && attr.name === 'out');
+            this.attributesStats(elem.attributes, true);
+            this.directiveStats(elem.directives, true);
         }
 
         walk(elem, node => {
@@ -192,7 +172,8 @@ export default class ElementEntity extends Entity {
             } else if (node.type === 'ENDAttributeStatement') {
                 // Attribute statements in top-level element context are basically
                 // the same as immediate attributes of element
-                this.attributesStats(node);
+                this.attributesStats(node.attributes);
+                this.directiveStats(node.directives);
             }
 
             if (dynamicContent.has(node.type)) {
@@ -202,19 +183,35 @@ export default class ElementEntity extends Entity {
         });
     }
 
-    private attributesStats(node: ENDAttributeStatement) {
-        node.attributes.forEach(attr => {
+    private attributesStats(attributes: ENDAttribute[], isElement?: boolean) {
+        attributes.forEach(attr => {
             if (isExpression(attr.name)) {
                 this.attributeExpressions = true;
-            } else {
+            } else if (!isElement || (attr.value && !isLiteral(attr.value))) {
                 this.dynamicAttributes.add(attr.name.name);
             }
         });
-        node.directives.forEach(directive => {
-            if (directive.prefix === 'on') {
+    }
+
+    private directiveStats(directives: ENDDirective[], isElement?: boolean) {
+        directives.forEach(directive => {
+            if (directive.prefix === 'on' && !isElement) {
                 this.dynamicEvents.add(directive.name);
             } else if (directive.prefix === 'class') {
                 this.dynamicAttributes.add('class');
+            } else if (directive.prefix === 'animate') {
+                // Currently, we allow animations in element only
+                if (isElement) {
+                    if (directive.name === 'in') {
+                        this.animateIn = directive.value;
+                    } else if (directive.name === 'out') {
+                        this.animateOut = directive.value;
+                    } else {
+                        new ENDCompileError(`Unknown "${directive.name}" animation directive`, directive);
+                    }
+                } else {
+                    new ENDCompileError(`Animations are allowed in element only`, directive);
+                }
             }
         });
     }
@@ -252,28 +249,29 @@ export function createElement(node: ENDElement, state: CompileState, text?: Lite
 
     if (getControlName(elemName) === 'self') {
         // Create component which points to itself
-        return sn([`${state.runtime('createComponent')}(${state.host}.nodeName, ${state.host}).componentModel.definition, ${state.host})`], srcNode);
+        return runtime('createComponent', [`${state.host}.nodeName`, `${state.host}.componentModel.definition`, state.host], state, srcNode);
     }
 
     if (state.isComponent(node)) {
         // Create component
-        return sn([`${state.runtime('createComponent')}(${qStr(elemName)}, ${state.getComponent(node)}, ${state.host})`], srcNode);
+        return runtime('createComponent', [qStr(elemName), state.getComponent(node), state.host], state, srcNode);
     }
 
     // Create plain DOM element
+    const cssScope = state.options.cssScope ? `, ${state.cssScopeSymbol}` : null;
     const nodeName = getNodeName(elemName);
     const nsSymbol = state.namespace(nodeName.ns);
 
     if (text) {
         const textValue = qStr(text.value as string);
         return nsSymbol
-            ? sn(`${state.runtime('elemNSWithText')}(${qStr(nodeName.name)}, ${textValue}, ${nsSymbol}${cssScopeArg(state)})`, srcNode)
-            : sn(`${state.runtime('elemWithText')}(${qStr(elemName)}, ${textValue}${cssScopeArg(state)})`, srcNode);
+            ? runtime('elemNSWithText', [qStr(nodeName.name), textValue, nsSymbol, cssScope], state, srcNode)
+            : runtime('elemWithText', [qStr(elemName), textValue, cssScope], state, srcNode);
     }
 
     return nsSymbol
-        ? sn(`${state.runtime('elemNS')}(${qStr(nodeName.name)}, ${nsSymbol}${cssScopeArg(state)})`, srcNode)
-        : sn(`${state.runtime('elem')}(${qStr(elemName)}${cssScopeArg(state)})`, srcNode);
+        ? runtime('elemNS', [qStr(nodeName.name), nsSymbol, cssScope], state, srcNode)
+        : runtime('elem', [qStr(elemName), cssScope], state, srcNode);
 }
 
 export function cssScopeArg(state: CompileState): string {
