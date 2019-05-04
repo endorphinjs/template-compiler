@@ -279,14 +279,14 @@ export default class ElementEntity extends Entity {
     /**
      * Attaches given DOM entity to current element via DOM
      */
-    private addDOM(entity: ElementEntity | TextEntity): SourceNode {
+    private addDOM(entity: Entity): SourceNode {
         return sn([this.getSymbol(), `.appendChild(`, entity.code.mount, `)`]);
     }
 
     /**
      * Attaches given DOM entity to current element via injector
      */
-    private addInjector(entity: ElementEntity | TextEntity): SourceNode {
+    private addInjector(entity: Entity): SourceNode {
         const args: ChunkList = [this.injector, entity.code.mount];
         if (this.isComponent) {
             let slotName = '';
