@@ -1,6 +1,6 @@
 import { ENDElement, ENDTemplate, ENDStatement, ENDAttribute, Literal, ENDAttributeValue, ENDDirective } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import Entity, { entity } from './Entity';
+import Entity from './Entity';
 import UsageStats from './UsageStats';
 import CompileState from './CompileState';
 import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime, propSetter, unmount } from '../utils';
@@ -48,7 +48,8 @@ export default class ElementEntity extends Entity {
             this.isStaticContent = true;
             this.collectStats();
             if (isElement(node)) {
-                this.isComponent = state.isComponent(node);
+                this.isComponent = state.isComponent(node)
+                    || getControlName(node.name.name) === 'self';
             }
         } else {
             // Empty node means we’re in element defined in outer block
@@ -68,7 +69,7 @@ export default class ElementEntity extends Entity {
 
         if (!this._injector) {
             // First time injector usage. Create entity which will mount it
-            this._injector = entity('inj', state, {
+            this._injector = state.entity('inj', {
                 mount: () => this.isComponent
                     // For components, contents must be redirected into inner input injector
                     ? sn([this.getSymbol(), '.componentModel.input'])
@@ -181,7 +182,7 @@ export default class ElementEntity extends Entity {
     setRef(refName: string) {
         const { state } = this;
         this.add(state.entity({
-            shared: () => runtime('setRef', [state.host, refName, this.getSymbol()], state)
+            shared: () => runtime('setRef', [state.host, qStr(refName), this.getSymbol()], state)
         }));
     }
 
@@ -288,7 +289,7 @@ export default class ElementEntity extends Entity {
      */
     private addInjector(entity: Entity): SourceNode {
         const args: ChunkList = [this.injector, entity.code.mount];
-        if (this.isComponent) {
+        if (this.state.inComponent) {
             let slotName = '';
             if (entity instanceof ElementEntity && isElement(entity.node)) {
                 slotName = getAttrValue(entity.node, 'slot') as string || '';

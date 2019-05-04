@@ -3,7 +3,7 @@ import { ENDElement, ENDImport, ENDTemplate } from "@endorphinjs/template-parser
 import BlockContext from "./BlockContext";
 import Entity, { RenderOptions, entity } from "./Entity";
 import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
-import { nameToJS, propGetter, isIdentifier, isLiteral } from "../utils";
+import { nameToJS, propGetter, isIdentifier, isLiteral, isElement } from "../utils";
 import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration } from "../types";
 import ElementEntity from "./ElementEntity";
 import prepareHelpers from "./helpers";
@@ -61,6 +61,8 @@ export default class CompileState {
     /** Current namespaces */
     private namespaceMap: NamespaceMap = {};
 
+    private _inComponent = false;
+
     /**
      * List of available helpers. Key is a helper name (name of function) and value
      * is a module URL
@@ -106,6 +108,13 @@ export default class CompileState {
     get element(): ElementEntity {
         return this.blockContext
             && this.blockContext.element;
+    }
+
+    /**
+     * Check if we’re currently rendering inside component
+     */
+    get inComponent(): boolean {
+        return this._inComponent;
     }
 
     get hasPartials(): boolean {
@@ -172,26 +181,27 @@ export default class CompileState {
      * Runs given `fn` function in context of `node` element
      */
     runElement(node: ENDTemplate | ENDElement | null, fn: (entity: ElementEntity) => void): ElementEntity {
-        const { blockContext } = this;
+        const { blockContext, inComponent, namespaceMap } = this;
 
         if (!blockContext) {
             throw new Error('Unable to run in element context: parent block is absent');
         }
 
         const prevElem = blockContext.element;
-        const prevNsMap = this.namespaceMap;
         const entity = blockContext.element = new ElementEntity(node, this);
 
-        if (node && node.type === 'ENDElement') {
+        if (node && isElement(node)) {
             this.namespaceMap = {
-                ...prevNsMap,
+                ...namespaceMap,
                 ...collectNamespaces(node)
             };
+            this._inComponent = entity.isComponent;
         }
 
         fn(entity);
 
-        this.namespaceMap = prevNsMap;
+        this._inComponent = inComponent;
+        this.namespaceMap = namespaceMap;
         blockContext.element = prevElem;
         return entity;
     }

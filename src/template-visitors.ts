@@ -60,22 +60,26 @@ export default {
             element.setContent(attrs, next);
             element.setContent(node.directives, next);
 
+            const isSlot = node.name.name === 'slot';
             const firstChild = node.body[0];
-            if (node.name.name === 'slot') {
-                // Default slot content must be generated as child block
-                // to mount it only if there’s no incoming slot content
-                const slotName = String(getAttrValue(node, 'name') || '');
-                const contentArg = defaultSlot(node, state, next);
-                element.add(state.entity({
-                    mount: () => runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg], state),
-                    unmount: slot => unmount('unmountSlot', slot.getSymbol(), state)
-                }));
-            } else if (!element.isComponent && node.body.length === 1 && isLiteral(firstChild)) {
+
+            if (!element.isComponent && !isSlot && node.body.length === 1 && isLiteral(firstChild)) {
                 // Edge case: element with single text child
                 element.setMount(() => createElement(node, state, firstChild));
             } else {
                 element.setMount(() => createElement(node, state));
-                element.setContent(node.body, next);
+                if (isSlot) {
+                    // Default slot content must be generated as child block
+                    // to mount it only if there’s no incoming slot content
+                    const slotName = String(getAttrValue(node, 'name') || '');
+                    const contentArg = defaultSlot(node, state, next);
+                    element.add(state.entity('slot', {
+                        mount: () => runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg], state),
+                        unmount: slot => unmount('unmountSlot', slot.getSymbol(), state)
+                    }));
+                } else {
+                    element.setContent(node.body, next);
+                }
             }
 
             if (element.isComponent) {
@@ -191,7 +195,7 @@ export default {
 function subscribeStore(state: CompileState): Entity {
     // Without partials, we can safely assume that we know about
     // all used store keys
-    const storeKeysArg = state.hasPartials
+    const storeKeysArg = !state.hasPartials
         ? `[${Array.from(state.usedStore).map(qStr).join(', ')}]`
         : '';
 

@@ -25,7 +25,7 @@ export default function template$0(host, scope) {
 	mountComponent(innerComponent$1, {
 		"partial:item": assign({ host }, partials["my-item"])
 	});
-	subscribeStore(host);
+	subscribeStore(host, ["items1", "items2"]);
 	addDisposeCallback(host, template$0Unmount);
 	return template$0Update;
 }
