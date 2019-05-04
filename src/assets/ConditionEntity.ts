@@ -1,6 +1,6 @@
 import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Program } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
-import Entity, { entity } from "./entity";
+import Entity from "./entity";
 import CompileState from "./CompileState";
 import { AstContinue } from "../template-visitors";
 import { sn, runtime, unmount } from "../utils";
@@ -32,7 +32,7 @@ export default class ConditionEntity extends Entity {
  */
 function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChooseCase>, state: CompileState, next: AstContinue): string {
     return state.runBlock(`${name}Entry`, () => {
-        return entity('block', state, {
+        return state.entity({
             mount: () => {
                 const indent = state.indent;
                 const innerIndent = indent.repeat(2);

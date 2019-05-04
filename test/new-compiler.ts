@@ -13,7 +13,8 @@ describe('New compiler', () => {
             'templates/iterate.html', 'templates/key-iterate.html', 'templates/inner-html.html',
             'templates/attribute1.html', 'templates/attribute2.html', 'templates/props.html',
             'templates/variables.html', 'templates/partials.html', 'templates/partials-override.html',
-            'templates/events.html', 'templates/events-loop.html'
+            'templates/events.html', 'templates/events-loop.html',
+            'templates/animate.html'
         ];
 
         files.forEach(file => {

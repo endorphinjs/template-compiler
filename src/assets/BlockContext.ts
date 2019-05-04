@@ -121,7 +121,9 @@ export default class BlockContext {
             .map(ent => ent.name);
 
         if (updateRefs.length) {
-            updateChunks.unshift(`const { ${updateRefs.join(', ')} } = ${state.scope}`);
+            state.update(() => {
+                updateChunks.unshift(`const { ${updateRefs.join(', ')} } = ${state.scope}`);
+            });
         }
 
         if (unmountChunks.length) {

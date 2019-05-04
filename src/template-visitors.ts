@@ -4,8 +4,8 @@ import { ChunkList } from './types';
 import generateExpression from './expression';
 import CompileState from './assets/CompileState';
 import Entity, { entity } from './assets/Entity';
-import { createElement, cssScopeArg } from './assets/ElementEntity';
-import AttributeEntity, { compileAttributeValue } from './assets/AttributeEntity';
+import { createElement } from './assets/ElementEntity';
+import AttributeEntity from './assets/AttributeEntity';
 import TextEntity from './assets/TextEntity';
 import ConditionEntity from './assets/ConditionEntity';
 import IteratorEntity from './assets/IteratorEntity';
@@ -91,11 +91,7 @@ export default {
                 }
             }
 
-            if (element.animateIn) {
-                element.add(state.entity({
-                    mount: () => runtime('animateIn', [element.getSymbol(), compileAttributeValue(element.animateIn, state), cssScopeArg(state)], state)
-                }))
-            }
+            element.animate();
         });
     },
 

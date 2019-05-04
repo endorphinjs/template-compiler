@@ -186,6 +186,47 @@ export default class ElementEntity extends Entity {
     }
 
     /**
+     * Adds entity to animate current element
+     */
+    animate() {
+        if (this.animateIn || this.animateOut) {
+            const { state } = this;
+            const anim = state.entity();
+            if (this.animateIn) {
+                anim.setMount(() => runtime('animateIn', [this.getSymbol(), compileAttributeValue(this.animateIn, state), cssScopeArg(state)], state));
+            }
+
+            if (this.animateOut) {
+                // We need to create a callback function to properly unmount
+                // contents of current element
+                const entities: Entity[] = [];
+                const callback = state.runBlock('animateOut', block => {
+                    const transfer = (item: Entity) => {
+                        item.children.forEach(transfer);
+                        if (item.code.unmount) {
+                            const unmountEntity = state.entity();
+                            unmountEntity.code.mount = item.code.unmount;
+                            item.code.unmount = null;
+                            block.scopeUsage.use('mount');
+                            entities.push(unmountEntity);
+                        }
+                    };
+
+                    transfer(this);
+                    return entities;
+                });
+                if (entities.length) {
+                    anim.setUnmount(() => runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), state.scope, callback, cssScopeArg(state)], state));
+                } else {
+                    anim.setUnmount(() => runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), cssScopeArg(state)], state));
+                }
+            }
+
+            this.add(anim);
+        }
+    }
+
+    /**
      * Returns map of static props of current element
      */
     getStaticProps(): Map<Chunk, Chunk> {

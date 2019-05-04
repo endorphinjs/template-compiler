@@ -228,7 +228,7 @@ export default class CompileState {
     /**
      * Creates new entity with given name and render options
      */
-    entity(name: string | RenderOptions, options?: RenderOptions): Entity {
+    entity(name?: string | RenderOptions, options?: RenderOptions): Entity {
         if (typeof name !== 'string') {
             options = name;
             name = '';
