@@ -1,6 +1,6 @@
 import { ENDAttribute, ENDAttributeName, ENDAttributeValue, Literal, Program } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
-import Entity from "./entity";
+import Entity from "./Entity";
 import compileExpression from "../expression";
 import CompileState from "./CompileState";
 import { Chunk, RenderChunk } from "../types";
