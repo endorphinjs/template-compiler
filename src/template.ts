@@ -72,10 +72,10 @@ export default function generateTemplate(ast: ENDProgram, options?: CompileState
 
     // Output scripts
     ast.scripts.forEach(script => {
-        if (script.url) {
-            body.push(sn(`export * from ${qStr(script.url)};`));
-        } else if (script.transformed || script.content) {
+        if (script.transformed || script.content) {
             body.push(sn(script.transformed || script.content));
+        } else if (script.url) {
+            body.push(sn(`export * from ${qStr(script.url)};`));
         }
     });
 
@@ -110,8 +110,8 @@ function registerComponents(ast: ENDProgram, state: CompileState) {
 }
 
 /**
-     * Returns map of used helpers and their URLs
-     */
+ * Returns map of used helpers and their URLs
+ */
 function getUsedHelpers(state: CompileState): Map <string, string[]> {
     const result: Map<string, string[]> = new Map();
 

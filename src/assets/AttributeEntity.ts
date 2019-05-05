@@ -30,7 +30,7 @@ export const mountStaticAttribute: RenderChunk = (attr: AttributeEntity) => {
     const ns = getAttributeNS(node, state);
 
     return ns
-        ? sn([elem, `.setAttributeNS(${state.namespace(ns.ns)}, `, attrName(node, state), ', ', attrValue(node, state), `)`], node)
+        ? sn([elem, `.setAttributeNS(${ns.ns}, `, attrName(node, state), ', ', attrValue(node, state), `)`], node)
         : sn([elem, `.setAttribute(`, attrName(node, state), ', ', attrValue(node, state), `)`], node);
 };
 
@@ -40,7 +40,7 @@ export const mountDynamicAttribute: RenderChunk = (attr: AttributeEntity) => {
     const ns = getAttributeNS(node, state);
 
     return ns
-        ? runtime('setAttributeNS', [injector, state.namespace(ns.ns), attrName(node, state), attrValue(node, state)], state)
+        ? runtime('setAttributeNS', [injector, ns.ns, attrName(node, state), attrValue(node, state)], state)
         : runtime('setAttribute', [injector, attrName(node, state), attrValue(node, state)], state);
 }
 

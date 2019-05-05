@@ -1,5 +1,0 @@
-import { get, filter } from "@endorphinjs/endorphin";
-
-function $$filter0(host, c) {
-	return (c === 1);
-}
