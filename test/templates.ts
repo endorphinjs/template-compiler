@@ -1,13 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { equal } from 'assert';
-import compile from '../src/index';
 import { Linter } from 'eslint';
+import compile from '../src/index';
 import { CompileStateOptions } from '../src/types';
 
 describe('New compiler', () => {
     const baseInput = path.resolve(__dirname, './samples');
-    const baseOutput = path.resolve(__dirname, './fixtures2');
+    const baseOutput = path.resolve(__dirname, './fixtures');
     const linter = new Linter();
     const linterConfig = require('./fixtures/.eslintrc.js');
 
