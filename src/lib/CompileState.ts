@@ -4,11 +4,17 @@ import BlockContext from './BlockContext';
 import Entity, { RenderOptions, entity } from '../entities/Entity';
 import ElementEntity from '../entities/ElementEntity';
 import createSymbolGenerator, { SymbolGenerator } from './SymbolGenerator';
-import { nameToJS, propGetter, isIdentifier, isLiteral, isElement, sn } from './utils';
-import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration, ChunkList } from '../types';
-import prepareHelpers from './helpers';
+import { nameToJS, propGetter, isIdentifier, isLiteral, isElement, sn, prepareHelpers } from './utils';
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, ChunkList } from '../types';
 
-interface NamespaceMap { [prefix: string]: string; }
+interface NamespaceMap {
+    [prefix: string]: string;
+}
+
+interface PartialDeclaration {
+    name: string;
+    defaults: Chunk;
+}
 
 export const defaultOptions: CompileStateOptions = {
     host: 'host',

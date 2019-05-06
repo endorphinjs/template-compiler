@@ -2,13 +2,17 @@ import { SourceNode } from 'source-map';
 import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
 import generateExpression from '../expression';
 import CompileState from './CompileState';
-import { Chunk, ChunkList } from '../types';
+import { Chunk, ChunkList, HelpersMap, PlainObject } from '../types';
 
 /**
  * A prefix for Endorphin element and attribute names
  */
 export const prefix = 'e';
 const nsPrefix = prefix + ':';
+
+const defaultHelpers = {
+    'endorphin/helpers.js': ['emit', 'setState', 'setStore']
+} as HelpersMap;
 
 /**
  * Converts given HTML tag name to JS variable name
@@ -166,6 +170,21 @@ export function toObjectLiteral(map: Map<Chunk, Chunk>, indent: string = '\t', l
     }
 
     result.add(`}`);
+    return result;
+}
+
+/**
+ * Generates helpers lookup map
+ */
+export function prepareHelpers(...helpers: HelpersMap[]): PlainObject {
+    const result: PlainObject = {};
+    const items = [defaultHelpers, ...helpers];
+    items.forEach(helper => {
+        Object.keys(helper).forEach(key => {
+            helper[key].forEach(value => result[value] = key);
+        });
+    });
+
     return result;
 }
 

@@ -1,20 +1,35 @@
-import { SourceNode } from "source-map";
-import { ENDImport, ENDProgram, Node } from "@endorphinjs/template-parser";
-import CompileState from "./lib/CompileState";
-import Entity from "./entities/Entity";
+import { SourceNode } from 'source-map';
+import { ENDImport, ENDProgram, Node } from '@endorphinjs/template-parser';
+import CompileState from './lib/CompileState';
+import Entity from './entities/Entity';
 
-export type Chunk = string | SourceNode;
-export type ChunkList = Chunk[];
-export type UsageContext = 'mount' | 'update' | 'unmount';
-export type RenderContext = UsageContext | 'shared';
-export type RenderChunk = (entity: Entity) => Chunk;
-export type EntityType = 'element' | 'attribute' | 'text' | 'directive' | 'variable' | 'block';
-export type HelpersMap = { [url: string]: string[] };
+type UsageContext = 'mount' | 'update' | 'unmount';
+type RenderContext = UsageContext | 'shared';
+type RenderChunk = (entity: Entity) => Chunk;
+interface HelpersMap { [url: string]: string[]; }
+interface PlainObject { [key: string]: string; }
 
 // AST Walkers
 type AstVisitorContinue<T> = (node: Node) => T;
 type AstVisitor<T> = (node: Node, state: CompileState, next: AstVisitorContinue<T>) => T;
 type AstVisitorMap<T> = { [name: string]: AstVisitor<T> };
+
+/**
+ * Transforms given EndorphinJS template code into JS code for browsers
+ * @param code Template source code
+ * @param url Template URL
+ * @param options Parser options
+ */
+export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap;
+
+/**
+ * Generates JS code for browsers from given parsed template
+ */
+export function generate(parsed: ParsedTemplate, options?: CompileStateOptions): CodeWithMap;
+
+
+export type Chunk = string | SourceNode;
+export type ChunkList = Chunk[];
 
 export type ExpressionOutput = SourceNode;
 export type ExpressionContinue = AstVisitorContinue<ExpressionOutput>;
@@ -105,9 +120,4 @@ export interface CompileStateOptions {
 
     /** Called with warning messages */
     warn?(msg: string, pos?: number): void;
-}
-
-interface PartialDeclaration {
-    name: string;
-    defaults: Chunk
 }

@@ -1,12 +1,13 @@
 import parse from '@endorphinjs/template-parser';
+import { CompileStateOptions, ParsedTemplate, CodeWithMap } from './types';
 import generateTemplate from './template';
 import { ENDCompileError, ENDSyntaxError } from './lib/error';
-import { CompileStateOptions, ParsedTemplate, CodeWithMap } from './types';
-import prepareHelpers from './lib/helpers';
+import { prepareHelpers } from './lib/utils';
 
 export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap {
     const helpers = prepareHelpers(options && options.helpers || {});
-    return generate({ ast: parse(code, url, { helpers: Object.keys(helpers) }), code, url }, options);
+    const ast = parse(code, url, { helpers: Object.keys(helpers) });
+    return generate({ ast, code, url }, options);
 }
 
 export function generate(parsed: ParsedTemplate, options?: CompileStateOptions): CodeWithMap {
