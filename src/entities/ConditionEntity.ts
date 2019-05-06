@@ -2,16 +2,16 @@ import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Progra
 import { SourceNode } from "source-map";
 import Entity from "./Entity";
 import CompileState from "../lib/CompileState";
-import { AstContinue } from "../visitors/template";
 import { sn, runtime, unmount } from "../lib/utils";
 import generateExpression from "../expression";
+import { TemplateContinue } from "../types";
 
 export default class ConditionEntity extends Entity {
     constructor(readonly node: ENDIfStatement | ENDChooseStatement, state: CompileState) {
         super(node.type === 'ENDIfStatement' ? 'if' : 'choose', state);
     }
 
-    setContent(statements: Array<ENDIfStatement | ENDChooseCase>, next: AstContinue): this {
+    setContent(statements: Array<ENDIfStatement | ENDChooseCase>, next: TemplateContinue): this {
         const { state } = this;
         this.setMount(() => runtime('mountBlock', [state.host, state.injector, conditionEntry(this.rawName, statements, state, next)], state))
             .setUpdate(() => runtime('updateBlock', [this.getSymbol()], state))
@@ -20,7 +20,7 @@ export default class ConditionEntity extends Entity {
         return this;
     }
 
-    setSimple(test: Program, statements: ENDStatement[], next: AstContinue) {
+    setSimple(test: Program, statements: ENDStatement[], next: TemplateContinue) {
         const fn = ifAttr(test, statements, this.state, next);
         this.setShared(() => sn([`${fn}(${this.state.host}, `, this.state.injector, ')']));
     }
@@ -30,7 +30,7 @@ export default class ConditionEntity extends Entity {
  * Generates condition entry function: tests condition and returns another function
  * for rendering matched block
  */
-function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChooseCase>, state: CompileState, next: AstContinue): string {
+function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChooseCase>, state: CompileState, next: TemplateContinue): string {
     return state.runBlock(`${name}Entry`, () => {
         return state.entity({
             mount: () => {
@@ -59,7 +59,7 @@ function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChoo
     });
 }
 
-function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, next: AstContinue): string {
+function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, next: TemplateContinue): string {
     return state.runChildBlock('ifAttr', (block, elem) => {
         elem.setMount(() => {
             const body = sn();

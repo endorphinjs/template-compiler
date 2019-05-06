@@ -3,14 +3,14 @@ import Entity from "./Entity";
 import CompileState from "../lib/CompileState";
 import { runtime, unmount } from "../lib/utils";
 import { fn } from "../expression";
-import { AstContinue } from "../visitors/template";
+import { TemplateContinue } from "../types";
 
 export default class IteratorEntity extends Entity {
     constructor(readonly node: ENDForEachStatement, readonly state: CompileState) {
         super('for', state);
     }
 
-    setContent(statements: Node[], next: AstContinue): this {
+    setContent(statements: Node[], next: TemplateContinue): this {
         const { state, node, rawName } = this;
         this.setMount(() => {
             const select = fn(`${rawName}Select`, state, node.select);

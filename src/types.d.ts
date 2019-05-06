@@ -1,5 +1,5 @@
 import { SourceNode } from "source-map";
-import { ENDImport, ENDProgram } from "@endorphinjs/template-parser";
+import { ENDImport, ENDProgram, Node } from "@endorphinjs/template-parser";
 import CompileState from "./lib/CompileState";
 import Entity from "./entities/Entity";
 
@@ -10,6 +10,19 @@ export type RenderContext = UsageContext | 'shared';
 export type RenderChunk = (entity: Entity) => Chunk;
 export type EntityType = 'element' | 'attribute' | 'text' | 'directive' | 'variable' | 'block';
 export type HelpersMap = { [url: string]: string[] };
+
+// AST Walkers
+type AstVisitorContinue<T> = (node: Node) => T;
+type AstVisitor<T> = (node: Node, state: CompileState, next: AstVisitorContinue<T>) => T;
+type AstVisitorMap<T> = { [name: string]: AstVisitor<T> };
+
+export type ExpressionOutput = SourceNode;
+export type ExpressionContinue = AstVisitorContinue<ExpressionOutput>;
+export type ExpressionVisitorMap = AstVisitorMap<ExpressionOutput>;
+
+export type TemplateOutput = Entity | void;
+export type TemplateContinue = AstVisitorContinue<TemplateOutput>;
+export type TemplateVisitorMap = AstVisitorMap<TemplateOutput>;
 
 /** Endorphin runtime functions */
 export type RuntimeSymbols = 'mountBlock' | 'updateBlock' | 'unmountBlock'

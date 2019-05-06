@@ -7,9 +7,9 @@ import {
     TaggedTemplateExpression, ENDCaller, ENDGetter, ENDGetterPrefix, ENDFilter, ArrayPattern
 } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
-import { Chunk, ChunkList } from "../types";
+import { Chunk, ChunkList, AstVisitorMap, ExpressionOutput, AstVisitorContinue } from "../types";
 import { sn, propGetter, qStr, isIdentifier } from "../lib/utils";
-import { WalkVisitorMap, getPrefix, WalkContinue } from "../expression";
+import { getPrefix } from "../expression";
 
 export default {
     Program(node: Program, state, next) {
@@ -152,9 +152,9 @@ export default {
     ENDFilter(node: ENDFilter, state, next) {
         return sn([state.runtime(node.multiple ? 'filter' : 'find'), '(', next(node.object), ', ', next(node.expression), ')']);
     }
-} as WalkVisitorMap;
+} as AstVisitorMap<ExpressionOutput>;
 
-function property(node: Property, isPattern: boolean, next: WalkContinue): SourceNode {
+function property(node: Property, isPattern: boolean, next: AstVisitorContinue<ExpressionOutput>): SourceNode {
     const key: Chunk = isIdentifier(node.key) ? node.key.name : next(node.key);
 
     if (node.computed) {

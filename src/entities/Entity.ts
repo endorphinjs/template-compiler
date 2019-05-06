@@ -2,9 +2,8 @@ import { Node } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
 import CompileState from "../lib/CompileState";
 import UsageStats from "../lib/UsageStats";
-import { Chunk, RenderChunk, UsageContext } from "../types";
+import { Chunk, RenderChunk, UsageContext, TemplateContinue } from "../types";
 import { sn, nameToJS } from "../lib/utils";
-import { AstContinue } from "../visitors/template";
 
 export type RenderOptions = { [K in RenderContext]?: RenderChunk };
 type RenderContext = UsageContext | 'shared';
@@ -157,7 +156,7 @@ export default class Entity {
     /**
      * Sets current entity content by receiving entities from given AST nodes
      */
-    setContent(nodes: Node[], next: AstContinue): this {
+    setContent(nodes: Node[], next: TemplateContinue): this {
         // Collect contents in two passes: convert nodes to entities to collect
         // injector usage, then attach it to element
         nodes.map(next).forEach(entity => entity && this.add(entity));

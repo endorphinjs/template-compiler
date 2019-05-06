@@ -5,10 +5,11 @@ import {
 } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
 import CompileState from "../lib/CompileState";
-import generateExpression, { WalkVisitorMap, getPrefix } from "../expression";
+import generateExpression, { getPrefix } from "../expression";
 import baseVisitors from "../visitors/expression";
 import { sn, nameToJS, isExpression, isIdentifier, isLiteral, runtime, qStr, unmount } from "../lib/utils";
 import { ENDCompileError } from "../lib/error";
+import { AstVisitorMap, ExpressionOutput } from "../types";
 
 export default class EventEntity extends Entity {
     constructor(readonly node: ENDDirective, readonly state: CompileState) {
@@ -149,7 +150,7 @@ function handlerUsesEvent(handler: Expression | void): boolean {
     return true;
 }
 
-function createVisitors(eventArg: string): WalkVisitorMap {
+function createVisitors(eventArg: string): AstVisitorMap<ExpressionOutput> {
     const host = thisExpr();
     const evt = identifier(eventArg);
     const target = member(evt, identifier('currentTarget'));

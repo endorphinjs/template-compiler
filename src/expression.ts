@@ -1,16 +1,12 @@
 import { Program, JSNode, Node } from "@endorphinjs/template-parser";
-import { SourceNode } from "source-map";
 import CompileState from "./lib/CompileState";
 import baseVisitors from "./visitors/expression";
 import { entity } from "./entities/Entity";
 import { sn } from "./lib/utils";
 import { ENDCompileError } from "./lib/error";
+import { ExpressionContinue, ExpressionVisitorMap, ExpressionOutput } from "./types";
 
-export type WalkContinue = (node: Node) => SourceNode;
-export type WalkVisitor = (node: Node, state: CompileState, next: WalkContinue) => SourceNode;
-export type WalkVisitorMap = { [name: string]: WalkVisitor };
-
-export default function generateExpression(expr: JSNode, state: CompileState, visitors: WalkVisitorMap = {}): SourceNode {
+export default function generateExpression(expr: JSNode, state: CompileState, visitors: ExpressionVisitorMap = {}): ExpressionOutput {
     return walk(expr, state, { ...baseVisitors, ...visitors });
 }
 
@@ -27,8 +23,8 @@ export function fn(prefix: string, state: CompileState, value: Program): string 
         }));
 }
 
-export function walk(node: Node, state: CompileState, visitors: WalkVisitorMap): SourceNode {
-    const next: WalkContinue = node => {
+export function walk(node: Node, state: CompileState, visitors: ExpressionVisitorMap): ExpressionOutput {
+    const next: ExpressionContinue = node => {
         if (node.type in visitors) {
             return visitors[node.type](node, state, next);
         }

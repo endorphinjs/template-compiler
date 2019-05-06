@@ -1,6 +1,6 @@
 import * as Ast from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import { ChunkList, Chunk } from '../types';
+import { ChunkList, Chunk, AstVisitorMap, TemplateOutput, AstVisitorContinue } from '../types';
 import generateExpression from '../expression';
 import CompileState from '../lib/CompileState';
 import Entity, { entity } from '../entities/Entity';
@@ -13,10 +13,6 @@ import InnerHTMLEntity from '../entities/InnerHTMLEntity';
 import VariableEntity from '../entities/VariableEntity';
 import EventEntity from '../entities/EventEntity';
 import { sn, qStr, isLiteral, toObjectLiteral, getAttrValue, nameToJS, runtime, propGetter, unmount, propSetter } from '../lib/utils';
-
-export type AstContinue = (node: Ast.Node) => Entity | void;
-export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
-export type AstVisitorMap = { [name: string]: AstVisitor };
 
 export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
@@ -185,7 +181,7 @@ export default {
             unmount: ent => unmount('unmountPartial', ent.getSymbol(), state)
         });
     }
-} as AstVisitorMap;
+} as AstVisitorMap<TemplateOutput>;
 
 /**
  * Returns code for subscribing to store updates
@@ -214,7 +210,7 @@ function isSimpleConditionContent(node: Ast.ENDStatement): boolean {
  * Generates function with default content of given slot. If slot is empty,
  * no function is generated
  */
-function defaultSlot(node: Ast.ENDElement, state: CompileState, next: AstContinue): string | null {
+function defaultSlot(node: Ast.ENDElement, state: CompileState, next: AstVisitorContinue<TemplateOutput>): string | null {
     const slotName = String(getAttrValue(node, 'name') || '');
     return node.body.length
         ? state.runChildBlock(`slot${nameToJS(slotName, true)}`,
