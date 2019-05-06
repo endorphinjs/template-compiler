@@ -1,19 +1,18 @@
 import * as Ast from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import { ChunkList } from './types';
-import generateExpression from './expression';
-import CompileState from './assets/CompileState';
-import Entity, { entity } from './assets/Entity';
-import { createElement } from './assets/ElementEntity';
-import AttributeEntity from './assets/AttributeEntity';
-import TextEntity from './assets/TextEntity';
-import ConditionEntity from './assets/ConditionEntity';
-import IteratorEntity from './assets/IteratorEntity';
-import InnerHTMLEntity from './assets/InnerHTMLEntity';
-import generateObject from './assets/object';
-import { sn, qStr, isLiteral, getAttrValue, nameToJS, runtime, propGetter, unmount } from './utils';
-import VariableEntity from './assets/VariableEntity';
-import EventEntity from './assets/EventEntity';
+import { ChunkList, Chunk } from '../types';
+import generateExpression from '../expression';
+import CompileState from '../lib/CompileState';
+import Entity, { entity } from '../entities/Entity';
+import { createElement } from '../entities/ElementEntity';
+import AttributeEntity, { compileAttributeValue } from '../entities/AttributeEntity';
+import TextEntity from '../entities/TextEntity';
+import ConditionEntity from '../entities/ConditionEntity';
+import IteratorEntity from '../entities/IteratorEntity';
+import InnerHTMLEntity from '../entities/InnerHTMLEntity';
+import VariableEntity from '../entities/VariableEntity';
+import EventEntity from '../entities/EventEntity';
+import { sn, qStr, isLiteral, toObjectLiteral, getAttrValue, nameToJS, runtime, propGetter, unmount, propSetter } from '../lib/utils';
 
 export type AstContinue = (node: Ast.Node) => Entity | void;
 export type AstVisitor = (node: Ast.Node, state: CompileState, next: AstContinue) => Entity | void;
@@ -190,7 +189,6 @@ export default {
 
 /**
  * Returns code for subscribing to store updates
- * @param state
  */
 function subscribeStore(state: CompileState): Entity {
     // Without partials, we can safely assume that we know about
@@ -231,4 +229,16 @@ function mountAddClass(node: Ast.ENDAddClassStatement, state: CompileState): Sou
             : generateExpression(token, state);
     });
     return runtime('addClass', [state.injector, sn(chunks).join(' + ')], state, node);
+}
+
+/**
+ * Generates object literal from given attributes
+ */
+function generateObject(params: Ast.ENDAttribute[], scope: CompileState, level: number = 0): SourceNode {
+    const map: Map<Chunk, Chunk> = new Map();
+    params.forEach(param => {
+        map.set(propSetter(param.name, scope), compileAttributeValue(param.value, scope, 'params'));
+    });
+
+    return toObjectLiteral(map, scope, level);
 }

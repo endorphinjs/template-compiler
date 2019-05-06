@@ -1,10 +1,10 @@
 import { SourceNode } from "source-map";
 import { ChunkList, Chunk, UsageContext, RenderContext } from "../types";
 import CompileState from "./CompileState";
-import Entity from "./Entity";
-import ElementEntity from "./ElementEntity";
+import Entity from "../entities/Entity";
+import ElementEntity from "../entities/ElementEntity";
 import UsageStats from "./UsageStats";
-import { sn, format } from "../utils";
+import { sn, format } from "./utils";
 
 const injectorArg = 'injector';
 

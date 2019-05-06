@@ -4,12 +4,11 @@ import {
     CallExpression, IdentifierContext
 } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
-import CompileState from "./CompileState";
-import generateExpression from "../expression";
-import { WalkVisitorMap, getPrefix } from "../expression/utils";
-import { sn, nameToJS, isExpression, isIdentifier, isLiteral, runtime, qStr, unmount } from "../utils";
-import { ENDCompileError } from "../error";
-import baseVisitors from "../expression/baseVisitors";
+import CompileState from "../lib/CompileState";
+import generateExpression, { WalkVisitorMap, getPrefix } from "../expression";
+import baseVisitors from "../visitors/expression";
+import { sn, nameToJS, isExpression, isIdentifier, isLiteral, runtime, qStr, unmount } from "../lib/utils";
+import { ENDCompileError } from "../lib/error";
 
 export default class EventEntity extends Entity {
     constructor(readonly node: ENDDirective, readonly state: CompileState) {

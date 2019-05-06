@@ -1,11 +1,11 @@
 import { SourceNode } from "source-map";
 import { ENDElement, ENDImport, ENDTemplate } from "@endorphinjs/template-parser";
 import BlockContext from "./BlockContext";
-import Entity, { RenderOptions, entity } from "./Entity";
+import Entity, { RenderOptions, entity } from "../entities/Entity";
+import ElementEntity from "../entities/ElementEntity";
 import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
-import { nameToJS, propGetter, isIdentifier, isLiteral, isElement } from "../utils";
+import { nameToJS, propGetter, isIdentifier, isLiteral, isElement } from "./utils";
 import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration } from "../types";
-import ElementEntity from "./ElementEntity";
 import prepareHelpers from "./helpers";
 
 type NamespaceMap = { [prefix: string]: string };

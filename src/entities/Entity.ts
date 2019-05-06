@@ -1,10 +1,10 @@
 import { Node } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
-import CompileState from "./CompileState";
-import UsageStats from "./UsageStats";
+import CompileState from "../lib/CompileState";
+import UsageStats from "../lib/UsageStats";
 import { Chunk, RenderChunk, UsageContext } from "../types";
-import { sn, nameToJS } from "../utils";
-import { AstContinue } from "../template-visitors";
+import { sn, nameToJS } from "../lib/utils";
+import { AstContinue } from "../visitors/template";
 
 export type RenderOptions = { [K in RenderContext]?: RenderChunk };
 type RenderContext = UsageContext | 'shared';

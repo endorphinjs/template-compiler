@@ -1,9 +1,9 @@
 import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Program } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
 import Entity from "./Entity";
-import CompileState from "./CompileState";
-import { AstContinue } from "../template-visitors";
-import { sn, runtime, unmount } from "../utils";
+import CompileState from "../lib/CompileState";
+import { AstContinue } from "../visitors/template";
+import { sn, runtime, unmount } from "../lib/utils";
 import generateExpression from "../expression";
 
 export default class ConditionEntity extends Entity {

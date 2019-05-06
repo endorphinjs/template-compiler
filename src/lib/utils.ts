@@ -1,8 +1,8 @@
 import { SourceNode } from 'source-map';
 import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
-import generateExpression from './expression';
-import CompileState from './assets/CompileState';
-import { Chunk, ChunkList, RuntimeSymbols } from './types';
+import generateExpression from '../expression';
+import CompileState from './CompileState';
+import { Chunk, ChunkList, RuntimeSymbols } from '../types';
 
 /**
  * A prefix for Endorphin element and attribute names
@@ -144,6 +144,29 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
     }
 
     return isPropKey(node.name) ? node.name : qStr(node.name)
+}
+
+export function toObjectLiteral(map: Map<Chunk, Chunk>, state: CompileState, level: number = 0): SourceNode {
+    const indent = state.indent.repeat(level);
+    const innerIndent = state.indent.repeat(level + 1);
+    const result = sn();
+    let i = 0;
+
+    result.add('{');
+    map.forEach((value, key) => {
+        if (i++ !== 0) {
+            result.add(',');
+        }
+
+        result.add(['\n', innerIndent, key, ': ', value]);
+    });
+
+    if (map.size) {
+        result.add(`\n${indent}`);
+    }
+
+    result.add(`}`);
+    return result;
 }
 
 /**

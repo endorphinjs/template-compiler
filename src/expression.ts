@@ -1,12 +1,31 @@
-import { Node } from "@endorphinjs/template-parser";
+import { Program, JSNode, Node } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
-import CompileState from "../assets/CompileState";
-import { Chunk, ChunkList } from "../types";
-import { ENDCompileError } from "../error";
+import CompileState from "./lib/CompileState";
+import baseVisitors from "./visitors/expression";
+import { entity } from "./entities/Entity";
+import { sn } from "./lib/utils";
+import { ENDCompileError } from "./lib/error";
 
 export type WalkContinue = (node: Node) => SourceNode;
 export type WalkVisitor = (node: Node, state: CompileState, next: WalkContinue) => SourceNode;
 export type WalkVisitorMap = { [name: string]: WalkVisitor };
+
+export default function generateExpression(expr: JSNode, state: CompileState, visitors: WalkVisitorMap = {}): SourceNode {
+    return walk(expr, state, { ...baseVisitors, ...visitors });
+}
+
+/**
+ * Generates function from given JS code in compile state
+ * @param prefix
+ * @param state
+ * @param value
+ */
+export function fn(prefix: string, state: CompileState, value: Program): string {
+    return state.runBlock(prefix, () =>
+        entity('block', state, {
+            mount: () => sn(['return ', generateExpression(value, state)])
+        }));
+}
 
 export function walk(node: Node, state: CompileState, visitors: WalkVisitorMap): SourceNode {
     const next: WalkContinue = node => {
@@ -45,23 +64,4 @@ export function getPrefix(context: string, state: CompileState): string {
     }
 
     return '';
-}
-
-/**
- * Generates comma-separated list of given chunks with optional `before` and `after`
- * wrapper code
- */
-export function commaChunks(items: Chunk[], before?: string, after?: string): ChunkList {
-    const chunks: ChunkList = [];
-
-    before != null && chunks.push(before);
-    items.forEach((node, i) => {
-        if (i !== 0) {
-            chunks.push(', ');
-        }
-        chunks.push(node);
-    });
-    after != null && chunks.push(after);
-
-    return chunks;
 }

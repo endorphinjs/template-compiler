@@ -1,8 +1,8 @@
 import { Literal, Program } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
-import CompileState from "./CompileState";
+import CompileState from "../lib/CompileState";
 import generateExpression from "../expression";
-import { isExpression, qStr, runtime } from "../utils";
+import { isExpression, qStr, runtime } from "../lib/utils";
 
 export default class TextEntity extends Entity {
     constructor(readonly node: Literal | Program, readonly state: CompileState) {

@@ -8,8 +8,8 @@ import {
 } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
 import { Chunk, ChunkList } from "../types";
-import { sn, propGetter, qStr, isIdentifier } from "../utils";
-import { WalkVisitorMap, getPrefix, commaChunks, WalkContinue } from "./utils";
+import { sn, propGetter, qStr, isIdentifier } from "../lib/utils";
+import { WalkVisitorMap, getPrefix, WalkContinue } from "../expression";
 
 export default {
     Program(node: Program, state, next) {
@@ -168,4 +168,23 @@ function property(node: Property, isPattern: boolean, next: WalkContinue): Sourc
     }
 
     return sn([key, ': ', next(node.value)], node);
+}
+
+/**
+ * Generates comma-separated list of given chunks with optional `before` and `after`
+ * wrapper code
+ */
+function commaChunks(items: Chunk[], before?: string, after?: string): ChunkList {
+    const chunks: ChunkList = [];
+
+    before != null && chunks.push(before);
+    items.forEach((node, i) => {
+        if (i !== 0) {
+            chunks.push(', ');
+        }
+        chunks.push(node);
+    });
+    after != null && chunks.push(after);
+
+    return chunks;
 }

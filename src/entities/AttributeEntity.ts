@@ -2,9 +2,9 @@ import { ENDAttribute, ENDAttributeName, ENDAttributeValue, Literal, Program } f
 import { SourceNode } from "source-map";
 import Entity from "./Entity";
 import compileExpression from "../expression";
-import CompileState from "./CompileState";
+import CompileState from "../lib/CompileState";
 import { Chunk, RenderChunk } from "../types";
-import { isIdentifier, isExpression, sn, qStr, isLiteral, runtime } from "../utils";
+import { isIdentifier, isExpression, sn, qStr, isLiteral, runtime } from "../lib/utils";
 
 export default class AttributeEntity extends Entity {
     constructor(readonly node: ENDAttribute, readonly state: CompileState) {

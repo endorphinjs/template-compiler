@@ -1,15 +1,14 @@
 import { ENDElement, ENDTemplate, ENDStatement, ENDAttribute, Literal, ENDAttributeValue, ENDDirective } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
 import Entity from './Entity';
-import UsageStats from './UsageStats';
-import CompileState from './CompileState';
-import { isElement, isExpression, isLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime, propSetter, unmount } from '../utils';
-import TextEntity from './TextEntity';
-import { Chunk, ChunkList } from '../types';
-import VariableEntity from './VariableEntity';
-import { ENDCompileError } from '../error';
 import { compileAttributeValue } from './AttributeEntity';
-import { toObjectLiteral } from './object';
+import TextEntity from './TextEntity';
+import VariableEntity from './VariableEntity';
+import UsageStats from '../lib/UsageStats';
+import CompileState from '../lib/CompileState';
+import { isElement, isExpression, isLiteral, toObjectLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime, propSetter, unmount } from '../lib/utils';
+import { Chunk, ChunkList } from '../types';
+import { ENDCompileError } from '../lib/error';
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 

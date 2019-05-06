@@ -1,10 +1,10 @@
 import { ENDProgram } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
-import CompileState from "./assets/CompileState";
-import { sn, qStr, format, isPropKey } from './utils';
 import { CompileStateOptions, ChunkList } from './types';
-import { ENDCompileError } from './error';
-import templateVisitors, { AstContinue, AstVisitorMap } from './template-visitors';
+import CompileState from "./lib/CompileState";
+import { sn, qStr, format, isPropKey } from './lib/utils';
+import { ENDCompileError } from './lib/error';
+import templateVisitors, { AstContinue, AstVisitorMap } from './visitors/template';
 
 export default function generateTemplate(ast: ENDProgram, options?: CompileStateOptions): SourceNode {
     const state = new CompileState(options);

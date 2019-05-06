@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { parseJS } from '@endorphinjs/template-parser';
-import CompileState from '../src/assets/CompileState';
-import expression from '../src/expression/index';
+import CompileState from '../src/lib/CompileState';
+import expression from '../src/expression';
 
 function compile(code: string, state: CompileState = new CompileState()): string {
     const ast = parseJS(code, {

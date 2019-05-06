@@ -1,7 +1,7 @@
 import { SourceNode } from "source-map";
-import CompileState from "./assets/CompileState";
 import { ENDImport, ENDProgram } from "@endorphinjs/template-parser";
-import Entity from "./assets/Entity";
+import CompileState from "./lib/CompileState";
+import Entity from "./entities/Entity";
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];

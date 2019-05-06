@@ -1,8 +1,8 @@
 import parse from '@endorphinjs/template-parser';
 import generateTemplate from './template';
-import { ENDCompileError, ENDSyntaxError } from './error';
+import { ENDCompileError, ENDSyntaxError } from './lib/error';
 import { CompileStateOptions, ParsedTemplate, CodeWithMap } from './types';
-import prepareHelpers from './assets/helpers';
+import prepareHelpers from './lib/helpers';
 
 export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap {
     const helpers = prepareHelpers(options && options.helpers || {});

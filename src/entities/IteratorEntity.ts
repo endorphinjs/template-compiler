@@ -1,9 +1,9 @@
 import { ENDForEachStatement, Node } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
-import CompileState from "./CompileState";
-import { runtime, unmount } from "../utils";
+import CompileState from "../lib/CompileState";
+import { runtime, unmount } from "../lib/utils";
 import { fn } from "../expression";
-import { AstContinue } from "../template-visitors";
+import { AstContinue } from "../visitors/template";
 
 export default class IteratorEntity extends Entity {
     constructor(readonly node: ENDForEachStatement, readonly state: CompileState) {
