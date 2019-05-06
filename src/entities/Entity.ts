@@ -2,7 +2,7 @@ import { Node } from "@endorphinjs/template-parser";
 import { SourceNode } from "source-map";
 import CompileState from "../lib/CompileState";
 import UsageStats from "../lib/UsageStats";
-import { Chunk, RenderChunk, UsageContext, TemplateContinue } from "../types";
+import { Chunk, RenderChunk, UsageContext, TemplateContinue, RuntimeSymbols } from "../types";
 import { sn, nameToJS } from "../lib/utils";
 
 export type RenderOptions = { [K in RenderContext]?: RenderChunk };
@@ -161,5 +161,13 @@ export default class Entity {
         // injector usage, then attach it to element
         nodes.map(next).forEach(entity => entity && this.add(entity));
         return this;
+    }
+
+    /**
+    * Creates code chunk that unmounts current entity with given runtime function
+    */
+    unmount(runtime: RuntimeSymbols): SourceNode {
+        const symbol = this.getSymbol();
+        return sn([symbol, ` = ${this.state.runtime(runtime)}(`, symbol, ')']);
     }
 }

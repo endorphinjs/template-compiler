@@ -2,7 +2,7 @@ import { SourceNode } from 'source-map';
 import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
 import generateExpression from '../expression';
 import CompileState from './CompileState';
-import { Chunk, ChunkList, RuntimeSymbols } from '../types';
+import { Chunk, ChunkList } from '../types';
 
 /**
  * A prefix for Endorphin element and attribute names
@@ -146,9 +146,9 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
     return isPropKey(node.name) ? node.name : qStr(node.name)
 }
 
-export function toObjectLiteral(map: Map<Chunk, Chunk>, state: CompileState, level: number = 0): SourceNode {
-    const indent = state.indent.repeat(level);
-    const innerIndent = state.indent.repeat(level + 1);
+export function toObjectLiteral(map: Map<Chunk, Chunk>, indent: string = '\t', level: number = 0): SourceNode {
+    const _indent = indent.repeat(level);
+    const _innerIndent = indent.repeat(level + 1);
     const result = sn();
     let i = 0;
 
@@ -158,29 +158,15 @@ export function toObjectLiteral(map: Map<Chunk, Chunk>, state: CompileState, lev
             result.add(',');
         }
 
-        result.add(['\n', innerIndent, key, ': ', value]);
+        result.add(['\n', _innerIndent, key, ': ', value]);
     });
 
     if (map.size) {
-        result.add(`\n${indent}`);
+        result.add(`\n${_indent}`);
     }
 
     result.add(`}`);
     return result;
-}
-
-/**
- * Creates code chunk that invokes given runtime function with arguments
- */
-export function runtime(symbol: RuntimeSymbols, args: ChunkList, state: CompileState, node?: Node): SourceNode {
-    return sn([`${state.runtime(symbol)}(`, sn(args).join(', '), ')'], node);
-}
-
-/**
- * Creates code chunk that unmounts given entity symbol
- */
-export function unmount(runtimeSymbol: RuntimeSymbols, entitySymbol: Chunk, state: CompileState, node?: Node): SourceNode {
-    return sn([entitySymbol, ` = ${state.runtime(runtimeSymbol)}(`, entitySymbol, ')'], node);
 }
 
 export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {

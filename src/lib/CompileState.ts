@@ -1,11 +1,11 @@
 import { SourceNode } from "source-map";
-import { ENDElement, ENDImport, ENDTemplate } from "@endorphinjs/template-parser";
+import { ENDElement, ENDImport, ENDTemplate, IdentifierContext, Node } from "@endorphinjs/template-parser";
 import BlockContext from "./BlockContext";
 import Entity, { RenderOptions, entity } from "../entities/Entity";
 import ElementEntity from "../entities/ElementEntity";
 import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
-import { nameToJS, propGetter, isIdentifier, isLiteral, isElement } from "./utils";
-import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration } from "../types";
+import { nameToJS, propGetter, isIdentifier, isLiteral, isElement, sn } from "./utils";
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration, ChunkList } from "../types";
 import prepareHelpers from "./helpers";
 
 type NamespaceMap = { [prefix: string]: string };
@@ -135,9 +135,17 @@ export default class CompileState {
      * Getter for Endorphin runtime symbols: marks given symbol as used to
      * explicitly import it from Endorphin runtime lib
      */
-    runtime(symbol: RuntimeSymbols): RuntimeSymbols {
+    runtime(symbol: RuntimeSymbols): RuntimeSymbols;
+
+    /**
+     * Creates code chunk that invokes given runtime function with arguments.
+     * The runtime function is marked as used and imported in final bundle
+     */
+    runtime(symbol: RuntimeSymbols, args: ChunkList, node?: Node): SourceNode;
+
+    runtime(symbol: RuntimeSymbols, args?: ChunkList, node?: Node): RuntimeSymbols | SourceNode {
         this.usedRuntime.add(symbol);
-        return symbol;
+        return args ? sn([`${symbol}(`, sn(args).join(', '), ')'], node) : symbol;
     }
 
     /**
@@ -152,6 +160,33 @@ export default class CompileState {
 
             return this.namespaceSymbols.get(uri);
         }
+    }
+
+    /**
+    * Returns accessor prefix from host component for given identifier context
+    */
+    prefix(context: IdentifierContext): string {
+        if (context === 'property') {
+            return `${this.host}.props`;
+        }
+
+        if (context === 'state') {
+            return `${this.host}.state`;
+        }
+
+        if (context === 'variable') {
+            return this.scope;
+        }
+
+        if (context === 'store') {
+            return `${this.host}.store.data`;
+        }
+
+        if (context === 'definition') {
+            return `${this.host}.componentModel.definition`;
+        }
+
+        return '';
     }
 
     /**

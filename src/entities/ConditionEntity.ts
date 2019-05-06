@@ -2,9 +2,9 @@ import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Progra
 import { SourceNode } from "source-map";
 import Entity from "./Entity";
 import CompileState from "../lib/CompileState";
-import { sn, runtime, unmount } from "../lib/utils";
+import { sn } from "../lib/utils";
 import generateExpression from "../expression";
-import { TemplateContinue } from "../types";
+import { TemplateContinue, TemplateOutput } from "../types";
 
 export default class ConditionEntity extends Entity {
     constructor(readonly node: ENDIfStatement | ENDChooseStatement, state: CompileState) {
@@ -13,9 +13,9 @@ export default class ConditionEntity extends Entity {
 
     setContent(statements: Array<ENDIfStatement | ENDChooseCase>, next: TemplateContinue): this {
         const { state } = this;
-        this.setMount(() => runtime('mountBlock', [state.host, state.injector, conditionEntry(this.rawName, statements, state, next)], state))
-            .setUpdate(() => runtime('updateBlock', [this.getSymbol()], state))
-            .setUnmount(() => unmount('unmountBlock', this.getSymbol(), state));
+        this.setMount(() => state.runtime('mountBlock', [state.host, state.injector, conditionEntry(this.rawName, statements, state, next)]))
+            .setUpdate(() => state.runtime('updateBlock', [this.getSymbol()]))
+            .setUnmount(() => this.unmount('unmountBlock'));
 
         return this;
     }
@@ -75,7 +75,7 @@ function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, 
     });
 }
 
-function addEntity(entity: Entity | void, dest: SourceNode, indent: string = ''): SourceNode {
+function addEntity(entity: TemplateOutput, dest: SourceNode, indent: string = ''): SourceNode {
     if (entity) {
         const mount = entity.getMount();
         if (mount) {

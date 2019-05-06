@@ -34,30 +34,3 @@ export function walk(node: Node, state: CompileState, visitors: ExpressionVisito
 
     return next(node);
 }
-
-/**
- * Returns accessor prefix from host component for given token
- */
-export function getPrefix(context: string, state: CompileState): string {
-    if (context === 'property') {
-        return `${state.host}.props`;
-    }
-
-    if (context === 'state') {
-        return `${state.host}.state`;
-    }
-
-    if (context === 'variable') {
-        return state.scope;
-    }
-
-    if (context === 'store') {
-        return `${state.host}.store.data`;
-    }
-
-    if (context === 'definition') {
-        return `${state.host}.componentModel.definition`;
-    }
-
-    return '';
-}

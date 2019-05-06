@@ -9,7 +9,6 @@ import {
 import { SourceNode } from "source-map";
 import { Chunk, ChunkList, AstVisitorMap, ExpressionOutput, AstVisitorContinue } from "../types";
 import { sn, propGetter, qStr, isIdentifier } from "../lib/utils";
-import { getPrefix } from "../expression";
 
 export default {
     Program(node: Program, state, next) {
@@ -122,7 +121,7 @@ export default {
 
     // Endorphin addons
     ENDGetterPrefix(node: ENDGetterPrefix, state) {
-        return sn(getPrefix(node.context, state));
+        return sn(state.prefix(node.context));
     },
 
     ENDGetter(node: ENDGetter, state, next) {
@@ -131,7 +130,7 @@ export default {
                 ? qStr(fragment.name)
                 : next(fragment)
         );
-        return sn([state.runtime('get'), ...commaChunks(chunks, '(', ')')]);
+        return state.runtime('get', chunks);
     },
 
     ENDCaller(node: ENDCaller, state, next) {
@@ -143,14 +142,15 @@ export default {
         ];
 
         if (node.arguments && node.arguments.length) {
-            chunks.push(sn(commaChunks(node.arguments.map(next), '[', ']')));
+            const args = sn(node.arguments.map(next)).join(', ');
+            chunks.push(args.prepend('[').add(']'));
         }
 
-        return sn([state.runtime('call'), ...commaChunks(chunks, '(', ')')]);
+        return state.runtime('call', chunks);
     },
 
     ENDFilter(node: ENDFilter, state, next) {
-        return sn([state.runtime(node.multiple ? 'filter' : 'find'), '(', next(node.object), ', ', next(node.expression), ')']);
+        return state.runtime(node.multiple ? 'filter' : 'find', [next(node.object), next(node.expression)]);
     }
 } as AstVisitorMap<ExpressionOutput>;
 

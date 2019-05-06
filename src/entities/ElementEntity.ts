@@ -6,7 +6,7 @@ import TextEntity from './TextEntity';
 import VariableEntity from './VariableEntity';
 import UsageStats from '../lib/UsageStats';
 import CompileState from '../lib/CompileState';
-import { isElement, isExpression, isLiteral, toObjectLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, runtime, propSetter, unmount } from '../lib/utils';
+import { isElement, isExpression, isLiteral, toObjectLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, propSetter } from '../lib/utils';
 import { Chunk, ChunkList } from '../types';
 import { ENDCompileError } from '../lib/error';
 
@@ -72,7 +72,7 @@ export default class ElementEntity extends Entity {
                 mount: () => this.isComponent
                     // For components, contents must be redirected into inner input injector
                     ? sn([this.getSymbol(), '.componentModel.input'])
-                    : runtime('createInjector', [this.getSymbol()], state)
+                    : state.runtime('createInjector', [this.getSymbol()])
             });
             this.children.unshift(this._injector);
         }
@@ -132,11 +132,11 @@ export default class ElementEntity extends Entity {
             mount: () => {
                 const staticProps = this.getStaticProps();
                 const staticPropsArg = staticProps.size
-                    ? toObjectLiteral(staticProps, state, 1) : null;
-                return runtime('mountComponent', [this.getSymbol(), staticPropsArg], state);
+                    ? toObjectLiteral(staticProps, state.indent, 1) : null;
+                return state.runtime('mountComponent', [this.getSymbol(), staticPropsArg]);
             },
-            update: () => runtime('updateComponent', [this.getSymbol()], state),
-            unmount: () => unmount('unmountComponent', this.getSymbol(), state)
+            update: () => state.runtime('updateComponent', [this.getSymbol()]),
+            unmount: () => this.unmount('unmountComponent')
         }));
 
         // Add empty source node to skip automatic symbol nulling
@@ -148,9 +148,10 @@ export default class ElementEntity extends Entity {
      * Adds entity to mark slot updates
      */
     markSlots() {
-        Object.keys(this.slotUpdate).forEach(slotName => {
-            this.add(this.state.entity({
-                update: () => runtime('markSlotUpdate', [this.getSymbol(), qStr(slotName), this.slotUpdate[slotName]], this.state)
+        const { state, slotUpdate } = this;
+        Object.keys(slotUpdate).forEach(slotName => {
+            this.add(state.entity({
+                update: () => state.runtime('markSlotUpdate', [this.getSymbol(), qStr(slotName), slotUpdate[slotName]])
             }))
         });
     }
@@ -161,7 +162,7 @@ export default class ElementEntity extends Entity {
     finalizeAttributes() {
         const { state } = this;
         this.add(state.entity('attr', {
-            shared: () => runtime('finalizeAttributes', [this.injector], state)
+            shared: () => state.runtime('finalizeAttributes', [this.injector])
         }));
     }
 
@@ -171,7 +172,7 @@ export default class ElementEntity extends Entity {
     finalizeEvents() {
         const { state } = this;
         this.add(state.entity({
-            shared: () => runtime('finalizeEvents', [this.injector, state.host, state.scope], state)
+            shared: () => state.runtime('finalizeEvents', [this.injector, state.host, state.scope])
         }));
     }
 
@@ -181,7 +182,7 @@ export default class ElementEntity extends Entity {
     setRef(refName: string) {
         const { state } = this;
         this.add(state.entity({
-            shared: () => runtime('setRef', [state.host, qStr(refName), this.getSymbol()], state)
+            shared: () => state.runtime('setRef', [state.host, qStr(refName), this.getSymbol()])
         }));
     }
 
@@ -193,7 +194,7 @@ export default class ElementEntity extends Entity {
             const { state } = this;
             const anim = state.entity();
             if (this.animateIn) {
-                anim.setMount(() => runtime('animateIn', [this.getSymbol(), compileAttributeValue(this.animateIn, state), cssScopeArg(state)], state));
+                anim.setMount(() => state.runtime('animateIn', [this.getSymbol(), compileAttributeValue(this.animateIn, state), cssScopeArg(state)]));
             }
 
             if (this.animateOut) {
@@ -216,9 +217,9 @@ export default class ElementEntity extends Entity {
                     return entities;
                 });
                 if (entities.length) {
-                    anim.setUnmount(() => runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), state.scope, callback, cssScopeArg(state)], state));
+                    anim.setUnmount(() => state.runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), state.scope, callback, cssScopeArg(state)]));
                 } else {
-                    anim.setUnmount(() => runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), cssScopeArg(state)], state));
+                    anim.setUnmount(() => state.runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), cssScopeArg(state)]));
                 }
             }
 
@@ -247,7 +248,7 @@ export default class ElementEntity extends Entity {
                     const value = compileAttributeValue(dir.value, state, 'component');
                     props.set(
                         qStr(`${dir.prefix}:${dir.name}`),
-                        runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])], state)
+                        state.runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])])
                     );
                 }
             });
@@ -295,7 +296,7 @@ export default class ElementEntity extends Entity {
             }
             args.push(qStr(slotName));
         }
-        return runtime('insert', args, this.state);
+        return this.state.runtime('insert', args);
     }
 
     private collectStats() {
@@ -393,12 +394,12 @@ export function createElement(node: ENDElement, state: CompileState, text?: Lite
 
     if (getControlName(elemName) === 'self') {
         // Create component which points to itself
-        return runtime('createComponent', [`${state.host}.nodeName`, `${state.host}.componentModel.definition`, state.host], state, srcNode);
+        return state.runtime('createComponent', [`${state.host}.nodeName`, `${state.host}.componentModel.definition`, state.host], srcNode);
     }
 
     if (state.isComponent(node)) {
         // Create component
-        return runtime('createComponent', [qStr(elemName), state.getComponent(node), state.host], state, srcNode);
+        return state.runtime('createComponent', [qStr(elemName), state.getComponent(node), state.host], srcNode);
     }
 
     // Create plain DOM element
@@ -409,13 +410,13 @@ export function createElement(node: ENDElement, state: CompileState, text?: Lite
     if (text) {
         const textValue = qStr(text.value as string);
         return nsSymbol
-            ? runtime('elemNSWithText', [qStr(nodeName.name), textValue, nsSymbol, cssScope], state, srcNode)
-            : runtime('elemWithText', [qStr(elemName), textValue, cssScope], state, srcNode);
+            ? state.runtime('elemNSWithText', [qStr(nodeName.name), textValue, nsSymbol, cssScope], srcNode)
+            : state.runtime('elemWithText', [qStr(elemName), textValue, cssScope], srcNode);
     }
 
     return nsSymbol
-        ? runtime('elemNS', [qStr(nodeName.name), nsSymbol, cssScope], state, srcNode)
-        : runtime('elem', [qStr(elemName), cssScope], state, srcNode);
+        ? state.runtime('elemNS', [qStr(nodeName.name), nsSymbol, cssScope], srcNode)
+        : state.runtime('elem', [qStr(elemName), cssScope], srcNode);
 }
 
 export function cssScopeArg(state: CompileState): string {

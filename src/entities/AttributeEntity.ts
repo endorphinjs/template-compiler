@@ -4,7 +4,7 @@ import Entity from "./Entity";
 import compileExpression from "../expression";
 import CompileState from "../lib/CompileState";
 import { Chunk, RenderChunk } from "../types";
-import { isIdentifier, isExpression, sn, qStr, isLiteral, runtime } from "../lib/utils";
+import { isIdentifier, isExpression, sn, qStr, isLiteral } from "../lib/utils";
 
 export default class AttributeEntity extends Entity {
     constructor(readonly node: ENDAttribute, readonly state: CompileState) {
@@ -40,8 +40,8 @@ export const mountDynamicAttribute: RenderChunk = (attr: AttributeEntity) => {
     const ns = getAttributeNS(node, state);
 
     return ns
-        ? runtime('setAttributeNS', [injector, ns.ns, attrName(node, state), attrValue(node, state)], state)
-        : runtime('setAttribute', [injector, attrName(node, state), attrValue(node, state)], state);
+        ? state.runtime('setAttributeNS', [injector, ns.ns, attrName(node, state), attrValue(node, state)])
+        : state.runtime('setAttribute', [injector, attrName(node, state), attrValue(node, state)]);
 }
 
 function attrName(attr: ENDAttribute, state: CompileState): Chunk {

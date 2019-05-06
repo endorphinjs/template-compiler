@@ -12,7 +12,7 @@ import IteratorEntity from '../entities/IteratorEntity';
 import InnerHTMLEntity from '../entities/InnerHTMLEntity';
 import VariableEntity from '../entities/VariableEntity';
 import EventEntity from '../entities/EventEntity';
-import { sn, qStr, isLiteral, toObjectLiteral, getAttrValue, nameToJS, runtime, propGetter, unmount, propSetter } from '../lib/utils';
+import { sn, qStr, isLiteral, toObjectLiteral, getAttrValue, nameToJS, propGetter, propSetter } from '../lib/utils';
 
 export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
@@ -31,7 +31,7 @@ export default {
                     // Template sets refs or contains partials which may set
                     // refs as well
                     element.add(entity('refs', state, {
-                        shared: () => runtime('finalizeRefs', [state.host], state)
+                        shared: () => state.runtime('finalizeRefs', [state.host])
                     }));
                 }
             });
@@ -69,8 +69,8 @@ export default {
                     const slotName = String(getAttrValue(node, 'name') || '');
                     const contentArg = defaultSlot(node, state, next);
                     element.add(state.entity('slot', {
-                        mount: () => runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg], state),
-                        unmount: slot => unmount('unmountSlot', slot.getSymbol(), state)
+                        mount: () => state.runtime('mountSlot', [state.host, qStr(slotName), element.getSymbol(), contentArg]),
+                        unmount: slot => slot.unmount('unmountSlot')
                     }));
                 } else {
                     element.setContent(node.body, next);
@@ -176,9 +176,9 @@ export default {
         const getter = `${state.host}.props['partial:${node.id}'] || ${state.partials}${propGetter(node.id)}`;
 
         return entity('partial', state, {
-            mount: () => runtime('mountPartial', [state.host, state.injector, getter, generateObject(node.params, state, 1)], state),
-            update: ent => runtime('updatePartial', [ent.getSymbol(), getter, generateObject(node.params, state, 1)], state),
-            unmount: ent => unmount('unmountPartial', ent.getSymbol(), state)
+            mount: () => state.runtime('mountPartial', [state.host, state.injector, getter, generateObject(node.params, state, 1)]),
+            update: ent => state.runtime('updatePartial', [ent.getSymbol(), getter, generateObject(node.params, state, 1)]),
+            unmount: ent => ent.unmount('unmountPartial')
         });
     }
 } as AstVisitorMap<TemplateOutput>;
@@ -194,7 +194,7 @@ function subscribeStore(state: CompileState): Entity {
         : '';
 
     return state.entity({
-        mount: () => runtime('subscribeStore', [state.host, storeKeysArg], state)
+        mount: () => state.runtime('subscribeStore', [state.host, storeKeysArg])
     });
 }
 
@@ -224,17 +224,17 @@ function mountAddClass(node: Ast.ENDAddClassStatement, state: CompileState): Sou
             ? qStr(token.value as string)
             : generateExpression(token, state);
     });
-    return runtime('addClass', [state.injector, sn(chunks).join(' + ')], state, node);
+    return state.runtime('addClass', [state.injector, sn(chunks).join(' + ')]);
 }
 
 /**
  * Generates object literal from given attributes
  */
-function generateObject(params: Ast.ENDAttribute[], scope: CompileState, level: number = 0): SourceNode {
+function generateObject(params: Ast.ENDAttribute[], state: CompileState, level: number = 0): SourceNode {
     const map: Map<Chunk, Chunk> = new Map();
     params.forEach(param => {
-        map.set(propSetter(param.name, scope), compileAttributeValue(param.value, scope, 'params'));
+        map.set(propSetter(param.name, state), compileAttributeValue(param.value, state, 'params'));
     });
 
-    return toObjectLiteral(map, scope, level);
+    return toObjectLiteral(map, state.indent, level);
 }

@@ -5,11 +5,11 @@ import {
 } from "@endorphinjs/template-parser";
 import Entity from "./Entity";
 import CompileState from "../lib/CompileState";
-import generateExpression, { getPrefix } from "../expression";
+import generateExpression from "../expression";
 import baseVisitors from "../visitors/expression";
-import { sn, nameToJS, isExpression, isIdentifier, isLiteral, runtime, qStr, unmount } from "../lib/utils";
+import { sn, nameToJS, isExpression, isIdentifier, isLiteral, qStr } from "../lib/utils";
 import { ENDCompileError } from "../lib/error";
-import { AstVisitorMap, ExpressionOutput } from "../types";
+import { ExpressionVisitorMap } from "../types";
 
 export default class EventEntity extends Entity {
     constructor(readonly node: ENDDirective, readonly state: CompileState) {
@@ -20,11 +20,11 @@ export default class EventEntity extends Entity {
         const handler = createEventHandler(node, state);
 
         if (!element.node || element.dynamicEvents.has(eventType) || element.hasPartials) {
-            this.setShared(() => runtime('addEvent', [element.injector, qStr(eventType), handler], state));
+            this.setShared(() => state.runtime('addEvent', [element.injector, qStr(eventType), handler]));
         } else {
             // Add as static event
-            this.setMount(() => runtime('addStaticEvent', [element.getSymbol(), qStr(eventType), handler, state.host, state.scope], state));
-            this.setUnmount(() => unmount('removeStaticEvent', this.getSymbol(), state));
+            this.setMount(() => state.runtime('addStaticEvent', [element.getSymbol(), qStr(eventType), handler, state.host, state.scope]));
+            this.setUnmount(() => this.unmount('removeStaticEvent'));
         }
     }
 }
@@ -150,7 +150,7 @@ function handlerUsesEvent(handler: Expression | void): boolean {
     return true;
 }
 
-function createVisitors(eventArg: string): AstVisitorMap<ExpressionOutput> {
+function createVisitors(eventArg: string): ExpressionVisitorMap {
     const host = thisExpr();
     const evt = identifier(eventArg);
     const target = member(evt, identifier('currentTarget'));
@@ -184,7 +184,7 @@ function createVisitors(eventArg: string): AstVisitorMap<ExpressionOutput> {
         },
         ENDGetterPrefix(node: ENDGetterPrefix, state) {
             if (node.context !== 'helper') {
-                return sn(`this.${getPrefix(node.context, state)}`);
+                return sn(`this.${state.prefix(node.context)}`);
             }
 
             return sn();
