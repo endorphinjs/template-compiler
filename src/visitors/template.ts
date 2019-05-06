@@ -11,7 +11,7 @@ import IteratorEntity from '../entities/IteratorEntity';
 import InnerHTMLEntity from '../entities/InnerHTMLEntity';
 import VariableEntity from '../entities/VariableEntity';
 import EventEntity from '../entities/EventEntity';
-import { sn, qStr, isLiteral, toObjectLiteral, getAttrValue, nameToJS, propGetter, propSetter } from '../lib/utils';
+import { sn, qStr, isLiteral, toObjectLiteral, getAttrValue, nameToJS, propGetter, propSetter, isExpression } from '../lib/utils';
 
 export default {
     ENDTemplate(node: Ast.ENDTemplate, state, next) {
@@ -232,8 +232,12 @@ function mountAddClass(node: Ast.ENDAddClassStatement, state: CompileState): Sou
 function generateObject(params: Ast.ENDAttribute[], state: CompileState, level: number = 0): SourceNode {
     const map: Map<Chunk, Chunk> = new Map();
     params.forEach(param => {
-        map.set(propSetter(param.name, state), compileAttributeValue(param.value, state, 'params'));
+        map.set(objectKey(param.name, state), compileAttributeValue(param.value, state, 'params'));
     });
 
     return toObjectLiteral(map, state.indent, level);
+}
+
+function objectKey(node: Ast.Identifier | Ast.Program, state: CompileState) {
+    return propSetter(isExpression(node) ? generateExpression(node, state) : node.name);
 }

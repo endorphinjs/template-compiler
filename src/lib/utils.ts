@@ -1,7 +1,5 @@
 import { SourceNode } from 'source-map';
 import { Node, Identifier, Program, ENDElement, ENDAttributeStatement, LiteralValue, ENDAttribute, Literal } from '@endorphinjs/template-parser';
-import generateExpression from '../expression';
-import CompileState from './CompileState';
 import { Chunk, ChunkList, HelpersMap, PlainObject } from '../types';
 
 /**
@@ -142,13 +140,18 @@ export function propGetter(name: string): string {
 /**
  * Generates property setter code
  */
-export function propSetter(node: Identifier | Program, state: CompileState): Chunk {
-    if (isExpression(node)) {
-        return sn(['[', generateExpression(node, state), ']']);
-    }
-
-    return isPropKey(node.name) ? node.name : qStr(node.name);
+export function propSetter(key: Chunk): Chunk {
+    return typeof key === 'string' && isPropKey(key)
+        ? key
+        : sn(['[', key, ']']);
 }
+// export function propSetter(node: Identifier | Program, state: CompileState): Chunk {
+//     if (isExpression(node)) {
+//         return sn(['[', generateExpression(node, state), ']']);
+//     }
+
+//     return isPropKey(node.name) ? node.name : qStr(node.name);
+// }
 
 export function toObjectLiteral(map: Map<Chunk, Chunk>, indent: string = '\t', level: number = 0): SourceNode {
     const _indent = indent.repeat(level);

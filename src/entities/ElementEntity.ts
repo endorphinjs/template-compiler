@@ -1,4 +1,7 @@
-import { ENDElement, ENDTemplate, ENDStatement, ENDAttribute, Literal, ENDAttributeValue, ENDDirective } from '@endorphinjs/template-parser';
+import {
+    ENDElement, ENDTemplate, ENDStatement, ENDAttribute, Literal, ENDAttributeValue,
+    ENDDirective, Identifier, Program
+} from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
 import Entity from './Entity';
 import { compileAttributeValue } from './AttributeEntity';
@@ -10,6 +13,7 @@ import CompileState from '../lib/CompileState';
 import { isElement, isExpression, isLiteral, toObjectLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, propSetter } from '../lib/utils';
 import { Chunk, ChunkList } from '../types';
 import { ENDCompileError } from '../lib/error';
+import generateExpression from '../expression';
 
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
@@ -290,7 +294,7 @@ export default class ElementEntity extends Entity {
 
             attributes.forEach(attr => {
                 if (!this.isDynamicAttribute(attr)) {
-                    props.set(propSetter(attr.name, this.state), compileAttributeValue(attr.value, state, 'params'));
+                    props.set(objectKey(attr.name, this.state), compileAttributeValue(attr.value, state, 'params'));
                 }
             });
 
@@ -463,4 +467,8 @@ function getDestSlotName(entity: Entity): string {
     }
 
     return '';
+}
+
+function objectKey(node: Identifier | Program, state: CompileState) {
+    return propSetter(isExpression(node) ? generateExpression(node, state) : node.name);
 }
