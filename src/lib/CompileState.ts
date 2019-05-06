@@ -1,14 +1,14 @@
-import { SourceNode } from "source-map";
-import { ENDElement, ENDImport, ENDTemplate, IdentifierContext, Node } from "@endorphinjs/template-parser";
-import BlockContext from "./BlockContext";
-import Entity, { RenderOptions, entity } from "../entities/Entity";
-import ElementEntity from "../entities/ElementEntity";
-import createSymbolGenerator, { SymbolGenerator } from "./SymbolGenerator";
-import { nameToJS, propGetter, isIdentifier, isLiteral, isElement, sn } from "./utils";
-import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration, ChunkList } from "../types";
-import prepareHelpers from "./helpers";
+import { SourceNode } from 'source-map';
+import { ENDElement, ENDImport, ENDTemplate, IdentifierContext, Node } from '@endorphinjs/template-parser';
+import BlockContext from './BlockContext';
+import Entity, { RenderOptions, entity } from '../entities/Entity';
+import ElementEntity from '../entities/ElementEntity';
+import createSymbolGenerator, { SymbolGenerator } from './SymbolGenerator';
+import { nameToJS, propGetter, isIdentifier, isLiteral, isElement, sn } from './utils';
+import { Chunk, RenderContext, ComponentImport, CompileStateOptions, RuntimeSymbols, PartialDeclaration, ChunkList } from '../types';
+import prepareHelpers from './helpers';
 
-type NamespaceMap = { [prefix: string]: string };
+interface NamespaceMap { [prefix: string]: string; }
 
 export const defaultOptions: CompileStateOptions = {
     host: 'host',
@@ -22,67 +22,6 @@ export const defaultOptions: CompileStateOptions = {
 };
 
 export default class CompileState {
-    /** Symbol for referencing CSS isolation scope */
-    readonly cssScopeSymbol = 'cssScope';
-
-    /** Endorphin runtime symbols required by compiled template */
-    usedRuntime: Set<RuntimeSymbols> = new Set();
-
-    /** List of helpers used in compiled template */
-    usedHelpers: Set<string> = new Set();
-
-    /** List of symbols used for store access in template */
-    usedStore: Set<string> = new Set();
-
-    /** Context of currently rendered block */
-    blockContext?: BlockContext;
-    private _renderContext?: RenderContext;
-
-    readonly options: CompileStateOptions;
-
-    /** Generated code output */
-    readonly output = new SourceNode();
-
-    /** Generates unique global JS module symbol with given name */
-    globalSymbol: SymbolGenerator;
-
-    /** Generates unique symbol with given name for storing in component scope */
-    scopeSymbol: SymbolGenerator;
-
-    /** List of child components */
-    readonly componentsMap: Map<string, ComponentImport> = new Map();
-
-    /** List of child components */
-    readonly partialsMap: Map<string, PartialDeclaration> = new Map();
-
-    /** List of used namespaces and their JS symbols */
-    namespaceSymbols: Map<string, string> = new Map();
-
-    /** Current namespaces */
-    private namespaceMap: NamespaceMap = {};
-
-    private _inComponent = false;
-
-    /**
-     * List of available helpers. Key is a helper name (name of function) and value
-     * is a module URL
-     */
-    readonly helpers: {
-        [name: string]: string;
-    }
-
-    private _warned: Set<string> = new Set();
-
-    constructor(options?: CompileStateOptions) {
-        this.options = Object.assign({}, defaultOptions, options);
-        this.helpers = prepareHelpers(options && options.helpers || {});
-
-        const { prefix = '', suffix = '' } = this.options;
-        const globalSuffix = nameToJS(this.options.component || '', true) + suffix;
-        this.globalSymbol = createSymbolGenerator(prefix, num => globalSuffix + num.toString(36));
-        this.scopeSymbol = createSymbolGenerator(prefix, num => suffix + num.toString(36));
-    }
-
     /** Current indentation token */
     get indent(): string {
         return this.options.indent;
@@ -130,6 +69,64 @@ export default class CompileState {
     get renderContext(): RenderContext {
         return this._renderContext;
     }
+    /** Symbol for referencing CSS isolation scope */
+    readonly cssScopeSymbol = 'cssScope';
+
+    /** Endorphin runtime symbols required by compiled template */
+    usedRuntime: Set<RuntimeSymbols> = new Set();
+
+    /** List of helpers used in compiled template */
+    usedHelpers: Set<string> = new Set();
+
+    /** List of symbols used for store access in template */
+    usedStore: Set<string> = new Set();
+
+    /** Context of currently rendered block */
+    blockContext?: BlockContext;
+
+    readonly options: CompileStateOptions;
+
+    /** Generated code output */
+    readonly output = new SourceNode();
+
+    /** Generates unique global JS module symbol with given name */
+    globalSymbol: SymbolGenerator;
+
+    /** Generates unique symbol with given name for storing in component scope */
+    scopeSymbol: SymbolGenerator;
+
+    /** List of child components */
+    readonly componentsMap: Map<string, ComponentImport> = new Map();
+
+    /** List of child components */
+    readonly partialsMap: Map<string, PartialDeclaration> = new Map();
+
+    /** List of used namespaces and their JS symbols */
+    namespaceSymbols: Map<string, string> = new Map();
+
+    /**
+     * List of available helpers. Key is a helper name (name of function) and value
+     * is a module URL
+     */
+    readonly helpers: {
+        [name: string]: string;
+    };
+
+    /** Current namespaces */
+    private namespaceMap: NamespaceMap = {};
+    private _renderContext?: RenderContext;
+    private _inComponent = false;
+    private _warned: Set<string> = new Set();
+
+    constructor(options?: CompileStateOptions) {
+        this.options = Object.assign({}, defaultOptions, options);
+        this.helpers = prepareHelpers(options && options.helpers || {});
+
+        const { prefix = '', suffix = '' } = this.options;
+        const globalSuffix = nameToJS(this.options.component || '', true) + suffix;
+        this.globalSymbol = createSymbolGenerator(prefix, num => globalSuffix + num.toString(36));
+        this.scopeSymbol = createSymbolGenerator(prefix, num => suffix + num.toString(36));
+    }
 
     /**
      * Getter for Endorphin runtime symbols: marks given symbol as used to
@@ -163,8 +160,8 @@ export default class CompileState {
     }
 
     /**
-    * Returns accessor prefix from host component for given identifier context
-    */
+     * Returns accessor prefix from host component for given identifier context
+     */
     prefix(context: IdentifierContext): string {
         if (context === 'property') {
             return `${this.host}.props`;
@@ -223,22 +220,22 @@ export default class CompileState {
         }
 
         const prevElem = blockContext.element;
-        const entity = blockContext.element = new ElementEntity(node, this);
+        const ent = blockContext.element = new ElementEntity(node, this);
 
         if (node && isElement(node)) {
             this.namespaceMap = {
                 ...namespaceMap,
                 ...collectNamespaces(node)
             };
-            this._inComponent = entity.isComponent;
+            this._inComponent = ent.isComponent;
         }
 
-        fn(entity);
+        fn(ent);
 
         this._inComponent = inComponent;
         this.namespaceMap = namespaceMap;
         blockContext.element = prevElem;
-        return entity;
+        return ent;
     }
 
     /**
@@ -322,7 +319,8 @@ export default class CompileState {
         }
 
         if (elem.component) {
-            this.warnOnce(elemName, `Missing component definition for <${elemName}>, did you forgot to <link rel="import"> it?`, elem.loc.start.offset);
+            this.warnOnce(elemName, `Missing component definition for <${elemName}>, did you forgot to <link rel="import"> it?`,
+                elem.loc.start.offset);
         }
     }
 

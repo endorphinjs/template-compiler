@@ -2,14 +2,14 @@ import {
     ENDDirective, JSNode, Expression, ENDGetterPrefix, Identifier, ExpressionStatement,
     ArrowFunctionExpression, ENDCaller, ThisExpression, MemberExpression, ENDAttributeValue,
     CallExpression, IdentifierContext
-} from "@endorphinjs/template-parser";
-import Entity from "./Entity";
-import CompileState from "../lib/CompileState";
-import generateExpression from "../expression";
-import baseVisitors from "../visitors/expression";
-import { sn, nameToJS, isExpression, isIdentifier, isLiteral, qStr } from "../lib/utils";
-import { ENDCompileError } from "../lib/error";
-import { ExpressionVisitorMap } from "../types";
+} from '@endorphinjs/template-parser';
+import Entity from './Entity';
+import CompileState from '../lib/CompileState';
+import generateExpression from '../expression';
+import baseVisitors from '../visitors/expression';
+import { sn, nameToJS, isExpression, isIdentifier, isLiteral, qStr } from '../lib/utils';
+import { ENDCompileError } from '../lib/error';
+import { ExpressionVisitorMap } from '../types';
 
 export default class EventEntity extends Entity {
     constructor(readonly node: ENDDirective, readonly state: CompileState) {

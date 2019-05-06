@@ -1,7 +1,7 @@
 import { ENDProgram } from '@endorphinjs/template-parser';
 import { SourceNode } from 'source-map';
 import { CompileStateOptions, ChunkList, TemplateContinue, TemplateVisitorMap } from './types';
-import CompileState from "./lib/CompileState";
+import CompileState from './lib/CompileState';
 import { sn, qStr, format, isPropKey } from './lib/utils';
 import { ENDCompileError } from './lib/error';
 import templateVisitors from './visitors/template';

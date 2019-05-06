@@ -1,7 +1,7 @@
-import { ENDInnerHTML } from "@endorphinjs/template-parser";
-import Entity from "./Entity";
-import { fn } from "../expression";
-import CompileState from "../lib/CompileState";
+import { ENDInnerHTML } from '@endorphinjs/template-parser';
+import Entity from './Entity';
+import { fn } from '../expression';
+import CompileState from '../lib/CompileState';
 
 export default class InnerHTMLEntity extends Entity {
     constructor(readonly node: ENDInnerHTML, readonly state: CompileState) {

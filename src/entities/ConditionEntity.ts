@@ -1,10 +1,10 @@
-import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Program } from "@endorphinjs/template-parser";
-import { SourceNode } from "source-map";
-import Entity from "./Entity";
-import CompileState from "../lib/CompileState";
-import { sn } from "../lib/utils";
-import generateExpression from "../expression";
-import { TemplateContinue, TemplateOutput } from "../types";
+import { ENDIfStatement, ENDChooseStatement, ENDChooseCase, ENDStatement, Program } from '@endorphinjs/template-parser';
+import { SourceNode } from 'source-map';
+import Entity from './Entity';
+import CompileState from '../lib/CompileState';
+import { sn } from '../lib/utils';
+import generateExpression from '../expression';
+import { TemplateContinue, TemplateOutput } from '../types';
 
 export default class ConditionEntity extends Entity {
     constructor(readonly node: ENDIfStatement | ENDChooseStatement, state: CompileState) {
@@ -68,7 +68,7 @@ function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, 
             body.add([`if (`, generateExpression(test, state), ') {']);
             statements.forEach(child => addEntity(next(child), body, indent));
             body.add(`\n${state.indent}}`);
-            body.add(`\n${state.indent}return 0;`)
+            body.add(`\n${state.indent}return 0;`);
 
             return body;
         });
@@ -88,4 +88,4 @@ function addEntity(entity: TemplateOutput, dest: SourceNode, indent: string = ''
     }
 
     return dest;
-};
+}

@@ -10,6 +10,7 @@ export default function createSymbolGenerator(
         prefix: string | SymbolPartGenerator = '',
         suffix: string | SymbolPartGenerator = numGenerator): SymbolGenerator {
     const symbols: { [prefix: string]: number } = {};
+
     return name => {
         if (name in symbols) {
             symbols[name]++;
@@ -19,7 +20,7 @@ export default function createSymbolGenerator(
 
         const num = symbols[name];
         return getPart(num, prefix) + name + getPart(num, suffix);
-    }
+    };
 }
 
 function getPart(num: number, generator: string | SymbolPartGenerator): number | string {

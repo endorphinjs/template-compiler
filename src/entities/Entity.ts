@@ -1,9 +1,9 @@
-import { Node } from "@endorphinjs/template-parser";
-import { SourceNode } from "source-map";
-import CompileState from "../lib/CompileState";
-import UsageStats from "../lib/UsageStats";
-import { Chunk, RenderChunk, UsageContext, TemplateContinue, RuntimeSymbols } from "../types";
-import { sn, nameToJS } from "../lib/utils";
+import { Node } from '@endorphinjs/template-parser';
+import { SourceNode } from 'source-map';
+import CompileState from '../lib/CompileState';
+import UsageStats from '../lib/UsageStats';
+import { Chunk, RenderChunk, UsageContext, TemplateContinue, RuntimeSymbols } from '../types';
+import { sn, nameToJS } from '../lib/utils';
 
 export type RenderOptions = { [K in RenderContext]?: RenderChunk };
 type RenderContext = UsageContext | 'shared';
@@ -15,10 +15,21 @@ type SymbolType = UsageContext | 'ref';
 export function entity(name: string, state: CompileState, render?: RenderOptions): Entity {
     const ent = new Entity(name, state);
     if (render) {
-        render.mount && ent.setMount(render.mount);
-        render.update && ent.setUpdate(render.update);
-        render.unmount && ent.setUnmount(render.unmount)
-        render.shared && ent.setShared(render.shared)
+        if (render.mount) {
+            ent.setMount(render.mount);
+        }
+
+        if (render.update) {
+            ent.setUpdate(render.update);
+        }
+
+        if (render.unmount) {
+            ent.setUnmount(render.unmount);
+        }
+
+        if (render.shared) {
+            ent.setShared(render.shared);
+        }
     }
     return ent;
 }
@@ -28,9 +39,11 @@ export default class Entity {
 
     /** Entity symbol name */
     name: string;
+
+    /** Entity code chunks */
+    code: { [K in UsageContext]?: Chunk };
     readonly symbolUsage = new UsageStats();
     private symbols: { [K in SymbolType]?: SourceNode };
-    code: { [K in UsageContext]?: Chunk };
 
     constructor(readonly rawName: string, readonly state: CompileState) {
         this.name = rawName ? state.scopeSymbol(nameToJS(rawName)) : '';
@@ -147,8 +160,8 @@ export default class Entity {
     /**
      * Adds given entity as a child of current one
      */
-    add(entity: Entity) {
-        this.children.push(entity);
+    add(ent: Entity) {
+        this.children.push(ent);
     }
 
     /**
@@ -157,13 +170,13 @@ export default class Entity {
     setContent(nodes: Node[], next: TemplateContinue): this {
         // Collect contents in two passes: convert nodes to entities to collect
         // injector usage, then attach it to element
-        nodes.map(next).forEach(entity => entity && this.add(entity));
+        nodes.map(next).forEach(ent => ent && this.add(ent));
         return this;
     }
 
     /**
-    * Creates code chunk that unmounts current entity with given runtime function
-    */
+     * Creates code chunk that unmounts current entity with given runtime function
+     */
     unmount(runtime: RuntimeSymbols): SourceNode {
         const symbol = this.getSymbol();
         return sn([symbol, ` = ${this.state.runtime(runtime)}(`, symbol, ')']);

@@ -40,7 +40,7 @@ export default class ElementEntity extends Entity {
 
     animateIn?: ENDAttributeValue;
     animateOut?: ENDAttributeValue;
-    slotUpdate: { [slotName: string]: string } = {}
+    slotUpdate: { [slotName: string]: string } = {};
 
     constructor(readonly node: ENDElement | ENDTemplate | null, readonly state: CompileState) {
         super(node && isElement(node) ? node.name.name : 'target', state);
@@ -191,7 +191,7 @@ export default class ElementEntity extends Entity {
         Object.keys(slotUpdate).forEach(slotName => {
             this.add(state.entity({
                 update: () => state.runtime('markSlotUpdate', [this.getSymbol(), qStr(slotName), slotUpdate[slotName]])
-            }))
+            }));
         });
     }
 
@@ -256,9 +256,21 @@ export default class ElementEntity extends Entity {
                     return entities;
                 });
                 if (entities.length) {
-                    anim.setUnmount(() => state.runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), state.scope, callback, cssScopeArg(state)]));
+                    anim.setUnmount(() =>
+                        state.runtime('animateOut', [
+                            this.getSymbol(),
+                            compileAttributeValue(this.animateOut, state),
+                            state.scope,
+                            callback,
+                            cssScopeArg(state)
+                        ]));
                 } else {
-                    anim.setUnmount(() => state.runtime('animateOut', [this.getSymbol(), compileAttributeValue(this.animateOut, state), cssScopeArg(state)]));
+                    anim.setUnmount(() =>
+                        state.runtime('animateOut', [
+                            this.getSymbol(),
+                            compileAttributeValue(this.animateOut, state),
+                            cssScopeArg(state)
+                        ]));
                 }
             }
 
@@ -347,54 +359,54 @@ export default class ElementEntity extends Entity {
             this.directiveStats(node.directives, true);
         }
 
-        walk(node, node => {
-            if (node.type === 'ENDPartialStatement') {
+        walk(node, child => {
+            if (child.type === 'ENDPartialStatement') {
                 this.hasPartials = true;
                 this.isStaticContent = false;
-            } else if (node.type === 'ENDAddClassStatement') {
+            } else if (child.type === 'ENDAddClassStatement') {
                 this.dynamicAttributes.add('class');
-            } else if (node.type === 'ENDAttributeStatement') {
+            } else if (child.type === 'ENDAttributeStatement') {
                 // Attribute statements in top-level element context are basically
                 // the same as immediate attributes of element
-                this.attributesStats(node.attributes);
-                this.directiveStats(node.directives);
+                this.attributesStats(child.attributes);
+                this.directiveStats(child.directives);
             }
 
-            if (dynamicContent.has(node.type)) {
+            if (dynamicContent.has(child.type)) {
                 this.isStaticContent = false;
                 return true;
             }
         });
     }
 
-    private attributesStats(attributes: ENDAttribute[], isElement?: boolean) {
+    private attributesStats(attributes: ENDAttribute[], isElem?: boolean) {
         attributes.forEach(attr => {
             if (isExpression(attr.name)) {
                 this.attributeExpressions = true;
-            } else if (!isElement || (attr.value && !isLiteral(attr.value))) {
+            } else if (!isElem || (attr.value && !isLiteral(attr.value))) {
                 this.dynamicAttributes.add(attr.name.name);
             }
         });
     }
 
-    private directiveStats(directives: ENDDirective[], isElement?: boolean) {
+    private directiveStats(directives: ENDDirective[], isElem?: boolean) {
         directives.forEach(directive => {
-            if (directive.prefix === 'on' && !isElement) {
+            if (directive.prefix === 'on' && !isElem) {
                 this.dynamicEvents.add(directive.name);
             } else if (directive.prefix === 'class') {
                 this.dynamicAttributes.add('class');
             } else if (directive.prefix === 'animate') {
                 // Currently, we allow animations in element only
-                if (isElement) {
+                if (isElem) {
                     if (directive.name === 'in') {
                         this.animateIn = directive.value;
                     } else if (directive.name === 'out') {
                         this.animateOut = directive.value;
                     } else {
-                        new ENDCompileError(`Unknown "${directive.name}" animation directive`, directive);
+                        throw new ENDCompileError(`Unknown "${directive.name}" animation directive`, directive);
                     }
                 } else {
-                    new ENDCompileError(`Animations are allowed in element only`, directive);
+                    throw new ENDCompileError(`Animations are allowed in element only`, directive);
                 }
             }
         });
@@ -430,7 +442,8 @@ export function cssScopeArg(state: CompileState): string {
 
 export function getNodeName(localName: string): { ns?: string, name: string } {
     const parts = localName.split(':');
-    let ns: string, name: string;
+    let ns: string;
+    let name: string;
     if (parts.length > 1) {
         ns = parts.shift();
         name = parts.join(':');

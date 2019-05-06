@@ -5,10 +5,10 @@ import {
     EmptyStatement, ThisExpression, MemberExpression, ReturnStatement,
     ArrowFunctionExpression, BlockStatement, ObjectPattern, TemplateLiteral,
     TaggedTemplateExpression, ENDCaller, ENDGetter, ENDGetterPrefix, ENDFilter, ArrayPattern
-} from "@endorphinjs/template-parser";
-import { SourceNode } from "source-map";
-import { Chunk, ChunkList, AstVisitorMap, ExpressionOutput, AstVisitorContinue } from "../types";
-import { sn, propGetter, qStr, isIdentifier } from "../lib/utils";
+} from '@endorphinjs/template-parser';
+import { SourceNode } from 'source-map';
+import { Chunk, ChunkList, AstVisitorMap, ExpressionOutput, AstVisitorContinue } from '../types';
+import { sn, propGetter, qStr, isIdentifier } from '../lib/utils';
 
 export default {
     Program(node: Program, state, next) {
@@ -93,7 +93,7 @@ export default {
     ArrowFunctionExpression(node: ArrowFunctionExpression, state, next) {
         const params = node.params.length === 1 && isIdentifier(node.params[0])
             ? next(node.params[0])
-            : sn(commaChunks(node.params.map(next), '(', ')'))
+            : sn(commaChunks(node.params.map(next), '(', ')'));
         return sn([params, ' => ', next(node.body)]);
     },
     BlockStatement(node: BlockStatement, state, next) {
@@ -177,14 +177,20 @@ function property(node: Property, isPattern: boolean, next: AstVisitorContinue<E
 function commaChunks(items: Chunk[], before?: string, after?: string): ChunkList {
     const chunks: ChunkList = [];
 
-    before != null && chunks.push(before);
+    if (before != null) {
+        chunks.push(before);
+    }
+
     items.forEach((node, i) => {
         if (i !== 0) {
             chunks.push(', ');
         }
         chunks.push(node);
     });
-    after != null && chunks.push(after);
+
+    if (after != null) {
+        chunks.push(after);
+    }
 
     return chunks;
 }

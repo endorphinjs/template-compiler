@@ -133,13 +133,13 @@ export default {
     },
 
     ENDIfStatement(node: Ast.ENDIfStatement, state, next) {
-        const entity = new ConditionEntity(node, state);
+        const ent = new ConditionEntity(node, state);
         if (node.consequent.every(isSimpleConditionContent)) {
-            entity.setSimple(node.test, node.consequent, next);
+            ent.setSimple(node.test, node.consequent, next);
         } else {
-            entity.setContent([node], next);
+            ent.setContent([node], next);
         }
-        return entity;
+        return ent;
     },
 
     ENDChooseStatement(node: Ast.ENDChooseStatement, state, next) {

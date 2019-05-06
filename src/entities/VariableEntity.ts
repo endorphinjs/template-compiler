@@ -1,8 +1,8 @@
-import { ENDVariableStatement, ENDAttributeValue } from "@endorphinjs/template-parser";
-import Entity, { entity } from "./Entity";
-import CompileState from "../lib/CompileState";
-import generateExpression from "../expression";
-import { sn, propGetter, isLiteral, isExpression } from "../lib/utils";
+import { ENDVariableStatement, ENDAttributeValue } from '@endorphinjs/template-parser';
+import Entity, { entity } from './Entity';
+import CompileState from '../lib/CompileState';
+import generateExpression from '../expression';
+import { sn, propGetter, isLiteral, isExpression } from '../lib/utils';
 
 export default class VariableEntity extends Entity {
     constructor(readonly node: ENDVariableStatement, readonly state: CompileState) {

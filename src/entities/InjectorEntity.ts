@@ -1,7 +1,7 @@
-import Entity from "./Entity";
-import CompileState from "../lib/CompileState";
-import { sn } from "../lib/utils";
-import { SourceNode } from "source-map";
+import Entity from './Entity';
+import CompileState from '../lib/CompileState';
+import { sn } from '../lib/utils';
+import { SourceNode } from 'source-map';
 
 export default class InjectorEntity extends Entity {
     /**

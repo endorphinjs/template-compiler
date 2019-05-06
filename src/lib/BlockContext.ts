@@ -1,14 +1,14 @@
-import { SourceNode } from "source-map";
-import { ChunkList, Chunk, UsageContext, RenderContext } from "../types";
-import CompileState from "./CompileState";
-import Entity from "../entities/Entity";
-import ElementEntity from "../entities/ElementEntity";
-import UsageStats from "./UsageStats";
-import { sn, format } from "./utils";
-import InjectorEntity from "../entities/InjectorEntity";
+import { SourceNode } from 'source-map';
+import { ChunkList, Chunk, UsageContext, RenderContext } from '../types';
+import CompileState from './CompileState';
+import Entity from '../entities/Entity';
+import ElementEntity from '../entities/ElementEntity';
+import UsageStats from './UsageStats';
+import { sn, format } from './utils';
+import InjectorEntity from '../entities/InjectorEntity';
 
 interface VariableMap {
-    [name: string]: string | void
+    [name: string]: string | void;
 }
 
 export default class BlockContext {
@@ -16,7 +16,7 @@ export default class BlockContext {
     scopeUsage = new UsageStats();
 
     /** Runtime variables used in block render */
-    variables: { [K in UsageContext]?: VariableMap } = {}
+    variables: { [K in UsageContext]?: VariableMap } = {};
 
     /** Indicates that block uses given injector as argument */
     injector?: InjectorEntity;
@@ -66,7 +66,7 @@ export default class BlockContext {
         const { state, name, scopeUsage, rawScope: scope } = this;
         const scopeArg = (count: number, first?: boolean): string => count ? `${first ? '' : ', '}${scope}` : '';
 
-        let mountChunks: ChunkList = [];
+        const mountChunks: ChunkList = [];
         const updateChunks: ChunkList = [];
         const unmountChunks: ChunkList = [];
 
@@ -170,7 +170,7 @@ export default class BlockContext {
  * Generates function from given fragments
  */
 function createFunction(name: string, args: string, chunks: ChunkList, indent: string = '\t'): SourceNode {
-    if(chunks && chunks.length) {
+    if (chunks && chunks.length) {
         return sn([
             `function ${name}(${args}) {\n${indent}`,
             ...format(chunks, indent),

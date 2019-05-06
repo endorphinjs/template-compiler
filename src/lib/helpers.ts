@@ -1,10 +1,10 @@
-import { HelpersMap } from "../types";
+import { HelpersMap } from '../types';
 
-type PlainObject = { [key: string]: string };
+interface PlainObject { [key: string]: string; }
 
 const defaultHelpers = {
     'endorphin/helpers.js': ['emit', 'setState', 'setStore']
-}
+};
 
 /**
  * Generates helpers lookup map

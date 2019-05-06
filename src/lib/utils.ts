@@ -143,7 +143,7 @@ export function propSetter(node: Identifier | Program, state: CompileState): Chu
         return sn(['[', generateExpression(node, state), ']']);
     }
 
-    return isPropKey(node.name) ? node.name : qStr(node.name)
+    return isPropKey(node.name) ? node.name : qStr(node.name);
 }
 
 export function toObjectLiteral(map: Map<Chunk, Chunk>, indent: string = '\t', level: number = 0): SourceNode {
@@ -169,12 +169,12 @@ export function toObjectLiteral(map: Map<Chunk, Chunk>, indent: string = '\t', l
     return result;
 }
 
-export function format(chunks: ChunkList, prefix: string = '', suffix: string = '\n'): ChunkList {
+export function format(chunks: ChunkList, pfx: string = '', suffix: string = '\n'): ChunkList {
     const result: ChunkList = [];
 
     chunks.filter(isValidChunk).forEach((chunk, i, arr) => {
         if (i !== 0) {
-            result.push(prefix);
+            result.push(pfx);
         }
 
         result.push(chunk);

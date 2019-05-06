@@ -1,10 +1,10 @@
-import { ENDAttribute, ENDAttributeName, ENDAttributeValue, Literal, Program } from "@endorphinjs/template-parser";
-import { SourceNode } from "source-map";
-import Entity from "./Entity";
-import compileExpression from "../expression";
-import CompileState from "../lib/CompileState";
-import { Chunk, RenderChunk } from "../types";
-import { isIdentifier, isExpression, sn, qStr, isLiteral } from "../lib/utils";
+import { ENDAttribute, ENDAttributeName, ENDAttributeValue, Literal, Program } from '@endorphinjs/template-parser';
+import { SourceNode } from 'source-map';
+import Entity from './Entity';
+import compileExpression from '../expression';
+import CompileState from '../lib/CompileState';
+import { Chunk, RenderChunk } from '../types';
+import { isIdentifier, isExpression, sn, qStr, isLiteral } from '../lib/utils';
 
 export default class AttributeEntity extends Entity {
     constructor(readonly node: ENDAttribute, readonly state: CompileState) {
@@ -13,7 +13,7 @@ export default class AttributeEntity extends Entity {
 
         if (!element.node) {
             // Set attribute in child block
-            this.setMount(mountDynamicAttribute)
+            this.setMount(mountDynamicAttribute);
         } else if (element.isComponent || element.isDynamicAttribute(node)) {
             // Attribute must be updates in runtime
             this.setShared(mountDynamicAttribute);
@@ -42,7 +42,7 @@ export const mountDynamicAttribute: RenderChunk = (attr: AttributeEntity) => {
     return ns
         ? state.runtime('setAttributeNS', [injector, ns.ns, attrName(node, state), attrValue(node, state)])
         : state.runtime('setAttribute', [injector, attrName(node, state), attrValue(node, state)]);
-}
+};
 
 function attrName(attr: ENDAttribute, state: CompileState): Chunk {
     const ns = getAttributeNS(attr, state);

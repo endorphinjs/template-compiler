@@ -1,10 +1,10 @@
-import { Program, JSNode, Node } from "@endorphinjs/template-parser";
-import CompileState from "./lib/CompileState";
-import baseVisitors from "./visitors/expression";
-import { entity } from "./entities/Entity";
-import { sn } from "./lib/utils";
-import { ENDCompileError } from "./lib/error";
-import { ExpressionContinue, ExpressionVisitorMap, ExpressionOutput } from "./types";
+import { Program, JSNode, Node } from '@endorphinjs/template-parser';
+import CompileState from './lib/CompileState';
+import baseVisitors from './visitors/expression';
+import { entity } from './entities/Entity';
+import { sn } from './lib/utils';
+import { ENDCompileError } from './lib/error';
+import { ExpressionContinue, ExpressionVisitorMap, ExpressionOutput } from './types';
 
 export default function generateExpression(expr: JSNode, state: CompileState, visitors: ExpressionVisitorMap = {}): ExpressionOutput {
     return walk(expr, state, { ...baseVisitors, ...visitors });
@@ -24,13 +24,13 @@ export function fn(prefix: string, state: CompileState, value: Program): string 
 }
 
 export function walk(node: Node, state: CompileState, visitors: ExpressionVisitorMap): ExpressionOutput {
-    const next: ExpressionContinue = node => {
-        if (node.type in visitors) {
-            return visitors[node.type](node, state, next);
+    const next: ExpressionContinue = child => {
+        if (child.type in visitors) {
+            return visitors[child.type](child, state, next);
         }
 
-        throw new ENDCompileError(`${node.type} is not supported in template expressions`, node);
-    }
+        throw new ENDCompileError(`${child.type} is not supported in template expressions`, child);
+    };
 
     return next(node);
 }
