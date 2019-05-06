@@ -30,7 +30,7 @@ function ifBody$0(host, injector, scope) {
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, scope) {
+function ifBody$0Update(host, injector, scope) {
 	updateBlock(scope.if$1);
 	updateBlock(scope.if$2);
 }

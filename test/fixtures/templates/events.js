@@ -27,8 +27,8 @@ function ifBody$0(host, injector) {
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, scope) {
-	addEvent(scope.injector, "click", onClick$1);
+function ifBody$0Update(host, injector) {
+	addEvent(injector, "click", onClick$1);
 }
 
 function ifEntry$0(host) {

@@ -24,7 +24,7 @@ function forContent$0(host, injector, scope) {
 	return forContent$0Update;
 }
 
-function forContent$0Update(host, scope) {
+function forContent$0Update(host, injector, scope) {
 	setVars$1(host, scope);
 }
 

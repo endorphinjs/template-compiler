@@ -9,7 +9,7 @@ function chooseBody$0(host, injector, scope) {
 	return chooseBody$0Update;
 }
 
-function chooseBody$0Update(host, scope) {
+function chooseBody$0Update(host, injector, scope) {
 	let su$0 = 0;
 	const { e_self$0 } = scope;
 	su$0 |= setAttribute(scope.inj$1, "item", host.props.link);

@@ -4,6 +4,7 @@ import Entity from './Entity';
 import { compileAttributeValue } from './AttributeEntity';
 import TextEntity from './TextEntity';
 import VariableEntity from './VariableEntity';
+import InjectorEntity from './InjectorEntity';
 import UsageStats from '../lib/UsageStats';
 import CompileState from '../lib/CompileState';
 import { isElement, isExpression, isLiteral, toObjectLiteral, sn, isIdentifier, qStr, getControlName, getAttrValue, propSetter } from '../lib/utils';
@@ -13,7 +14,7 @@ import { ENDCompileError } from '../lib/error';
 const dynamicContent = new Set(['ENDIfStatement', 'ENDChooseStatement', 'ENDForEachStatement']);
 
 export default class ElementEntity extends Entity {
-    private _injector: Entity;
+    injectorEntity: InjectorEntity;
     readonly injectorUsage = new UsageStats();
 
     /** Indicates current entity is a *registered* DOM component */
@@ -56,8 +57,7 @@ export default class ElementEntity extends Entity {
             // we should always use injector to fill contents, which shall be
             // passed as argument to block function
             this.isStaticContent = false;
-            this._injector = state.entity('injector');
-            this._injector.name = 'injector';
+            this.injectorEntity = new InjectorEntity('injector', state, true);
         }
     }
 
@@ -66,25 +66,24 @@ export default class ElementEntity extends Entity {
         const { state } = this;
         this.injectorUsage.use(state.renderContext);
 
-        if (!this._injector) {
+        if (!this.injectorEntity) {
             // First time injector usage. Create entity which will mount it
-            this._injector = state.entity('inj', {
-                mount: () => this.isComponent
+            this.injectorEntity = new InjectorEntity('inj', state)
+                .setMount(() => this.isComponent
                     // For components, contents must be redirected into inner input injector
                     ? sn([this.getSymbol(), '.componentModel.input'])
-                    : state.runtime('createInjector', [this.getSymbol()])
-            });
-            this.children.unshift(this._injector);
+                    : state.runtime('createInjector', [this.getSymbol()]));
+            this.children.unshift(this.injectorEntity);
         }
 
         // In case of child block, we should keep symbol as standalone, e.g. create
         // no local references since injector is an argument
-        return this._injector.getSymbol(!this.node);
+        return this.injectorEntity.getSymbol();
     }
 
     /** Indicates that element context should use injector to operate */
     get usesInjector(): boolean {
-        return this._injector != null;
+        return this.injectorEntity != null;
     }
 
     /**
@@ -117,6 +116,46 @@ export default class ElementEntity extends Entity {
             // Adding content entity into component: we should collect
             // slot update stats
             this.markSlotUpdate(item);
+        }
+    }
+
+    /**
+     * Sets mount code that creates current element
+     * @param text If given, uses shortcut function for creating element with
+     * given text value
+     */
+    create(text?: Literal) {
+        const { state, node } = this;
+        if (isElement(node)) {
+            this.setMount(() => {
+                const elemName = node.name.name;
+
+                if (getControlName(elemName) === 'self') {
+                    // Create component which points to itself
+                    return state.runtime('createComponent', [`${state.host}.nodeName`, `${state.host}.componentModel.definition`, state.host], node);
+                }
+
+                if (state.isComponent(node)) {
+                    // Create component
+                    return state.runtime('createComponent', [qStr(elemName), state.getComponent(node), state.host], node);
+                }
+
+                // Create plain DOM element
+                const cssScope = state.options.cssScope ? state.cssScopeSymbol : null;
+                const nodeName = getNodeName(elemName);
+                const nsSymbol = state.namespace(nodeName.ns);
+
+                if (text) {
+                    const textValue = qStr(text.value as string);
+                    return nsSymbol
+                        ? state.runtime('elemNSWithText', [qStr(nodeName.name), textValue, nsSymbol, cssScope], node)
+                        : state.runtime('elemWithText', [qStr(elemName), textValue, cssScope], node);
+                }
+
+                return nsSymbol
+                    ? state.runtime('elemNS', [qStr(nodeName.name), nsSymbol, cssScope], node)
+                    : state.runtime('elem', [qStr(elemName), cssScope], node);
+            });
         }
     }
 
@@ -383,40 +422,6 @@ function walk(elem: ENDStatement | ENDTemplate, callback: (node: ENDStatement) =
     } else if (elem.type === 'ENDForEachStatement') {
         elem.body.forEach(visit);
     }
-}
-
-/**
- * Generates element create code
- */
-export function createElement(node: ENDElement, state: CompileState, text?: Literal): Chunk {
-    const elemName = node.name.name;
-    const srcNode = node.name;
-
-    if (getControlName(elemName) === 'self') {
-        // Create component which points to itself
-        return state.runtime('createComponent', [`${state.host}.nodeName`, `${state.host}.componentModel.definition`, state.host], srcNode);
-    }
-
-    if (state.isComponent(node)) {
-        // Create component
-        return state.runtime('createComponent', [qStr(elemName), state.getComponent(node), state.host], srcNode);
-    }
-
-    // Create plain DOM element
-    const cssScope = state.options.cssScope ? state.cssScopeSymbol : null;
-    const nodeName = getNodeName(elemName);
-    const nsSymbol = state.namespace(nodeName.ns);
-
-    if (text) {
-        const textValue = qStr(text.value as string);
-        return nsSymbol
-            ? state.runtime('elemNSWithText', [qStr(nodeName.name), textValue, nsSymbol, cssScope], srcNode)
-            : state.runtime('elemWithText', [qStr(elemName), textValue, cssScope], srcNode);
-    }
-
-    return nsSymbol
-        ? state.runtime('elemNS', [qStr(nodeName.name), nsSymbol, cssScope], srcNode)
-        : state.runtime('elem', [qStr(elemName), cssScope], srcNode);
 }
 
 export function cssScopeArg(state: CompileState): string {

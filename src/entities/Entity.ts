@@ -50,10 +50,8 @@ export default class Entity {
     /**
      * Symbol for referencing current entity in current render scope.
      * Note that node returned by current method is self-modified depending on entity usage
-     * @param standalone Keep symbol standalone, e.g. don’t create any scope references
-     * based on symbol usage
      */
-    getSymbol(standalone?: boolean): SourceNode {
+    getSymbol(): SourceNode {
         const { renderContext } = this.state;
         const { symbols, symbolUsage, name } = this;
 
@@ -61,13 +59,13 @@ export default class Entity {
 
         if (renderContext === 'mount') {
             // In `mount` context, we should always refer entity by local variable
-            if (symbolUsage.mount === 1 && !standalone) {
+            if (symbolUsage.mount === 1) {
                 symbols.ref.prepend(`const ${name} = `);
             }
             return symbols.mount || (symbols.mount = sn(name));
         }
 
-        if (symbolUsage.update + symbolUsage.unmount === 1 && !standalone) {
+        if (symbolUsage.update + symbolUsage.unmount === 1) {
             // First time use of entity in update or unmount scope:
             // create reference in component scope
             this.state.mount(() => symbols.ref.add(`${this.state.scope}.${name} = `));

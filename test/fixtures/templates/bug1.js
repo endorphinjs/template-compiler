@@ -13,8 +13,8 @@ function ifBody$0(host, injector) {
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, scope) {
-	ifAttr$0(host, scope.injector);
+function ifBody$0Update(host, injector) {
+	ifAttr$0(host, injector);
 }
 
 function ifEntry$0(host) {

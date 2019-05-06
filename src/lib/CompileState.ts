@@ -248,8 +248,9 @@ export default class CompileState {
      */
     runChildBlock(name: string, fn: (block: BlockContext, element: ElementEntity) => void): string {
         return this.runBlock(name, block => {
-            block.useInjector = true;
-            return this.runElement(null, element => fn(block, element));
+            const elem = this.runElement(null, element => fn(block, element));
+            block.injector = elem.injectorEntity;
+            return elem;
         });
     }
 

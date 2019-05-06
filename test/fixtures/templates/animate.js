@@ -40,7 +40,7 @@ function forContent$0(host, injector, scope) {
 	return forContent$0Update;
 }
 
-function forContent$0Update(host, scope) {
+function forContent$0Update(host, injector, scope) {
 	updatePartial(scope.partial$0, host.props['partial:test'] || partials.test, {});
 }
 
@@ -73,7 +73,7 @@ function ifBody$0(host, injector, scope) {
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, scope) {
+function ifBody$0Update(host, injector, scope) {
 	const { inj$1 } = scope;
 	setAttribute(inj$1, "class", "overlay");
 	setAttribute(inj$1, "style", attrValue$1(host, scope));

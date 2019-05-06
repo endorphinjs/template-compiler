@@ -8,7 +8,7 @@ function ifBody$0(host, injector, scope) {
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, scope) {
+function ifBody$0Update(host, injector, scope) {
 	setRef(host, "header", scope.span$0);
 }
 

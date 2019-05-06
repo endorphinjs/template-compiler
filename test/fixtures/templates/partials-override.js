@@ -59,7 +59,7 @@ function partialMyItem$0(host, injector, scope) {
 	return partialMyItem$0Update;
 }
 
-function partialMyItem$0Update(host, scope) {
+function partialMyItem$0Update(host, injector, scope) {
 	const { inj$2 } = scope;
 	setAttribute(inj$2, "value", host.store.data.pos);
 	updateText(scope.text$0, host.store.data.item);

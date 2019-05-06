@@ -8,7 +8,6 @@ import { CompileStateOptions } from '../src/types';
 describe('New compiler', () => {
     const baseInput = path.resolve(__dirname, './samples');
     const baseOutput = path.resolve(__dirname, './fixtures');
-    const linter = new Linter();
     const linterConfig = require('./fixtures/.eslintrc.js');
 
     function read(fileName: string): string {
@@ -17,6 +16,7 @@ describe('New compiler', () => {
     }
 
     function lint(code: string, filename: string) {
+        const linter = new Linter();
         const errors = linter.verify(code, linterConfig, { filename })
             .filter(item => item.fatal)
             .map(item => `${item.message} at line ${item.line}, column ${item.column}`)
@@ -27,13 +27,15 @@ describe('New compiler', () => {
         }
     }
 
-    function compare(input: string, options?: CompileStateOptions) {
+    function compare(input: string, options?: CompileStateOptions, save?: boolean) {
         const output = input.replace(/\.html$/, '.js');
         const fileName = path.basename(input);
         const absInput = path.resolve(baseInput, input);
         const absOutput = path.resolve(baseOutput, output);
         const { code } = compile(read(absInput), fileName, options);
-        // fs.writeFileSync(absOutput, code.trim());
+        if (save) {
+            fs.writeFileSync(absOutput, code.trim());
+        }
         equal(code.trim(), read(absOutput), input);
         lint(code, fileName);
     }
@@ -65,8 +67,6 @@ describe('New compiler', () => {
     });
 
     // it.only('debug', () => {
-    //     const { code } = compile(read('./samples/resources.html'));
-    //     fs.writeFileSync(path.resolve(__dirname, './fixtures2/resources.js'), code.trim());
-    //     console.log(code.trim());
+    //     compare('templates/bug1.html', null, true);
     // });
 });

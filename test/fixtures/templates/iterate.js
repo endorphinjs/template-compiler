@@ -23,7 +23,7 @@ function forContent$0(host, injector, scope) {
 	return forContent$0Update;
 }
 
-function forContent$0Update(host, scope) {
+function forContent$0Update(host, injector, scope) {
 	updateBlock(scope.if$1);
 }
 
@@ -40,7 +40,7 @@ function ifBody$0(host, injector, scope) {
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, scope) {
+function ifBody$0Update(host, injector, scope) {
 	updateIterator(scope.for$0);
 }
 

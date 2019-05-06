@@ -5,8 +5,7 @@ import Entity from "../entities/Entity";
 import ElementEntity from "../entities/ElementEntity";
 import UsageStats from "./UsageStats";
 import { sn, format } from "./utils";
-
-const injectorArg = 'injector';
+import InjectorEntity from "../entities/InjectorEntity";
 
 interface VariableMap {
     [name: string]: string | void
@@ -19,8 +18,8 @@ export default class BlockContext {
     /** Runtime variables used in block render */
     variables: { [K in UsageContext]?: VariableMap } = {}
 
-    /** Should block use injector as argument */
-    useInjector?: boolean;
+    /** Indicates that block uses given injector as argument */
+    injector?: InjectorEntity;
 
     /** Should block mount function export itself? */
     exports?: boolean | 'default';
@@ -137,7 +136,8 @@ export default class BlockContext {
         this.pushVars(updateChunks, 'update');
 
         const { indent } = state;
-        const mountFn = createFunction(name, `${state.host}${this.useInjector ? ', ' + injectorArg : ''}${scopeArg(scopeUsage.mount)}`, mountChunks, indent);
+        const injectorArg = this.injector ? `, ${this.injector.name}` : '';
+        const mountFn = createFunction(name, `${state.host}${injectorArg}${scopeArg(scopeUsage.mount)}`, mountChunks, indent);
 
         if (this.exports) {
             mountFn.prepend([`export `, this.exports === 'default' ? 'default ' : '']);
@@ -145,7 +145,7 @@ export default class BlockContext {
 
         return [
             mountFn,
-            createFunction(`${name}Update`, `${state.host}${scopeArg(scopeUsage.update)}`, updateChunks, indent),
+            createFunction(`${name}Update`, `${state.host}${injectorArg}${scopeArg(scopeUsage.update)}`, updateChunks, indent),
             createFunction(`${name}Unmount`, scopeArg(scopeUsage.unmount, true), unmountChunks, indent)
         ];
     }

@@ -24,7 +24,7 @@ function forContent$0(host, injector, scope) {
 	return forContent$0Update;
 }
 
-function forContent$0Update(host, scope) {
+function forContent$0Update(host, injector, scope) {
 	updatePartial(scope.partial$0, host.props['partial:button'] || partials.button, {
 		item: scope.item,
 		enabled: (scope.index !== 1)
@@ -77,7 +77,7 @@ function partialButton$0(host, injector, scope) {
 	return partialButton$0Update;
 }
 
-function partialButton$0Update(host, scope) {
+function partialButton$0Update(host, injector, scope) {
 	const { inj$1 } = scope;
 	ifAttr$0(host, inj$1);
 	updateText(scope.text$0, scope.item);

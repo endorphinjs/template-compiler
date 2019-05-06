@@ -4,7 +4,6 @@ import { ChunkList, Chunk, AstVisitorMap, TemplateOutput, AstVisitorContinue } f
 import generateExpression from '../expression';
 import CompileState from '../lib/CompileState';
 import Entity, { entity } from '../entities/Entity';
-import { createElement } from '../entities/ElementEntity';
 import AttributeEntity, { compileAttributeValue } from '../entities/AttributeEntity';
 import TextEntity from '../entities/TextEntity';
 import ConditionEntity from '../entities/ConditionEntity';
@@ -60,9 +59,9 @@ export default {
 
             if (!element.isComponent && !isSlot && node.body.length === 1 && isLiteral(firstChild)) {
                 // Edge case: element with single text child
-                element.setMount(() => createElement(node, state, firstChild));
+                element.create(firstChild);
             } else {
-                element.setMount(() => createElement(node, state));
+                element.create();
                 if (isSlot) {
                     // Default slot content must be generated as child block
                     // to mount it only if there’s no incoming slot content
