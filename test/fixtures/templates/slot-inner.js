@@ -1,6 +1,6 @@
 import { elem, elemWithText, insert, mountSlot, unmountSlot, createInjector, addDisposeCallback, mountBlock, updateBlock, unmountBlock } from "@endorphinjs/endorphin";
 
-function slotHeader$0(host, injector) {
+function defaultSlotHeader$0(host, injector) {
 	insert(injector, elemWithText("h2", "Default header"));
 }
 
@@ -21,14 +21,14 @@ function ifEntry$0(host) {
 	}
 }
 
-function slotFooter$0(host, injector) {
+function defaultSlotFooter$0(host, injector) {
 	insert(injector, elemWithText("footer", "Default footer"));
 }
 
 function ifBody$1(host, injector, scope) {
 	const slot$6 = insert(injector, elem("slot"));
 	slot$6.setAttribute("name", "footer");
-	scope.slot$7 = mountSlot(host, "footer", slot$6, slotFooter$0);
+	scope.slot$7 = mountSlot(host, "footer", slot$6, defaultSlotFooter$0);
 	addDisposeCallback(host, ifBody$1Unmount);
 }
 
@@ -49,7 +49,7 @@ export default function template$0(host, scope) {
 	div$0.setAttribute("class", "container");
 	const slot$0 = insert(inj$0, elem("slot"));
 	slot$0.setAttribute("name", "header");
-	scope.slot$1 = mountSlot(host, "header", slot$0, slotHeader$0);
+	scope.slot$1 = mountSlot(host, "header", slot$0, defaultSlotHeader$0);
 	insert(inj$0, elemWithText("p", "content"));
 	const slot$2 = insert(inj$0, elem("slot"));
 	scope.slot$3 = mountSlot(host, "", slot$2);

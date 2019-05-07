@@ -212,7 +212,7 @@ function isSimpleConditionContent(node: Ast.ENDStatement): boolean {
 function defaultSlot(node: Ast.ENDElement, state: CompileState, next: AstVisitorContinue<TemplateOutput>): string | null {
     const slotName = String(getAttrValue(node, 'name') || '');
     return node.body.length
-        ? state.runChildBlock(`slot${nameToJS(slotName, true)}`,
+        ? state.runChildBlock(`defaultSlot${nameToJS(slotName, true)}`,
             (child, slot) => slot.setContent(node.body, next))
         : null;
 }
