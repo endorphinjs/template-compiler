@@ -2,7 +2,7 @@ import { createInjector, addEvent, addStaticEvent, removeStaticEvent, elem, moun
 import { emit } from "endorphin/helpers.js";
 
 function onClick$0(evt) {
-	this.host.componentModel.definition.method1(this.host.props.foo, this.host.props.bar, this.host, evt, evt.currentTarget, this.host, evt, evt.currentTarget);
+	this.host.componentModel.definition.method1(this.host.props.foo, this.host.props.bar, this.host, evt, this.target);
 }
 
 function onMouseenter$0() {
@@ -19,16 +19,16 @@ function onMousedown$0(e) {
 }
 
 function onClick$1(evt) {
-	this.host.componentModel.definition.method2(this.host.props.foo, this.host.props.bar, this.host, evt, evt.currentTarget, this.host, evt, evt.currentTarget);
+	this.host.componentModel.definition.method2(this.host.props.foo, this.host.props.bar, this.host, evt, this.target);
 }
 
-function ifBody$0(host, injector) {
-	addEvent(injector, "click", onClick$1);
+function ifBody$0(host, injector, scope) {
+	addEvent(injector, "click", onClick$1, host, scope);
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, injector) {
-	addEvent(injector, "click", onClick$1);
+function ifBody$0Update(host, injector, scope) {
+	addEvent(injector, "click", onClick$1, host, scope);
 }
 
 function ifEntry$0(host) {
@@ -41,21 +41,21 @@ export default function template$0(host, scope) {
 	const target$0 = host.componentView;
 	const main$0 = target$0.appendChild(elem("main"));
 	const inj$0 = scope.inj$0 = createInjector(main$0);
-	addEvent(inj$0, "click", onClick$0);
+	addEvent(inj$0, "click", onClick$0, host, scope);
 	scope.mouseenter$0 = addStaticEvent(main$0, "mouseenter", onMouseenter$0, host, scope);
 	scope.keypress$0 = addStaticEvent(main$0, "keypress", onKeypress$0, host, scope);
 	scope.mousedown$0 = addStaticEvent(main$0, "mousedown", onMousedown$0, host, scope);
 	scope.if$0 = mountBlock(host, inj$0, ifEntry$0);
-	finalizeEvents(inj$0, host, scope);
+	finalizeEvents(inj$0);
 	addDisposeCallback(host, template$0Unmount);
 	return template$0Update;
 }
 
 function template$0Update(host, scope) {
 	const { inj$0 } = scope;
-	addEvent(inj$0, "click", onClick$0);
+	addEvent(inj$0, "click", onClick$0, host, scope);
 	updateBlock(scope.if$0);
-	finalizeEvents(inj$0, host, scope);
+	finalizeEvents(inj$0);
 }
 
 function template$0Unmount(scope) {

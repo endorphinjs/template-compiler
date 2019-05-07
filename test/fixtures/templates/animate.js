@@ -67,7 +67,7 @@ function ifBody$0(host, injector, scope) {
 	const innerComponent$0 = scope.innerComponent$0 = insert(inj$1, createComponent("inner-component", InnerComponent, host));
 	mountComponent(innerComponent$0);
 	finalizeAttributes(inj$1);
-	finalizeEvents(inj$1, host, scope);
+	finalizeEvents(inj$1);
 	animateIn(div$0, "show");
 	addDisposeCallback(host, ifBody$0Unmount);
 	return ifBody$0Update;
@@ -82,7 +82,7 @@ function ifBody$0Update(host, injector, scope) {
 	updateIterator(scope.for$0);
 	updateComponent(scope.innerComponent$0);
 	finalizeAttributes(inj$1);
-	finalizeEvents(inj$1, host, scope);
+	finalizeEvents(inj$1);
 }
 
 function ifBody$0Unmount(scope) {

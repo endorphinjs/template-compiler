@@ -20,7 +20,7 @@ export default class EventEntity extends Entity {
         const handler = createEventHandler(node, state);
 
         if (!element.node || element.dynamicEvents.has(eventType) || element.hasPartials) {
-            this.setShared(() => state.runtime('addEvent', [element.injector, qStr(eventType), handler]));
+            this.setShared(() => state.runtime('addEvent', [element.injector, qStr(eventType), handler, state.host, state.scope]));
         } else {
             // Add as static event
             this.setMount(() => state.runtime('addStaticEvent', [element.getSymbol(), qStr(eventType), handler, state.host, state.scope]));
@@ -153,7 +153,7 @@ function handlerUsesEvent(handler: Expression | void): boolean {
 function createVisitors(eventArg: string): ExpressionVisitorMap {
     const host = thisExpr();
     const evt = identifier(eventArg);
-    const target = member(evt, identifier('currentTarget'));
+    const target = identifier('this.target');
 
     return {
         ENDCaller(node: ENDCaller, state, next) {
@@ -165,7 +165,7 @@ function createVisitors(eventArg: string): ExpressionVisitorMap {
                 return this.CallExpression({
                     type: 'CallExpression',
                     callee: identifier(node.property.value as string, context),
-                    arguments: [...node.arguments, host, evt, target],
+                    arguments: node.arguments,
                     loc: node.loc
                 } as CallExpression, state, next);
             }

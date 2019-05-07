@@ -13,7 +13,7 @@ function setVars$1(host, scope) {
 }
 
 function onClick$0(evt) {
-	this.host.componentModel.definition.handleClick(this.scope.index, this.scope.foo, this.scope.bar, this.host, evt, evt.currentTarget, this.host, evt, evt.currentTarget);
+	this.host.componentModel.definition.handleClick(this.scope.index, this.scope.foo, this.scope.bar, this.host, evt, this.target);
 }
 
 function forContent$0(host, injector, scope) {

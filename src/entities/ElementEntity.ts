@@ -215,7 +215,7 @@ export default class ElementEntity extends Entity {
     finalizeEvents() {
         const { state } = this;
         this.add(state.entity({
-            shared: () => state.runtime('finalizeEvents', [this.injector, state.host, state.scope])
+            shared: () => state.runtime('finalizeEvents', [this.injector])
         }));
     }
 
