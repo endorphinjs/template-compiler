@@ -4,12 +4,12 @@
   "version": "0.1.25",
   "main": "./dist/template-compiler.cjs.js",
   "module": "./dist/template-compiler.es.js",
-  "types": "./dist/types.d.ts",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "test": "mocha",
     "lint": "tslint ./src/**/*.ts",
     "build": "rollup -c && npm run types",
-    "types": "cp ./src/*.d.ts ./dist",
+    "types": "tsc -p ./tsconfig.declaration.json",
     "clean": "rm -rf ./dist",
     "prepare": "npm run lint && npm test && npm run clean && npm run build"
   },

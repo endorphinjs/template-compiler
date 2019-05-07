@@ -1,15 +1,46 @@
-import parse from '@endorphinjs/template-parser';
-import { CompileStateOptions, ParsedTemplate, CodeWithMap } from './types';
+import parseTemplate, { ENDProgram } from '@endorphinjs/template-parser';
+import { CompileStateOptions } from './types';
 import generateTemplate from './template';
 import { ENDCompileError, ENDSyntaxError } from './lib/error';
 import { prepareHelpers } from './lib/utils';
 
-export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap {
-    const helpers = prepareHelpers(options && options.helpers || {});
-    const ast = parse(code, url, { helpers: Object.keys(helpers) });
-    return generate({ ast, code, url }, options);
+export interface ParsedTemplate {
+    /** Original template source code */
+    code: string;
+    url?: string;
+    ast: ENDProgram;
 }
 
+export interface CodeWithMap {
+    code: string;
+    map: object;
+}
+
+/**
+ * Compiles given Endorphin template into JS
+ * @param code Template source code
+ * @param url Template file URL
+ * @param options Compiler options
+ */
+export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap {
+    return generate(parse(code, url, options), options);
+}
+
+/**
+ * Parses given Endorphin template into AST
+ * @param code Template source code
+ * @param url URL of source code
+ */
+export function parse(code: string, url?: string, options?: CompileStateOptions): ParsedTemplate {
+    const helpers = prepareHelpers(options && options.helpers || {});
+    return { code, url, ast: parseTemplate(code, url, { helpers: Object.keys(helpers) }) };
+}
+
+/**
+ * Generates JS code from given parsed Endorphin template AST
+ * @param parsed Parsed template AST
+ * @param options Compiler options
+ */
 export function generate(parsed: ParsedTemplate, options?: CompileStateOptions): CodeWithMap {
     try {
         const sourceMap = generateTemplate(parsed.ast, options);

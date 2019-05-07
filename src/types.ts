@@ -1,32 +1,18 @@
 import { SourceNode } from 'source-map';
-import { ENDImport, ENDProgram, Node } from '@endorphinjs/template-parser';
+import { ENDImport, Node } from '@endorphinjs/template-parser';
 import CompileState from './lib/CompileState';
 import Entity from './entities/Entity';
 
-type UsageContext = 'mount' | 'update' | 'unmount';
-type RenderContext = UsageContext | 'shared';
-type RenderChunk = (entity: Entity) => Chunk;
-interface HelpersMap { [url: string]: string[]; }
-interface PlainObject { [key: string]: string; }
+export type UsageContext = 'mount' | 'update' | 'unmount';
+export type RenderContext = UsageContext | 'shared';
+export type RenderChunk = (entity: Entity) => Chunk;
+export interface HelpersMap { [url: string]: string[]; }
+export interface PlainObject { [key: string]: string; }
 
 // AST Walkers
-type AstVisitorContinue<T> = (node: Node) => T;
-type AstVisitor<T> = (node: Node, state: CompileState, next: AstVisitorContinue<T>) => T;
-type AstVisitorMap<T> = { [name: string]: AstVisitor<T> };
-
-/**
- * Transforms given EndorphinJS template code into JS code for browsers
- * @param code Template source code
- * @param url Template URL
- * @param options Parser options
- */
-export default function transform(code: string, url?: string, options?: CompileStateOptions): CodeWithMap;
-
-/**
- * Generates JS code for browsers from given parsed template
- */
-export function generate(parsed: ParsedTemplate, options?: CompileStateOptions): CodeWithMap;
-
+export type AstVisitorContinue<T> = (node: Node) => T;
+export type AstVisitor<T> = (node: Node, state: CompileState, next: AstVisitorContinue<T>) => T;
+export interface AstVisitorMap<T> { [name: string]: AstVisitor<T>; }
 
 export type Chunk = string | SourceNode;
 export type ChunkList = Chunk[];
@@ -54,18 +40,6 @@ export type RuntimeSymbols = 'mountBlock' | 'updateBlock' | 'unmountBlock'
     | 'insert' | 'get' | 'call' | 'assign' | 'elem' | 'elemWithText' | 'elemNS'
     | 'elemNSWithText' | 'text' | 'filter' | 'find' | 'subscribeStore'
     | 'animateIn' | 'animateOut';
-
-export interface ParsedTemplate {
-    /** Original template source code */
-    code: string,
-    url?: string,
-    ast: ENDProgram,
-}
-
-export interface CodeWithMap {
-    code: string,
-    map: object
-}
 
 export interface ComponentImport {
     /** JS symbol for referencing imported module */

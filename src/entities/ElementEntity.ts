@@ -440,10 +440,6 @@ function walk(elem: ENDStatement | ENDTemplate, callback: (node: ENDStatement) =
     }
 }
 
-export function cssScopeArg(state: CompileState): string {
-    return state.options.cssScope ? `, ${state.cssScopeSymbol}` : '';
-}
-
 export function getNodeName(localName: string): { ns?: string, name: string } {
     const parts = localName.split(':');
     let ns: string;
@@ -471,4 +467,8 @@ function getDestSlotName(entity: Entity): string {
 
 function objectKey(node: Identifier | Program, state: CompileState) {
     return propSetter(isExpression(node) ? generateExpression(node, state) : node.name);
+}
+
+function cssScopeArg(state: CompileState): string {
+    return state.options.cssScope ? state.cssScopeSymbol : '';
 }
