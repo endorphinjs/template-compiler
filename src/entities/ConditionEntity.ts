@@ -22,7 +22,13 @@ export default class ConditionEntity extends Entity {
 
     setSimple(test: Program, statements: ENDStatement[], next: TemplateContinue) {
         const fn = ifAttr(test, statements, this.state, next);
-        this.setShared(() => sn([`${fn}(${this.state.host}, `, this.state.injector, ')']));
+        this.setShared(() => {
+            const args = sn([this.state.host, this.state.injector]);
+            if (fn.usesScope) {
+                args.add(this.state.scope);
+            }
+            return sn([`${fn.name}(`, args.join(', '), ')']);
+        });
     }
 }
 
@@ -59,8 +65,9 @@ function conditionEntry(name: string, conditions: Array<ENDIfStatement | ENDChoo
     });
 }
 
-function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, next: TemplateContinue): string {
-    return state.runChildBlock('ifAttr', (block, elem) => {
+function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, next: TemplateContinue): { name: string, usesScope: boolean } {
+    let usesScope = false;
+    const name = state.runChildBlock('ifAttr', (block, elem) => {
         elem.setMount(() => {
             const body = sn();
             const indent = state.indent.repeat(2);
@@ -72,7 +79,13 @@ function ifAttr(test: Program, statements: ENDStatement[], state: CompileState, 
 
             return body;
         });
+
+        if (block.scopeUsage.mount) {
+            usesScope = true;
+        }
     });
+
+    return { name, usesScope };
 }
 
 function addEntity(entity: TemplateOutput, dest: SourceNode, indent: string = ''): SourceNode {

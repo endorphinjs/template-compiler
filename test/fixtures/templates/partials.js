@@ -73,7 +73,7 @@ function ifAttr$0(host, injector, scope) {
 function partialButton$0(host, injector, scope) {
 	const li$0 = insert(injector, elem("li"));
 	const inj$1 = scope.inj$1 = createInjector(li$0);
-	ifAttr$0(host, inj$1);
+	ifAttr$0(host, inj$1, scope);
 	scope.text$0 = insert(inj$1, text(scope.item));
 	finalizeAttributes(inj$1);
 	addDisposeCallback(host, partialButton$0Unmount);
@@ -82,7 +82,7 @@ function partialButton$0(host, injector, scope) {
 
 function partialButton$0Update(host, injector, scope) {
 	const { inj$1 } = scope;
-	ifAttr$0(host, inj$1);
+	ifAttr$0(host, inj$1, scope);
 	updateText(scope.text$0, scope.item);
 	finalizeAttributes(inj$1);
 }

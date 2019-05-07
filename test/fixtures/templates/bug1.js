@@ -7,14 +7,14 @@ function ifAttr$0(host, injector, scope) {
 	return 0;
 }
 
-function ifBody$0(host, injector) {
+function ifBody$0(host, injector, scope) {
 	setAttribute(injector, "style", host.state.css);
-	ifAttr$0(host, injector);
+	ifAttr$0(host, injector, scope);
 	return ifBody$0Update;
 }
 
-function ifBody$0Update(host, injector) {
-	ifAttr$0(host, injector);
+function ifBody$0Update(host, injector, scope) {
+	ifAttr$0(host, injector, scope);
 }
 
 function ifEntry$0(host) {
