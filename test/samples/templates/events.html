@@ -3,6 +3,7 @@
     <main
         on:click={method1(foo, bar)}
         on:mouseenter={emit('hover')}
+        on:mouseleave={onLeave}
         on:keypress:stop
         on:mousedown:prevent={e => emit('down', e.pageX, e.pageY)}>
         <e:attribute on:click={method2(foo, bar)} e:if={c1} />

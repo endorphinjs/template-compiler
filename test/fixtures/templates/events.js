@@ -9,6 +9,10 @@ function onMouseenter$0() {
 	emit(this.host, "hover");
 }
 
+function onMouseleave$0(evt) {
+	this.host.componentModel.definition.onLeave(this.host, evt, evt.currentTarget, this.host, evt, this.target);
+}
+
 function onKeypress$0(evt) {
 	evt.stopPropagation();
 }
@@ -43,6 +47,7 @@ export default function template$0(host, scope) {
 	const inj$0 = scope.inj$0 = createInjector(main$0);
 	addEvent(inj$0, "click", onClick$0, host, scope);
 	scope.mouseenter$0 = addStaticEvent(main$0, "mouseenter", onMouseenter$0, host, scope);
+	scope.mouseleave$0 = addStaticEvent(main$0, "mouseleave", onMouseleave$0, host, scope);
 	scope.keypress$0 = addStaticEvent(main$0, "keypress", onKeypress$0, host, scope);
 	scope.mousedown$0 = addStaticEvent(main$0, "mousedown", onMousedown$0, host, scope);
 	scope.if$0 = mountBlock(host, inj$0, ifEntry$0);
@@ -60,6 +65,7 @@ function template$0Update(host, scope) {
 
 function template$0Unmount(scope) {
 	scope.mouseenter$0 = removeStaticEvent(scope.mouseenter$0);
+	scope.mouseleave$0 = removeStaticEvent(scope.mouseleave$0);
 	scope.keypress$0 = removeStaticEvent(scope.keypress$0);
 	scope.mousedown$0 = removeStaticEvent(scope.mousedown$0);
 	scope.if$0 = unmountBlock(scope.if$0);

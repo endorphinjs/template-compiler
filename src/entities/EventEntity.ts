@@ -116,7 +116,7 @@ function constructCall(node: Identifier, eventArg: string): CallExpression {
 
     return {
         type: 'CallExpression',
-        callee: node,
+        callee: { ...node, context: 'definition' },
         arguments: [host, evt, target],
         loc: node.loc
     } as CallExpression;
