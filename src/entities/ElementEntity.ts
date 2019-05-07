@@ -222,10 +222,18 @@ export default class ElementEntity extends Entity {
     /**
      * Adds entity to set named ref to current element
      */
-    setRef(refName: string) {
+    setRef(refName: string | Program) {
         const { state } = this;
         this.add(state.entity({
-            shared: () => state.runtime('setRef', [state.host, qStr(refName), this.getSymbol()])
+            shared: () => {
+                let ref: Chunk;
+                if (typeof refName === 'string') {
+                    ref = qStr(refName);
+                } else {
+                    ref = generateExpression(refName, state);
+                }
+                return state.runtime('setRef', [state.host, ref, this.getSymbol()]);
+            }
         }));
     }
 
