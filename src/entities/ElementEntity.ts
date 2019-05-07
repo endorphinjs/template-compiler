@@ -296,7 +296,7 @@ export default class ElementEntity extends Entity {
     getStaticProps(): Map<Chunk, Chunk> {
         const props: Map<Chunk, Chunk> = new Map();
 
-        if (this.node.type === 'ENDElement') {
+        if (isElement(this.node)) {
             const { attributes, directives } = this.node;
             const { state } = this;
 
@@ -310,7 +310,7 @@ export default class ElementEntity extends Entity {
                 if (dir.prefix === 'partial') {
                     const value = compileAttributeValue(dir.value, state, 'component');
                     props.set(
-                        qStr(`${dir.prefix}:${dir.name}`),
+                        propSetter(`${dir.prefix}:${dir.name}`),
                         state.runtime('assign', [`{ ${state.host} }`, sn([`${state.partials}[`, value, ']'])])
                     );
                 }

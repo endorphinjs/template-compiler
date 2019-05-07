@@ -6,6 +6,7 @@ export const partials = {
 		defaults: {
 			item: null,
 			enabled: true,
+			"dashed-name": "foo",
 			pos: 0
 		}
 	}
@@ -18,7 +19,8 @@ function forSelect$0(host) {
 function forContent$0(host, injector, scope) {
 	scope.partial$0 = mountPartial(host, injector, host.props['partial:button'] || partials.button, {
 		item: scope.item,
-		enabled: (scope.index !== 1)
+		enabled: (scope.index !== 1),
+		"dashed-name": "bar"
 	});
 	addDisposeCallback(host, forContent$0Unmount);
 	return forContent$0Update;
@@ -27,7 +29,8 @@ function forContent$0(host, injector, scope) {
 function forContent$0Update(host, injector, scope) {
 	updatePartial(scope.partial$0, host.props['partial:button'] || partials.button, {
 		item: scope.item,
-		enabled: (scope.index !== 1)
+		enabled: (scope.index !== 1),
+		"dashed-name": "bar"
 	});
 }
 
